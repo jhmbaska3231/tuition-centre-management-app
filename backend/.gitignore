@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Logs (TypeScript/Node might generate these)
+*.log
+
+# OS files
+.DS_Store
+
+# TypeScript build info (might be generated)
+*.tsbuildinfo
