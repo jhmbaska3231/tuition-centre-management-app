@@ -1,7 +1,7 @@
 // src/components/parent/ClassOperations.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User } from 'lucide-react';
 import type { Class, Enrollment, Student, Branch } from '../../types';
 import ClassService from '../../services/class';
 import EnrollmentService from '../../services/enrollment';
@@ -202,6 +202,14 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-SG', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -475,13 +483,25 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               {classes.map((classItem) => (
                 <div key={classItem.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
                   <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-800">{classItem.subject}</h3>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-gray-800 mb-1">{classItem.subject}</h3>
+                      {classItem.level && (
+                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded mb-2">
+                          {classItem.level}
+                        </span>
+                      )}
+                    </div>
                     <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       getAvailableSpots(classItem) > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
                       {getAvailableSpots(classItem)} spots left
                     </div>
                   </div>
+
+                  {/* Description */}
+                  {classItem.description && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{classItem.description}</p>
+                  )}
 
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -491,7 +511,14 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                     
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <Clock size={16} />
-                      <span>{formatDuration(classItem.duration_minutes)}</span>
+                      <span>
+                        {formatDuration(classItem.duration_minutes)}
+                        {classItem.end_time && (
+                          <span className="text-gray-400 ml-2">
+                            (ends {formatTime(classItem.end_time)})
+                          </span>
+                        )}
+                      </span>
                     </div>
                     
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -505,8 +532,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                     </div>
                     
                     {classItem.tutor_first_name && (
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">Tutor:</span> {classItem.tutor_first_name} {classItem.tutor_last_name}
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <User size={16} />
+                        <span>
+                          <span className="font-medium">Tutor:</span> {classItem.tutor_first_name} {classItem.tutor_last_name}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -608,10 +638,18 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
             
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">{selectedClass.subject}</h3>
+              {selectedClass.level && (
+                <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded mb-2">
+                  {selectedClass.level}
+                </span>
+              )}
               <div className="text-sm text-gray-600 space-y-1">
                 <p>{formatDateTime(selectedClass.start_time)}</p>
                 <p>{selectedClass.branch_name}</p>
                 <p>{formatDuration(selectedClass.duration_minutes)}</p>
+                {selectedClass.tutor_first_name && (
+                  <p>Tutor: {selectedClass.tutor_first_name} {selectedClass.tutor_last_name}</p>
+                )}
               </div>
             </div>
             

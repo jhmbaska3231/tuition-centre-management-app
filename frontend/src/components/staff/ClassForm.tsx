@@ -62,7 +62,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         startTime: localDateTime,
         durationMinutes: classData.duration_minutes,
         capacity: classData.capacity,
-        branchId: classData.branch_id || '',
+        branchId: classData.branch_id || '', // Properly set the branch ID
       });
     } else {
       // Reset form for new class
@@ -126,8 +126,12 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         break;
       case 'capacity':
         const cap = parseInt(value);
-        if (isNaN(cap) || cap < 1 || cap > 50) {
-          error = 'Capacity must be between 1 and 50 students';
+        if (isNaN(cap) || cap < 1 || cap > 30) {
+          error = 'Capacity must be between 1 and 30 students';
+        }
+        // Validation for edit mode to ensure capacity is not less than current enrollment
+        else if (isEdit && classData && cap < classData.enrolled_count) {
+          error = `Capacity cannot be less than current enrollment (${classData.enrolled_count} students)`;
         }
         break;
       case 'branchId':
@@ -385,7 +389,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
               <input
                 type="number"
                 value={formData.capacity}
-                min="1"
+                min={isEdit && classData ? classData.enrolled_count : 1}
                 max="50"
                 onChange={(e) => handleInputChange('capacity', parseInt(e.target.value))}
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
@@ -398,6 +402,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
               />
               {fieldErrors.capacity && (
                 <p className="text-red-600 text-sm mt-1">{fieldErrors.capacity}</p>
+              )}
+              {isEdit && classData && classData.enrolled_count > 0 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Current enrollment: {classData.enrolled_count} students (minimum capacity)
+                </p>
               )}
             </div>
 

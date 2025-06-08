@@ -1,13 +1,15 @@
 // src/components/staff/ClassManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Calendar, MapPin, Users, Clock, Edit2, Trash2, Filter, X, Loader2, User } from 'lucide-react';
+import { BookOpen, Plus, Calendar, MapPin, Users, Clock, Edit2, Trash2, Filter, X, Loader2, User, ToggleLeft, ToggleRight } from 'lucide-react';
 import type { Class, Branch } from '../../types';
 import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
 import ClassForm from './ClassForm';
+import { useAuth } from '../../hooks/useAuth';
 
 const ClassManagement: React.FC = () => {
+  const { user } = useAuth();
   const [classes, setClasses] = useState<Class[]>([]);
   const [allClasses, setAllClasses] = useState<Class[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -20,6 +22,9 @@ const ClassManagement: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Teacher toggle for own classes vs all classes
+  const [showMyClassesOnly, setShowMyClassesOnly] = useState(true);
   
   // Modal states
   const [showClassForm, setShowClassForm] = useState(false);
@@ -35,7 +40,7 @@ const ClassManagement: React.FC = () => {
 
   useEffect(() => {
     loadClasses();
-  }, [selectedBranch, selectedSubject, startDate, endDate]);
+  }, [selectedBranch, selectedSubject, startDate, endDate, showMyClassesOnly]);
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -73,10 +78,16 @@ const ClassManagement: React.FC = () => {
       // Store all classes for subject extraction
       setAllClasses(classList);
       
+      // Apply teacher filter if "My Classes Only" is enabled
+      let filteredByTeacher = classList;
+      if (showMyClassesOnly && user) {
+        filteredByTeacher = classList.filter(cls => cls.tutor_id === user.id);
+      }
+      
       // Apply subject filter on frontend if selected
       const filteredClasses = selectedSubject 
-        ? classList.filter(cls => cls.subject.toLowerCase().includes(selectedSubject.toLowerCase()))
-        : classList;
+        ? filteredByTeacher.filter(cls => cls.subject.toLowerCase().includes(selectedSubject.toLowerCase()))
+        : filteredByTeacher;
         
       setClasses(filteredClasses);
     } catch (err) {
@@ -133,6 +144,14 @@ const ClassManagement: React.FC = () => {
     });
   };
 
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-SG', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -143,7 +162,7 @@ const ClassManagement: React.FC = () => {
     return classItem.capacity - classItem.enrolled_count;
   };
 
-  const isClassEditable = (classItem: Class) => {
+  const isClassInFuture = (classItem: Class) => {
     return new Date(classItem.start_time) > new Date();
   };
 
@@ -184,6 +203,23 @@ const ClassManagement: React.FC = () => {
             <Filter size={20} />
             <span>Filters</span>
           </button>
+          
+          {/* Teacher Toggle */}
+          <div className="flex items-center space-x-3 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setShowMyClassesOnly(!showMyClassesOnly)}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-all ${
+                showMyClassesOnly 
+                  ? 'bg-blue-600 text-white shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              {showMyClassesOnly ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+              <span className="text-sm font-medium">
+                {showMyClassesOnly ? 'My Classes Only' : 'All Classes'}
+              </span>
+            </button>
+          </div>
           
           <button
             onClick={handleCreateClass}
@@ -324,27 +360,62 @@ const ClassManagement: React.FC = () => {
           <BookOpen className="mx-auto text-gray-300 mb-4" size={64} />
           <h3 className="text-xl font-semibold text-gray-600 mb-2">No Classes Found</h3>
           <p className="text-gray-500 mb-6">
-            {selectedSubject || selectedBranch || startDate || endDate
-              ? 'No classes match your current filters. Try adjusting the filters.'
-              : 'Start by creating your first class.'
-            }
+            {selectedSubject || selectedBranch || startDate || endDate ? (
+              'No classes match your current filters. Try adjusting the filters.'
+            ) : showMyClassesOnly ? (
+              "You haven't created any classes yet. Start by creating your first class!"
+            ) : (
+              'No classes available in the system. You can create the first one!'
+            )}
           </p>
-          <button
-            onClick={handleCreateClass}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
-          >
-            Create Your First Class
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <button
+              onClick={handleCreateClass}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
+            >
+              Create Your First Class
+            </button>
+            {showMyClassesOnly && (
+              <button
+                onClick={() => setShowMyClassesOnly(false)}
+                className="text-blue-600 hover:text-blue-700 px-4 py-2 rounded-lg transition-colors"
+              >
+                View All Classes
+              </button>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {classes.map((classItem) => (
-            <div key={classItem.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-800">{classItem.subject}</h3>
-                <div className="flex space-x-2">
-                  {isClassEditable(classItem) && (
-                    <>
+        <div>
+          {/* Status indicator */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {showMyClassesOnly ? 'My Classes' : 'All Classes'} ({classes.length})
+              </h2>
+              <span className="text-sm text-gray-500">
+                {showMyClassesOnly 
+                  ? 'Showing only classes assigned to you' 
+                  : 'Showing all classes in the system'
+                }
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {classes.map((classItem) => (
+              <div key={classItem.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-800 mb-1">{classItem.subject}</h3>
+                    {classItem.level && (
+                      <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded mb-2">
+                        {classItem.level}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex space-x-2">
+                    {classItem.can_edit && isClassInFuture(classItem) && (
                       <button
                         onClick={() => handleEditClass(classItem)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -352,6 +423,8 @@ const ClassManagement: React.FC = () => {
                       >
                         <Edit2 size={16} />
                       </button>
+                    )}
+                    {classItem.can_delete && isClassInFuture(classItem) && (
                       <button
                         onClick={() => handleDeleteClass(classItem)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -359,54 +432,86 @@ const ClassManagement: React.FC = () => {
                       >
                         <Trash2 size={16} />
                       </button>
-                    </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {classItem.description && (
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{classItem.description}</p>
+                )}
+
+                <div className="space-y-3 mb-6">
+                  {/* Date and Time */}
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Calendar size={16} />
+                    <span>{formatDateTime(classItem.start_time)}</span>
+                  </div>
+                  
+                  {/* Duration and End Time */}
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Clock size={16} />
+                    <span>
+                      {formatDuration(classItem.duration_minutes)}
+                      {classItem.end_time && (
+                        <span className="text-gray-400 ml-2">
+                          (ends {formatTime(classItem.end_time)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  
+                  {/* Branch */}
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <MapPin size={16} />
+                    <span>{classItem.branch_name}</span>
+                  </div>
+                  
+                  {/* Enrollment Count */}
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Users size={16} />
+                    <span>{classItem.enrolled_count}/{classItem.capacity} enrolled ({getAvailableSpots(classItem)} spots left)</span>
+                  </div>
+
+                  {/* Tutor Information */}
+                  {classItem.tutor_first_name && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <User size={16} />
+                      <span>
+                        <span className="font-medium">Tutor:</span> {classItem.tutor_first_name} {classItem.tutor_last_name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      getAvailableSpots(classItem) > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {getAvailableSpots(classItem) > 0 ? 'Available' : 'Full'}
+                    </div>
+                    
+                    <div className="text-xs text-gray-400">
+                      Created {new Date(classItem.created_at).toLocaleDateString('en-SG')}
+                    </div>
+                  </div>
+                  
+                  {!isClassInFuture(classItem) && (
+                    <div className="mt-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                      Past class - cannot be modified
+                    </div>
+                  )}
+                  
+                  {!classItem.can_edit && !classItem.can_delete && isClassInFuture(classItem) && (
+                    <div className="mt-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">
+                      View only - assigned to another tutor
+                    </div>
                   )}
                 </div>
               </div>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Calendar size={16} />
-                  <span>{formatDateTime(classItem.start_time)}</span>
-                </div>
-                
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Clock size={16} />
-                  <span>{formatDuration(classItem.duration_minutes)}</span>
-                </div>
-                
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <MapPin size={16} />
-                  <span>{classItem.branch_name}</span>
-                </div>
-                
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Users size={16} />
-                  <span>{classItem.enrolled_count}/{classItem.capacity} enrolled ({getAvailableSpots(classItem)} spots left)</span>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    getAvailableSpots(classItem) > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {getAvailableSpots(classItem) > 0 ? 'Available' : 'Full'}
-                  </div>
-                  
-                  <div className="text-xs text-gray-400">
-                    Created {formatDateTime(classItem.created_at)}
-                  </div>
-                </div>
-                
-                {!isClassEditable(classItem) && (
-                  <div className="mt-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                    Past class - cannot be modified
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
@@ -435,6 +540,9 @@ const ClassManagement: React.FC = () => {
               
               <div className="bg-gray-50 p-4 rounded-lg text-left">
                 <p className="font-semibold text-gray-800">{showDeleteConfirm.subject}</p>
+                {showDeleteConfirm.level && (
+                  <p className="text-sm text-gray-600">Level: {showDeleteConfirm.level}</p>
+                )}
                 <p className="text-sm text-gray-600">Date: {formatDateTime(showDeleteConfirm.start_time)}</p>
                 <p className="text-sm text-gray-600">Branch: {showDeleteConfirm.branch_name}</p>
                 <p className="text-sm text-gray-600">Enrolled: {showDeleteConfirm.enrolled_count}/{showDeleteConfirm.capacity}</p>

@@ -25,10 +25,13 @@ const ProfileManagement: React.FC = () => {
     phone: '',
   });
   
-  // Delete account states
+  // Delete account states (only for parents)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  // Check if user can delete account (only parents can delete their accounts)
+  const canDeleteAccount = user?.role === 'parent';
 
   useEffect(() => {
     if (user) {
@@ -149,6 +152,19 @@ const ProfileManagement: React.FC = () => {
     });
   };
 
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'parent':
+        return 'Parent';
+      case 'staff':
+        return 'Teacher/Staff';
+      case 'admin':
+        return 'Administrator';
+      default:
+        return role;
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -177,14 +193,14 @@ const ProfileManagement: React.FC = () => {
         {/* Profile Card */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-8">
           {/* Profile Header */}
-                        <div className="bg-blue-600 p-6">
+          <div className="bg-blue-600 p-6">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                 <User className="text-white" size={24} />
               </div>
               <div className="text-white">
                 <h2 className="text-2xl font-bold">{user.first_name} {user.last_name}</h2>
-                <p className="text-blue-100 capitalize">{user.role} Account</p>
+                <p className="text-blue-100">{getRoleDisplayName(user.role)} Account</p>
                 <p className="text-blue-100 text-sm mt-1">
                   Member since {formatMemberSince(user.created_at)}
                 </p>
@@ -344,32 +360,50 @@ const ProfileManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Danger Zone - Delete Account */}
-        <div className="bg-white rounded-2xl shadow-lg border border-red-200 p-6">
-          <h3 className="text-lg font-semibold text-red-800 mb-4 flex items-center space-x-2">
-            <AlertTriangle size={20} />
-            <span>Danger Zone</span>
-          </h3>
-          <div className="space-y-3">
-            <p className="text-gray-700">
-              Delete your account and all associated data permanently. This action cannot be undone.
-            </p>
-            <p className="text-sm text-gray-600">
-              This will delete all your students, enrollments, and payment history.
-            </p>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <Trash2 size={16} />
-              <span>Delete Account</span>
-            </button>
+        {/* Danger Zone - Delete Account (Only for Parent users) */}
+        {canDeleteAccount && (
+          <div className="bg-white rounded-2xl shadow-lg border border-red-200 p-6">
+            <h3 className="text-lg font-semibold text-red-800 mb-4 flex items-center space-x-2">
+              <AlertTriangle size={20} />
+              <span>Danger Zone</span>
+            </h3>
+            <div className="space-y-3">
+              <p className="text-gray-700">
+                Delete your account and all associated data permanently. This action cannot be undone.
+              </p>
+              <p className="text-sm text-gray-600">
+                This will delete all your students, enrollments, and payment history.
+              </p>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <Trash2 size={16} />
+                <span>Delete Account</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Info message for staff/admin users */}
+        {!canDeleteAccount && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+            <div className="flex items-center space-x-3">
+              <User className="text-blue-600" size={20} />
+              <div>
+                <h3 className="text-sm font-semibold text-blue-800">Account Management</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  {user.role === 'staff' && 'As a staff member, your account is managed by administrators. Contact support for account changes.'}
+                  {user.role === 'admin' && 'As an administrator, your account requires special handling. Contact system support for account changes.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
+      {/* Delete Confirmation Modal (Only for Parents) */}
+      {showDeleteConfirm && canDeleteAccount && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <button
@@ -388,15 +422,15 @@ const ProfileManagement: React.FC = () => {
                 <AlertTriangle className="text-red-600" size={24} />
               </div>
               
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Account</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Parent Account</h3>
               <p className="text-gray-600 mb-4">
-                This action will permanently delete your account and all associated data.
+                This action will permanently delete your parent account and all associated data.
               </p>
               
               <div className="bg-red-50 p-4 rounded-lg text-left mb-4">
                 <p className="text-sm text-red-800 font-semibold mb-2">This will delete:</p>
                 <ul className="text-sm text-red-700 space-y-1">
-                  <li>• Your account and profile</li>
+                  <li>• Your parent account and profile</li>
                   <li>• All your children's information</li>
                   <li>• All enrollment records</li>
                   <li>• All payment history</li>
