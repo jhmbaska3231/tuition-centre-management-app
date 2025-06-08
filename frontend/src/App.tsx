@@ -5,6 +5,7 @@ import { BookOpen, User, BarChart3, Users, Calendar, CreditCard, UserPlus, Star,
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import Navigation from './components/layout/Navigation';
 import ParentDashboard from './components/parent/ParentDashboard';
+import StaffDashboard from './components/staff/StaffDashboard';
 
 // Feature Card Component
 interface FeatureCardProps {
@@ -61,13 +62,22 @@ const LoadingScreen: React.FC = () => (
 const AppContent: React.FC = () => {
   const { user, loading, isAuthenticated } = useAuth();
   const [currentTab, setCurrentTab] = useState<'students' | 'classes' | 'payments' | 'profile'>('students');
+  const [currentStaffTab, setCurrentStaffTab] = useState<'classes' | 'students' | 'profile'>('classes');
 
   const handleProfileClick = () => {
-    setCurrentTab('profile');
+    if (user?.role === 'parent') {
+      setCurrentTab('profile');
+    } else if (user?.role === 'staff') {
+      setCurrentStaffTab('profile');
+    }
   };
 
   const handleTabChange = (tab: 'students' | 'classes' | 'payments' | 'profile') => {
     setCurrentTab(tab);
+  };
+
+  const handleStaffTabChange = (tab: 'classes' | 'students' | 'profile') => {
+    setCurrentStaffTab(tab);
   };
 
   if (loading) {
@@ -87,34 +97,11 @@ const AppContent: React.FC = () => {
             onTabChange={handleTabChange}
           />
         ) : (
-          // Staff Dashboard (placeholder for now)
-          <div className="max-w-6xl mx-auto px-4 py-16">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">
-                Staff Dashboard
-              </h1>
-              <p className="text-gray-600 mb-8">
-                Welcome, {user.first_name}! Staff features coming soon.
-              </p>
-              <div className="bg-white p-8 rounded-2xl shadow-lg">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Coming Soon</h3>
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-semibold text-gray-700 mb-2">📚 Class Management</h4>
-                    <p className="text-sm text-gray-600">Create and manage your classes</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-semibold text-gray-700 mb-2">👥 Student Overview</h4>
-                    <p className="text-sm text-gray-600">View all enrolled students</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-semibold text-gray-700 mb-2">📊 Analytics</h4>
-                    <p className="text-sm text-gray-600">Track performance metrics</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          // Staff Dashboard with Tabs
+          <StaffDashboard 
+            initialTab={currentStaffTab}
+            onTabChange={handleStaffTabChange}
+          />
         )}
       </div>
     );

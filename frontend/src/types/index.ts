@@ -114,11 +114,15 @@ export interface Payment {
 export interface Class {
   id: string;
   subject: string;
+  description?: string;
+  level?: string;
   start_time: string;
   duration_minutes: number;
   capacity: number;
   active: boolean;
   created_at: string;
+  updated_at?: string;
+  branch_id?: string;
   branch_name: string;
   branch_address: string;
   tutor_first_name?: string;
@@ -146,4 +150,24 @@ export interface Enrollment {
 export interface CreateEnrollmentRequest {
   studentId: string;
   classId: string;
+}
+
+export interface CreateClassRequest {
+  subject: string;
+  description?: string;
+  level?: string;
+  startTime: string;
+  durationMinutes: number;
+  capacity: number;
+  branchId: string;
+}
+
+export interface UpdateClassRequest {
+  subject?: string;
+  description?: string;
+  level?: string;
+  startTime?: string;
+  durationMinutes?: number;
+  capacity?: number;
+  branchId?: string;
 }
