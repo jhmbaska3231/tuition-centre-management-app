@@ -117,6 +117,7 @@ export interface Class {
   description?: string;
   level?: string;
   start_time: string;
+  end_time?: string;
   duration_minutes: number;
   capacity: number;
   active: boolean;
@@ -125,9 +126,12 @@ export interface Class {
   branch_id?: string;
   branch_name: string;
   branch_address: string;
+  tutor_id?: string;
   tutor_first_name?: string;
   tutor_last_name?: string;
   enrolled_count: number;
+  can_edit?: boolean;
+  can_delete?: boolean;
 }
 
 export interface Enrollment {

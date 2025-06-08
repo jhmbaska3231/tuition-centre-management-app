@@ -2,19 +2,22 @@
 
 import express from 'express';
 import { pool } from '../index';
-import { authenticateToken, requireRole, AuthRequest } from '../middleware/auth';
+import { authenticateToken, requireRole, requireAnyRole, AuthRequest } from '../middleware/auth';
 import { validateClass } from '../middleware/validation';
 
 const router = express.Router();
 
-// Get all active classes (available to both parents and staff)
+// Get all active classes (available to parents, staff, and admin with different permissions)
 router.get('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { branchId, startDate, endDate } = req.query;
+    const userRole = req.user!.role;
+    const userId = req.user!.userId;
 
     let query = `
-      SELECT c.id, c.subject, c.start_time, c.duration_minutes, c.capacity, 
-             c.active, c.created_at,
+      SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
+             c.active, c.created_at, c.updated_at,
+             c.end_time, c.tutor_id,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
              COUNT(e.id) as enrolled_count
@@ -27,10 +30,21 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
           SELECT 1 FROM "Student" s 
           WHERE s.id = e.student_id AND s.active = TRUE
         )
-      WHERE c.active = TRUE AND c.start_time > NOW()
+      WHERE c.active = TRUE
     `;
+
     const queryParams: any[] = [];
     let paramIndex = 1;
+
+    // For staff, only show classes in the future OR classes assigned to them
+    if (userRole === 'staff') {
+      query += ` AND (c.start_time > NOW() OR c.tutor_id = $${paramIndex})`;
+      queryParams.push(userId);
+      paramIndex++;
+    } else {
+      // For parents and admin, show future classes only
+      query += ` AND c.start_time > NOW()`;
+    }
 
     // Filter by branch if specified
     if (branchId) {
@@ -53,13 +67,21 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     query += `
-      GROUP BY c.id, c.subject, c.start_time, c.duration_minutes, c.capacity, 
-               c.active, c.created_at, b.name, b.address, u.first_name, u.last_name
+      GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
+               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, b.name, b.address, u.first_name, u.last_name
       ORDER BY c.start_time ASC
     `;
 
     const result = await pool.query(query, queryParams);
-    res.json(result.rows);
+    
+    // Add permission flags for frontend
+    const classesWithPermissions = result.rows.map(classItem => ({
+      ...classItem,
+      can_edit: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId),
+      can_delete: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId)
+    }));
+
+    res.json(classesWithPermissions);
 
   } catch (error) {
     console.error('Get classes error:', error);
@@ -71,10 +93,12 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const userRole = req.user!.role;
+    const userId = req.user!.userId;
 
     const result = await pool.query(`
-      SELECT c.id, c.subject, c.start_time, c.duration_minutes, c.capacity, 
-             c.active, c.created_at,
+      SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
+             c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
              COUNT(e.id) as enrolled_count
@@ -88,8 +112,8 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
           WHERE s.id = e.student_id AND s.active = TRUE
         )
       WHERE c.id = $1 AND c.active = TRUE
-      GROUP BY c.id, c.subject, c.start_time, c.duration_minutes, c.capacity, 
-               c.active, c.created_at, b.name, b.address, u.first_name, u.last_name
+      GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
+               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, b.name, b.address, u.first_name, u.last_name
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -97,7 +121,16 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
       return;
     }
 
-    res.json(result.rows[0]);
+    const classItem = result.rows[0];
+    
+    // Add permission flags
+    const classWithPermissions = {
+      ...classItem,
+      can_edit: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId),
+      can_delete: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId)
+    };
+
+    res.json(classWithPermissions);
 
   } catch (error) {
     console.error('Get class error:', error);
@@ -105,35 +138,39 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// Create a new class (staff only)
-router.post('/', authenticateToken, requireRole('staff'), validateClass, async (req: AuthRequest, res) => {
+// Create a new class (staff and admin only)
+router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateClass, async (req: AuthRequest, res) => {
   try {
-    const { subject, startTime, durationMinutes, capacity, branchId } = req.body;
+    const { subject, description, level, startTime, durationMinutes, capacity, branchId } = req.body;
+    const userId = req.user!.userId;
 
     const result = await pool.query(`
-      INSERT INTO "Class" (subject, tutor_id, start_time, duration_minutes, capacity, branch_id, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, subject, start_time, duration_minutes, capacity, active, created_at
-    `, [subject, req.user!.userId, startTime, durationMinutes, capacity, branchId, req.user!.userId]);
+      INSERT INTO "Class" (subject, description, level, tutor_id, start_time, duration_minutes, capacity, branch_id, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, subject, description, level, start_time, duration_minutes, capacity, active, created_at, updated_at
+    `, [subject, description || null, level || null, userId, startTime, durationMinutes, capacity, branchId, userId]);
 
     const newClass = result.rows[0];
 
-    // Get branch info
-    const branchResult = await pool.query(
-      'SELECT name as branch_name, address as branch_address FROM "Branch" WHERE id = $1',
-      [branchId]
-    );
+    // Get branch info and tutor info
+    const [branchResult, tutorResult] = await Promise.all([
+      pool.query('SELECT name as branch_name, address as branch_address FROM "Branch" WHERE id = $1', [branchId]),
+      pool.query('SELECT first_name as tutor_first_name, last_name as tutor_last_name FROM "User" WHERE id = $1', [userId])
+    ]);
 
-    const classWithBranch = {
+    const classWithDetails = {
       ...newClass,
       ...branchResult.rows[0],
-      tutor_first_name: req.user!.email.split('@')[0], // Simplified for now
-      enrolled_count: 0
+      ...tutorResult.rows[0],
+      tutor_id: userId,
+      enrolled_count: 0,
+      can_edit: true,
+      can_delete: true
     };
 
     res.status(201).json({
       message: 'Class created successfully',
-      class: classWithBranch
+      class: classWithDetails
     });
 
   } catch (error) {
@@ -142,15 +179,17 @@ router.post('/', authenticateToken, requireRole('staff'), validateClass, async (
   }
 });
 
-// Update a class (staff only, only future classes)
-router.put('/:id', authenticateToken, requireRole('staff'), async (req: AuthRequest, res) => {
+// Update a class (staff can only update their own, admin can update any)
+router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { subject, startTime, durationMinutes, capacity, branchId } = req.body;
+    const { subject, description, level, startTime, durationMinutes, capacity, branchId } = req.body;
+    const userRole = req.user!.role;
+    const userId = req.user!.userId;
 
     // Check if class exists and is in the future
     const classCheck = await pool.query(
-      'SELECT id, start_time FROM "Class" WHERE id = $1 AND active = TRUE AND start_time > NOW()',
+      'SELECT id, start_time, tutor_id FROM "Class" WHERE id = $1 AND active = TRUE AND start_time > NOW()',
       [id]
     );
 
@@ -159,17 +198,27 @@ router.put('/:id', authenticateToken, requireRole('staff'), async (req: AuthRequ
       return;
     }
 
+    const classItem = classCheck.rows[0];
+
+    // Check permissions: staff can only edit their own classes
+    if (userRole === 'staff' && classItem.tutor_id !== userId) {
+      res.status(403).json({ error: 'You can only edit classes assigned to you' });
+      return;
+    }
+
     const result = await pool.query(`
       UPDATE "Class" 
       SET subject = COALESCE($1, subject),
-          start_time = COALESCE($2, start_time),
-          duration_minutes = COALESCE($3, duration_minutes),
-          capacity = COALESCE($4, capacity),
-          branch_id = COALESCE($5, branch_id),
+          description = COALESCE($2, description),
+          level = COALESCE($3, level),
+          start_time = COALESCE($4, start_time),
+          duration_minutes = COALESCE($5, duration_minutes),
+          capacity = COALESCE($6, capacity),
+          branch_id = COALESCE($7, branch_id),
           updated_at = NOW()
-      WHERE id = $6
-      RETURNING id, subject, start_time, duration_minutes, capacity, active, created_at
-    `, [subject, startTime, durationMinutes, capacity, branchId, id]);
+      WHERE id = $8
+      RETURNING id, subject, description, level, start_time, duration_minutes, capacity, active, created_at, updated_at
+    `, [subject, description, level, startTime, durationMinutes, capacity, branchId, id]);
 
     res.json({
       message: 'Class updated successfully',
@@ -182,19 +231,29 @@ router.put('/:id', authenticateToken, requireRole('staff'), async (req: AuthRequ
   }
 });
 
-// Delete a class (staff only, only future classes)
-router.delete('/:id', authenticateToken, requireRole('staff'), async (req: AuthRequest, res) => {
+// Delete a class (staff can only delete their own, admin can delete any)
+router.delete('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const userRole = req.user!.role;
+    const userId = req.user!.userId;
 
     // Check if class exists and is in the future
     const classCheck = await pool.query(
-      'SELECT id, subject, start_time FROM "Class" WHERE id = $1 AND active = TRUE AND start_time > NOW()',
+      'SELECT id, subject, start_time, tutor_id FROM "Class" WHERE id = $1 AND active = TRUE AND start_time > NOW()',
       [id]
     );
 
     if (classCheck.rows.length === 0) {
       res.status(404).json({ error: 'Class not found or cannot be deleted (past class)' });
+      return;
+    }
+
+    const classItem = classCheck.rows[0];
+
+    // Check permissions: staff can only delete their own classes
+    if (userRole === 'staff' && classItem.tutor_id !== userId) {
+      res.status(403).json({ error: 'You can only delete classes assigned to you' });
       return;
     }
 
@@ -205,7 +264,7 @@ router.delete('/:id', authenticateToken, requireRole('staff'), async (req: AuthR
     );
 
     res.json({
-      message: `Class "${classCheck.rows[0].subject}" deleted successfully`
+      message: `Class "${classItem.subject}" deleted successfully`
     });
 
   } catch (error) {

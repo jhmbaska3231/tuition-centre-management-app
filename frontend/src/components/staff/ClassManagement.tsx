@@ -1,7 +1,7 @@
 // src/components/staff/ClassManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Calendar, MapPin, Users, Clock, Edit2, Trash2, Filter, X, Loader2 } from 'lucide-react';
+import { BookOpen, Plus, Calendar, MapPin, Users, Clock, Edit2, Trash2, Filter, X, Loader2, User } from 'lucide-react';
 import type { Class, Branch } from '../../types';
 import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
