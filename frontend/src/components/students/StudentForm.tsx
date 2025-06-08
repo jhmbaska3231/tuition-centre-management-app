@@ -1,4 +1,4 @@
-// src/components/students/StudentForm.tsx
+// frontend/src/components/students/StudentForm.tsx
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
@@ -16,7 +16,8 @@ interface StudentFormProps {
 
 const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onSuccess }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     grade: '',
     dateOfBirth: '',
     homeBranchId: '',
@@ -24,7 +25,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
   const [branches, setBranches] = useState<Branch[]>([]);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
@@ -42,7 +44,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
   useEffect(() => {
     if (student) {
       setFormData({
-        name: student.name,
+        firstName: student.first_name,
+        lastName: student.last_name,
         grade: student.grade,
         dateOfBirth: student.date_of_birth ? student.date_of_birth.split('T')[0] : '',
         homeBranchId: student.home_branch_id || '',
@@ -50,14 +53,15 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
     } else {
       // Reset form for new student
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         grade: '',
         dateOfBirth: '',
         homeBranchId: '',
       });
     }
     setError('');
-    setFieldErrors({ name: '' });
+    setFieldErrors({ firstName: '', lastName: '' });
   }, [student, isOpen]);
 
   const loadBranches = async () => {
@@ -77,8 +81,11 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
     let error = '';
     
     switch (field) {
-      case 'name':
-        error = getNameValidationError(value, 'Student name') || '';
+      case 'firstName':
+        error = getNameValidationError(value, 'First name') || '';
+        break;
+      case 'lastName':
+        error = getNameValidationError(value, 'Last name') || '';
         break;
     }
     
@@ -90,21 +97,22 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
     
-    // Real-time validation for name field
-    if (field === 'name') {
+    // Real-time validation for name fields
+    if (field === 'firstName' || field === 'lastName') {
       validateField(field, value);
     }
   };
 
   const validateForm = (): boolean => {
-    const nameValid = validateField('name', formData.name);
+    const firstNameValid = validateField('firstName', formData.firstName);
+    const lastNameValid = validateField('lastName', formData.lastName);
     
     if (!formData.grade.trim()) {
       setError('Grade is required');
       return false;
     }
     
-    return nameValid;
+    return firstNameValid && lastNameValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -119,7 +127,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
 
     try {
       const studentData: CreateStudentRequest | UpdateStudentRequest = {
-        name: formData.name.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         grade: formData.grade.trim(),
         dateOfBirth: formData.dateOfBirth || undefined,
         homeBranchId: formData.homeBranchId || undefined,
@@ -143,20 +152,21 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
   const handleClose = () => {
     onClose();
     setFormData({
-      name: '',
+      firstName: '',
+      lastName: '',
       grade: '',
       dateOfBirth: '',
       homeBranchId: '',
     });
     setError('');
-    setFieldErrors({ name: '' });
+    setFieldErrors({ firstName: '', lastName: '' });
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -169,27 +179,50 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
           {isEdit ? 'Edit Student' : 'Add New Student'}
         </h2>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Student Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                fieldErrors.name 
-                  ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
-              }`}
-              placeholder="Enter student's full name"
-              required
-            />
-            {fieldErrors.name && (
-              <p className="text-red-600 text-sm mt-1">{fieldErrors.name}</p>
-            )}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Name Fields */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                First Name *
+              </label>
+              <input
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                  fieldErrors.firstName 
+                    ? 'border-red-300 focus:border-red-500' 
+                    : 'border-gray-200 focus:border-blue-500'
+                }`}
+                placeholder="John"
+                required
+              />
+              {fieldErrors.firstName && (
+                <p className="text-red-600 text-sm mt-1">{fieldErrors.firstName}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                  fieldErrors.lastName 
+                    ? 'border-red-300 focus:border-red-500' 
+                    : 'border-gray-200 focus:border-blue-500'
+                }`}
+                placeholder="Doe"
+                required
+              />
+              {fieldErrors.lastName && (
+                <p className="text-red-600 text-sm mt-1">{fieldErrors.lastName}</p>
+              )}
+            </div>
           </div>
           
           {/* Grade Field */}
@@ -268,7 +301,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
           
           <button
             type="submit"
-            disabled={isLoading || fieldErrors.name !== ''}
+            disabled={isLoading || Object.values(fieldErrors).some(error => error !== '')}
             className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {isLoading ? (

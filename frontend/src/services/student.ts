@@ -1,4 +1,4 @@
-// src/services/student.ts
+// frontend/src/services/student.ts
 
 import type { Student, CreateStudentRequest, UpdateStudentRequest, ApiError } from '../types';
 import AuthService from './auth';

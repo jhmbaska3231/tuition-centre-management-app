@@ -11,7 +11,7 @@ router.get('/my-students', authenticateToken, requireRole('parent'), async (req:
   try {
     const result = await pool.query(`
       SELECT e.id, e.student_id, e.class_id, e.enrolled_at, e.status, e.cancelled_at,
-             s.name as student_name,
+             CONCAT(s.first_name, ' ', s.last_name) as student_name,
              c.subject, c.start_time, c.duration_minutes,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name
@@ -39,7 +39,7 @@ router.get('/class/:classId', authenticateToken, requireRole('staff'), async (re
 
     const result = await pool.query(`
       SELECT e.id, e.student_id, e.enrolled_at, e.status, e.cancelled_at,
-             s.name as student_name, s.grade,
+             CONCAT(s.first_name, ' ', s.last_name) as student_name, s.grade,
              u.first_name as parent_first_name, u.last_name as parent_last_name, u.email as parent_email
       FROM "Enrollment" e
       JOIN "Student" s ON e.student_id = s.id
@@ -68,7 +68,7 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
 
     // Verify student belongs to this parent
     const studentCheck = await pool.query(
-      'SELECT id, name FROM "Student" WHERE id = $1 AND parent_id = $2 AND active = TRUE',
+      'SELECT id, first_name, last_name FROM "Student" WHERE id = $1 AND parent_id = $2 AND active = TRUE',
       [studentId, req.user!.userId]
     );
 
@@ -128,8 +128,11 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
       RETURNING id, enrolled_at, status
     `, [studentId, classId, req.user!.userId, 'enrolled']);
 
+    const student = studentCheck.rows[0];
+    const studentFullName = `${student.first_name} ${student.last_name}`;
+
     res.status(201).json({
-      message: `${studentCheck.rows[0].name} enrolled in ${classInfo.subject} successfully`,
+      message: `${studentFullName} enrolled in ${classInfo.subject} successfully`,
       enrollment: result.rows[0]
     });
 
@@ -147,7 +150,7 @@ router.delete('/:enrollmentId', authenticateToken, requireRole('parent'), async 
     // Verify enrollment belongs to this parent and class is in the future
     const enrollmentCheck = await pool.query(`
       SELECT e.id, e.student_id, e.class_id, e.status,
-             s.name as student_name,
+             CONCAT(s.first_name, ' ', s.last_name) as student_name,
              c.subject, c.start_time
       FROM "Enrollment" e
       JOIN "Student" s ON e.student_id = s.id
@@ -186,7 +189,7 @@ router.get('/:enrollmentId', authenticateToken, async (req: AuthRequest, res) =>
 
     let query = `
       SELECT e.id, e.student_id, e.class_id, e.enrolled_at, e.status, e.cancelled_at,
-             s.name as student_name, s.grade,
+             CONCAT(s.first_name, ' ', s.last_name) as student_name, s.grade,
              c.subject, c.start_time, c.duration_minutes,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name

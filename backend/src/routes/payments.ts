@@ -11,11 +11,11 @@ router.get('/my-students', authenticateToken, requireRole('parent'), async (req:
   try {
     const result = await pool.query(`
       SELECT p.id, p.month, p.amount, p.paid, p.payment_date, p.payment_method,
-             s.name as student_name
+             CONCAT(s.first_name, ' ', s.last_name) as student_name
       FROM "Payment" p
       JOIN "Student" s ON p.student_id = s.id
       WHERE s.parent_id = $1
-      ORDER BY p.month DESC, s.name
+      ORDER BY p.month DESC, s.first_name, s.last_name
     `, [req.user!.userId]);
 
     res.json(result.rows);

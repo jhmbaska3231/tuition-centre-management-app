@@ -1,4 +1,4 @@
-// src/types/index.ts
+// frontend/src/types/index.ts
 
 export interface User {
   id: string;
@@ -72,7 +72,8 @@ export interface Branch {
 
 export interface Student {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   grade: string;
   date_of_birth?: string;
   parent_id?: string;
@@ -85,14 +86,16 @@ export interface Student {
 }
 
 export interface CreateStudentRequest {
-  name: string;
+  firstName: string;
+  lastName: string;
   grade: string;
   dateOfBirth?: string;
   homeBranchId?: string;
 }
 
 export interface UpdateStudentRequest {
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   grade?: string;
   dateOfBirth?: string;
   homeBranchId?: string;

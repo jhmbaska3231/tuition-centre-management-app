@@ -1,7 +1,7 @@
-// src/components/parent/ClassOperations.tsx
+// frontend/src/components/parent/ClassOperations.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User, CheckCircle } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User, CheckCircle, ToggleLeft, ToggleRight } from 'lucide-react';
 import type { Class, Enrollment, Student, Branch } from '../../types';
 import ClassService from '../../services/class';
 import EnrollmentService from '../../services/enrollment';
@@ -22,7 +22,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   
-  // Filter states
+  // Enhanced filter states
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -134,7 +134,8 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       });
       
       // Get student name for success message
-      const studentName = students.find(s => s.id === selectedStudent)?.name || 'Student';
+      const student = students.find(s => s.id === selectedStudent);
+      const studentName = student ? `${student.first_name} ${student.last_name}` : 'Student';
       
       // Refresh both enrollments and classes to get updated counts
       const [enrollmentList, classList] = await Promise.all([
@@ -360,7 +361,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Enhanced Filters */}
       {showFilters && (
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 mb-6">
           <div className="grid md:grid-cols-4 gap-4">
@@ -426,8 +427,8 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
           </div>
           
           {/* Active Filters Display */}
-          {(selectedSubject || selectedBranch || startDate || endDate) && (
-            <div className="mt-4 flex flex-wrap gap-2">
+          {(selectedSubject || selectedBranch) && (
+            <div className="mt-4 flex flex-wrap gap-2 items-center">
               <span className="text-sm text-gray-600">Active filters:</span>
               {selectedSubject && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -451,22 +452,30 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                   </button>
                 </span>
               )}
-              {(startDate || endDate) && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  Date: {startDate ? new Date(startDate).toLocaleDateString('en-SG') : 'Any'} - {endDate ? new Date(endDate).toLocaleDateString('en-SG') : 'Any'}
-                  <button
-                    onClick={() => {
-                      setStartDate('');
-                      setEndDate('');
-                    }}
-                    className="ml-1 text-purple-600 hover:text-purple-800"
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
+              
+              {/* Clear All Filters Button */}
+              <button
+                onClick={() => {
+                  setSelectedSubject('');
+                  setSelectedBranch('');
+                  // Reset to default date range (next 30 days)
+                  const today = new Date();
+                  const nextMonth = new Date();
+                  nextMonth.setDate(today.getDate() + 30);
+                  setStartDate(today.toISOString().split('T')[0]);
+                  setEndDate(nextMonth.toISOString().split('T')[0]);
+                }}
+                className="ml-2 px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-full text-xs font-medium transition-colors"
+              >
+                Clear All
+              </button>
             </div>
           )}
+
+          {/* Date Range Info */}
+          <div className="mt-4 text-sm text-gray-500">
+            <span>Date range: {startDate ? new Date(startDate).toLocaleDateString('en-SG') : 'Any'} - {endDate ? new Date(endDate).toLocaleDateString('en-SG') : 'Any'}</span>
+          </div>
         </div>
       )}
 
@@ -487,6 +496,18 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       {activeView === 'browse' ? (
         // Browse Classes View
         <div>
+          {/* Status indicator */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Available Classes ({classes.length})
+              </h2>
+              <span className="text-sm text-gray-500">
+                Showing classes available for enrollment
+              </span>
+            </div>
+          </div>
+
           {classes.length === 0 ? (
             <div className="text-center py-12">
               <Calendar className="mx-auto text-gray-300 mb-4" size={64} />
@@ -580,6 +601,21 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       ) : (
         // Enrollments View
         <div>
+          {/* Status indicator for enrollments */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <h2 className="text-xl font-semibold text-gray-800">
+                My Enrollments ({filteredEnrollments.length})
+              </h2>
+              <span className="text-sm text-gray-500">
+                {selectedSubject || selectedBranch || startDate || endDate
+                  ? 'Filtered enrollments'
+                  : 'All enrollments for your students'
+                }
+              </span>
+            </div>
+          </div>
+
           {filteredEnrollments.length === 0 ? (
             <div className="text-center py-12">
               <Users className="mx-auto text-gray-300 mb-4" size={64} />
@@ -684,7 +720,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                   .filter(student => !isStudentEnrolled(selectedClass.id, student.id))
                   .map((student) => (
                     <option key={student.id} value={student.id}>
-                      {student.name} ({student.grade})
+                      {student.first_name} {student.last_name} ({student.grade})
                     </option>
                   ))}
               </select>

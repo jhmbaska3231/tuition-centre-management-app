@@ -112,15 +112,20 @@ export const validateProfileUpdate = (req: Request, res: Response, next: NextFun
 
 // Student creation validation middleware
 export const validateStudent = (req: Request, res: Response, next: NextFunction): void => {
-  const { name, grade, dateOfBirth, homeBranchId } = req.body;
+  const { firstName, lastName, grade, dateOfBirth, homeBranchId } = req.body;
   
-  if (!name || !grade) {
-    res.status(400).json({ error: 'Name and grade are required' });
+  if (!firstName || !lastName || !grade) {
+    res.status(400).json({ error: 'First name, last name, and grade are required' });
     return;
   }
   
-  if (!isValidName(name)) {
-    res.status(400).json({ error: 'Student name must contain only letters and be at least 2 characters long' });
+  if (!isValidName(firstName)) {
+    res.status(400).json({ error: 'First name must contain only letters and be at least 2 characters long' });
+    return;
+  }
+  
+  if (!isValidName(lastName)) {
+    res.status(400).json({ error: 'Last name must contain only letters and be at least 2 characters long' });
     return;
   }
   

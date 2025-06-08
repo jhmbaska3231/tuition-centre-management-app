@@ -11,13 +11,13 @@ const router = express.Router();
 router.get('/my-students', authenticateToken, requireRole('parent'), async (req: AuthRequest, res) => {
   try {
     const result = await pool.query(`
-      SELECT s.id, s.name, s.grade, s.date_of_birth, s.home_branch_id, s.active,
+      SELECT s.id, s.first_name, s.last_name, s.grade, s.date_of_birth, s.home_branch_id, s.active,
              s.created_at, s.updated_at,
              b.name as home_branch_name, b.address as home_branch_address
       FROM "Student" s
       LEFT JOIN "Branch" b ON s.home_branch_id = b.id
       WHERE s.parent_id = $1 AND s.active = TRUE
-      ORDER BY s.name
+      ORDER BY s.first_name, s.last_name
     `, [req.user!.userId]);
 
     res.json(result.rows);
@@ -31,7 +31,7 @@ router.get('/my-students', authenticateToken, requireRole('parent'), async (req:
 router.get('/all', authenticateToken, requireRole('staff'), async (req: AuthRequest, res) => {
   try {
     const result = await pool.query(`
-      SELECT s.id, s.name, s.grade, s.date_of_birth, s.home_branch_id, s.active,
+      SELECT s.id, s.first_name, s.last_name, s.grade, s.date_of_birth, s.home_branch_id, s.active,
              s.created_at, s.updated_at,
              b.name as home_branch_name,
              u.first_name as parent_first_name, u.last_name as parent_last_name,
@@ -40,7 +40,7 @@ router.get('/all', authenticateToken, requireRole('staff'), async (req: AuthRequ
       LEFT JOIN "Branch" b ON s.home_branch_id = b.id
       LEFT JOIN "User" u ON s.parent_id = u.id
       WHERE s.active = TRUE
-      ORDER BY s.name
+      ORDER BY s.first_name, s.last_name
     `);
 
     res.json(result.rows);
@@ -53,7 +53,7 @@ router.get('/all', authenticateToken, requireRole('staff'), async (req: AuthRequ
 // Create a new student (parents only)
 router.post('/', authenticateToken, requireRole('parent'), validateStudent, async (req: AuthRequest, res) => {
   try {
-    const { name, grade, dateOfBirth, homeBranchId } = req.body;
+    const { firstName, lastName, grade, dateOfBirth, homeBranchId } = req.body;
 
     // Verify the branch exists and is active
     if (homeBranchId) {
@@ -69,10 +69,10 @@ router.post('/', authenticateToken, requireRole('parent'), validateStudent, asyn
     }
 
     const result = await pool.query(`
-      INSERT INTO "Student" (name, grade, date_of_birth, parent_id, home_branch_id)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, name, grade, date_of_birth, home_branch_id, active, created_at, updated_at
-    `, [name.trim(), grade.trim(), dateOfBirth || null, req.user!.userId, homeBranchId || null]);
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, first_name, last_name, grade, date_of_birth, home_branch_id, active, created_at, updated_at
+    `, [firstName.trim(), lastName.trim(), grade.trim(), dateOfBirth || null, req.user!.userId, homeBranchId || null]);
 
     const student = result.rows[0];
 
@@ -103,7 +103,7 @@ router.post('/', authenticateToken, requireRole('parent'), validateStudent, asyn
 router.put('/:id', authenticateToken, requireRole('parent'), validateStudent, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, grade, dateOfBirth, homeBranchId } = req.body;
+    const { firstName, lastName, grade, dateOfBirth, homeBranchId } = req.body;
 
     // Verify student belongs to this parent
     const studentCheck = await pool.query(
@@ -131,14 +131,15 @@ router.put('/:id', authenticateToken, requireRole('parent'), validateStudent, as
 
     const result = await pool.query(`
       UPDATE "Student" 
-      SET name = COALESCE($1, name),
-          grade = COALESCE($2, grade),
-          date_of_birth = COALESCE($3, date_of_birth),
-          home_branch_id = COALESCE($4, home_branch_id),
+      SET first_name = COALESCE($1, first_name),
+          last_name = COALESCE($2, last_name),
+          grade = COALESCE($3, grade),
+          date_of_birth = COALESCE($4, date_of_birth),
+          home_branch_id = COALESCE($5, home_branch_id),
           updated_at = NOW()
-      WHERE id = $5 AND parent_id = $6
-      RETURNING id, name, grade, date_of_birth, home_branch_id, active, created_at, updated_at
-    `, [name?.trim(), grade?.trim(), dateOfBirth, homeBranchId, id, req.user!.userId]);
+      WHERE id = $6 AND parent_id = $7
+      RETURNING id, first_name, last_name, grade, date_of_birth, home_branch_id, active, created_at, updated_at
+    `, [firstName?.trim(), lastName?.trim(), grade?.trim(), dateOfBirth, homeBranchId, id, req.user!.userId]);
 
     const student = result.rows[0];
 
@@ -172,7 +173,7 @@ router.delete('/:id', authenticateToken, requireRole('parent'), async (req: Auth
 
     // Verify student belongs to this parent
     const studentCheck = await pool.query(
-      'SELECT id, name FROM "Student" WHERE id = $1 AND parent_id = $2 AND active = TRUE',
+      'SELECT id, first_name, last_name FROM "Student" WHERE id = $1 AND parent_id = $2 AND active = TRUE',
       [id, req.user!.userId]
     );
 
@@ -187,8 +188,9 @@ router.delete('/:id', authenticateToken, requireRole('parent'), async (req: Auth
       [id]
     );
 
+    const student = studentCheck.rows[0];
     res.json({
-      message: `Student ${studentCheck.rows[0].name} removed successfully`
+      message: `Student ${student.first_name} ${student.last_name} removed successfully`
     });
 
   } catch (error) {
@@ -202,7 +204,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     let query = `
-      SELECT s.id, s.name, s.grade, s.date_of_birth, s.home_branch_id, s.active,
+      SELECT s.id, s.first_name, s.last_name, s.grade, s.date_of_birth, s.home_branch_id, s.active,
              s.created_at, s.updated_at,
              b.name as home_branch_name, b.address as home_branch_address
       FROM "Student" s

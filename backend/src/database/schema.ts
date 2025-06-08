@@ -66,7 +66,8 @@ export const createDatabaseSchema = async (pool: Pool) => {
     const createStudentsTable = `
       CREATE TABLE "Student" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
         grade TEXT,
         date_of_birth DATE,
         parent_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
@@ -179,6 +180,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
       'CREATE INDEX idx_student_parent ON "Student"(parent_id)',
       'CREATE INDEX idx_student_branch ON "Student"(home_branch_id)',
       'CREATE INDEX idx_student_active ON "Student"(active)',
+      'CREATE INDEX idx_student_names ON "Student"(first_name, last_name)',
       'CREATE INDEX idx_class_start_time ON "Class"(start_time)',
       'CREATE INDEX idx_class_branch ON "Class"(branch_id)',
       'CREATE INDEX idx_class_tutor ON "Class"(tutor_id)',
@@ -293,22 +295,22 @@ export const seedDatabase = async (pool: Pool) => {
 
     // Create students
     const student1 = await pool.query(`
-      INSERT INTO "Student" (name, grade, date_of_birth, parent_id, home_branch_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, ['John Toh', 'Secondary 1', '2010-05-15', parentUser1.rows[0].id, branch1.rows[0].id]);
+    `, ['John', 'Toh', 'Secondary 1', '2010-05-15', parentUser1.rows[0].id, branch1.rows[0].id]);
 
     const student2 = await pool.query(`
-      INSERT INTO "Student" (name, grade, date_of_birth, parent_id, home_branch_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, ['Sarah Toh', 'Primary 5', '2012-08-22', parentUser1.rows[0].id, branch1.rows[0].id]);
+    `, ['Sarah', 'Toh', 'Primary 5', '2012-08-22', parentUser1.rows[0].id, branch1.rows[0].id]);
 
     const student3 = await pool.query(`
-      INSERT INTO "Student" (name, grade, date_of_birth, parent_id, home_branch_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, ['Emma Lim', 'Secondary 3', '2008-11-10', parentUser2.rows[0].id, branch2.rows[0].id]);
+    `, ['Emma', 'Lim', 'Secondary 3', '2008-11-10', parentUser2.rows[0].id, branch2.rows[0].id]);
 
     console.log('Students created');
 

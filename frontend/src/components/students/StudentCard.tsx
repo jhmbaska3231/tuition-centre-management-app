@@ -1,4 +1,4 @@
-// src/components/students/StudentCard.tsx
+// frontend/src/components/students/StudentCard.tsx
 
 import React from 'react';
 import { User, GraduationCap, MapPin, Edit2, Trash2, Calendar } from 'lucide-react';
@@ -37,6 +37,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onEdit, onDelete }) 
   };
 
   const age = calculateAge(student.date_of_birth);
+  const fullName = `${student.first_name} ${student.last_name}`;
 
   return (
     <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100">
@@ -47,7 +48,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onEdit, onDelete }) 
             <User className="text-white" size={20} />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-800">{student.name}</h3>
+            <h3 className="text-xl font-bold text-gray-800">{fullName}</h3>
             <p className="text-gray-500 text-sm">Student ID: {student.id.slice(0, 8)}...</p>
           </div>
         </div>
