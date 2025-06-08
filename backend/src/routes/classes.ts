@@ -17,7 +17,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
     let query = `
       SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
              c.active, c.created_at, c.updated_at,
-             c.end_time, c.tutor_id,
+             c.end_time, c.tutor_id, c.branch_id,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
              COUNT(e.id) as enrolled_count
@@ -68,7 +68,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 
     query += `
       GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
-               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, b.name, b.address, u.first_name, u.last_name
+               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id, b.name, b.address, u.first_name, u.last_name
       ORDER BY c.start_time ASC
     `;
 
@@ -98,7 +98,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
 
     const result = await pool.query(`
       SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
-             c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id,
+             c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
              COUNT(e.id) as enrolled_count
@@ -113,7 +113,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
         )
       WHERE c.id = $1 AND c.active = TRUE
       GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
-               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, b.name, b.address, u.first_name, u.last_name
+               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id, b.name, b.address, u.first_name, u.last_name
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -163,6 +163,7 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
       ...branchResult.rows[0],
       ...tutorResult.rows[0],
       tutor_id: userId,
+      branch_id: branchId,
       enrolled_count: 0,
       can_edit: true,
       can_delete: true
