@@ -209,12 +209,12 @@ const ClassManagement: React.FC = () => {
             <button
               onClick={() => setShowMyClassesOnly(!showMyClassesOnly)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-all ${
-                showMyClassesOnly 
+                !showMyClassesOnly 
                   ? 'bg-blue-600 text-white shadow-sm' 
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              {showMyClassesOnly ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+              {!showMyClassesOnly ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
               <span className="text-sm font-medium">
                 {showMyClassesOnly ? 'My Classes Only' : 'All Classes'}
               </span>
@@ -297,8 +297,8 @@ const ClassManagement: React.FC = () => {
           </div>
           
           {/* Active Filters Display */}
-          {(selectedSubject || selectedBranch || startDate || endDate) && (
-            <div className="mt-4 flex flex-wrap gap-2">
+          {(selectedSubject || selectedBranch) && (
+            <div className="mt-4 flex flex-wrap gap-2 items-center">
               <span className="text-sm text-gray-600">Active filters:</span>
               {selectedSubject && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -322,22 +322,30 @@ const ClassManagement: React.FC = () => {
                   </button>
                 </span>
               )}
-              {(startDate || endDate) && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  Date: {startDate ? new Date(startDate).toLocaleDateString('en-SG') : 'Any'} - {endDate ? new Date(endDate).toLocaleDateString('en-SG') : 'Any'}
-                  <button
-                    onClick={() => {
-                      setStartDate('');
-                      setEndDate('');
-                    }}
-                    className="ml-1 text-purple-600 hover:text-purple-800"
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
+              
+              {/* Clear All Filters Button */}
+              <button
+                onClick={() => {
+                  setSelectedSubject('');
+                  setSelectedBranch('');
+                  // Reset to default date range (next 90 days)
+                  const today = new Date();
+                  const futureDate = new Date();
+                  futureDate.setDate(today.getDate() + 90);
+                  setStartDate(today.toISOString().split('T')[0]);
+                  setEndDate(futureDate.toISOString().split('T')[0]);
+                }}
+                className="ml-2 px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-full text-xs font-medium transition-colors"
+              >
+                Clear All
+              </button>
             </div>
           )}
+
+          {/* Date Range Info */}
+          <div className="mt-4 text-sm text-gray-500">
+            <span>Date range: {startDate ? new Date(startDate).toLocaleDateString('en-SG') : 'Any'} - {endDate ? new Date(endDate).toLocaleDateString('en-SG') : 'Any'}</span>
+          </div>
         </div>
       )}
 

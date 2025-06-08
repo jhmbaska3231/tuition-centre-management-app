@@ -54,6 +54,10 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       const localDateTime = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000)
         .toISOString()
         .slice(0, 16);
+
+      // Debug branch_id value
+      console.log('ClassForm - Setting branchId:', classData.branch_id);
+      console.log('ClassForm - Available branches:', branches.map(b => ({ id: b.id, name: b.name })));
         
       setFormData({
         subject: classData.subject,
@@ -62,7 +66,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         startTime: localDateTime,
         durationMinutes: classData.duration_minutes,
         capacity: classData.capacity,
-        branchId: classData.branch_id || '', // Properly set the branch ID
+        branchId: classData.branch_id || '',
       });
     } else {
       // Reset form for new class
@@ -84,7 +88,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       capacity: '',
       branchId: '',
     });
-  }, [classData, isOpen]);
+  }, [classData, isOpen, branches]); // Added branches as dependency
 
   const loadBranches = async () => {
     setLoadingBranches(true);
@@ -126,8 +130,8 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         break;
       case 'capacity':
         const cap = parseInt(value);
-        if (isNaN(cap) || cap < 1 || cap > 30) {
-          error = 'Capacity must be between 1 and 30 students';
+        if (isNaN(cap) || cap < 1 || cap > 50) {
+          error = 'Capacity must be between 1 and 50 students';
         }
         // Validation for edit mode to ensure capacity is not less than current enrollment
         else if (isEdit && classData && cap < classData.enrolled_count) {

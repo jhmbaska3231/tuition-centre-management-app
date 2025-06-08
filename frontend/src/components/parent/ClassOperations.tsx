@@ -1,7 +1,7 @@
 // src/components/parent/ClassOperations.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User, CheckCircle } from 'lucide-react';
 import type { Class, Enrollment, Student, Branch } from '../../types';
 import ClassService from '../../services/class';
 import EnrollmentService from '../../services/enrollment';
@@ -20,6 +20,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Filter states
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -114,6 +115,8 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
   const handleEnrollClick = (classItem: Class) => {
     setSelectedClass(classItem);
     setSelectedStudent('');
+    setError('');
+    setSuccessMessage('');
     setShowEnrollModal(true);
   };
 
@@ -121,11 +124,17 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
     if (!selectedClass || !selectedStudent) return;
     
     setEnrolling(true);
+    setError('');
+    setSuccessMessage('');
+    
     try {
       await EnrollmentService.createEnrollment({
         studentId: selectedStudent,
         classId: selectedClass.id
       });
+      
+      // Get student name for success message
+      const studentName = students.find(s => s.id === selectedStudent)?.name || 'Student';
       
       // Refresh both enrollments and classes to get updated counts
       const [enrollmentList, classList] = await Promise.all([
@@ -145,6 +154,14 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
         ? classList.filter(cls => cls.subject.toLowerCase().includes(selectedSubject.toLowerCase()))
         : classList;
       setClasses(filteredClasses);
+      
+      // Show success message
+      setSuccessMessage(`${studentName} has been successfully enrolled in ${selectedClass.subject}!`);
+      
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
       
       setShowEnrollModal(false);
       setSelectedClass(null);
@@ -736,6 +753,26 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 ) : (
                   'Cancel Enrollment'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Success Toast Notification - Fixed Position */}
+      {successMessage && (
+        <div className="fixed top-20 right-6 z-50 max-w-md">
+          <div className="bg-green-600 text-white p-4 rounded-lg shadow-lg border border-green-700 transform transition-all duration-300 ease-in-out">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="text-white" size={20} />
+              <div className="flex-1">
+                <p className="font-medium">{successMessage}</p>
+              </div>
+              <button
+                onClick={() => setSuccessMessage('')}
+                className="text-white hover:text-green-200 transition-colors"
+              >
+                <X size={18} />
               </button>
             </div>
           </div>
