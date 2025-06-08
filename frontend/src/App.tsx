@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import Navigation from './components/layout/Navigation';
 import ParentDashboard from './components/parent/ParentDashboard';
 import StaffDashboard from './components/staff/StaffDashboard';
+import AdminDashboard from './components/admin/AdminDashboard';
 
 // Feature Card Component
 interface FeatureCardProps {
@@ -63,12 +64,15 @@ const AppContent: React.FC = () => {
   const { user, loading, isAuthenticated } = useAuth();
   const [currentTab, setCurrentTab] = useState<'students' | 'classes' | 'payments' | 'profile'>('students');
   const [currentStaffTab, setCurrentStaffTab] = useState<'classes' | 'students' | 'profile'>('classes');
+  const [currentAdminTab, setCurrentAdminTab] = useState<'staff' | 'classes' | 'profile'>('staff');
 
   const handleProfileClick = () => {
     if (user?.role === 'parent') {
       setCurrentTab('profile');
     } else if (user?.role === 'staff') {
       setCurrentStaffTab('profile');
+    } else if (user?.role === 'admin') {
+      setCurrentAdminTab('profile');
     }
   };
 
@@ -78,6 +82,10 @@ const AppContent: React.FC = () => {
 
   const handleStaffTabChange = (tab: 'classes' | 'students' | 'profile') => {
     setCurrentStaffTab(tab);
+  };
+
+  const handleAdminTabChange = (tab: 'staff' | 'classes' | 'profile') => {
+    setCurrentAdminTab(tab);
   };
 
   if (loading) {
@@ -96,11 +104,17 @@ const AppContent: React.FC = () => {
             initialTab={currentTab}
             onTabChange={handleTabChange}
           />
-        ) : (
+        ) : user.role === 'staff' ? (
           // Staff Dashboard with Tabs
           <StaffDashboard 
             initialTab={currentStaffTab}
             onTabChange={handleStaffTabChange}
+          />
+        ) : (
+          // Admin Dashboard with Tabs
+          <AdminDashboard 
+            initialTab={currentAdminTab}
+            onTabChange={handleAdminTabChange}
           />
         )}
       </div>

@@ -114,6 +114,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         
         <div className="mt-6 text-center text-sm text-gray-500">
           <p className="mb-2">Test Accounts:</p>
+          <p>Admin: admin@tuition.com / password123</p>
           <p>Staff: hui.siew@tuition.com / password123</p>
           <p>Parent: jaytoh@gmail.com / password123</p>
         </div>

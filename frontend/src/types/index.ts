@@ -6,7 +6,7 @@ export interface User {
   last_name: string;
   email: string;
   phone?: string;
-  role: 'parent' | 'staff';
+  role: 'parent' | 'staff' | 'admin';
   created_at?: string;
   updated_at?: string;
 }
@@ -170,4 +170,77 @@ export interface UpdateClassRequest {
   durationMinutes?: number;
   capacity?: number;
   branchId?: string;
+}
+
+// Admin-specific types
+export interface StaffMember {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  class_count?: number;
+  future_class_count?: number;
+}
+
+export interface CreateStaffRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  password: string;
+}
+
+export interface UpdateStaffRequest {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  active?: boolean;
+}
+
+export interface StaffDeletionImpact {
+  staff: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  impact: {
+    totalClasses: number;
+    futureClasses: number;
+    affectedClasses: Array<{
+      id: string;
+      subject: string;
+      start_time: string;
+      duration_minutes: number;
+      branch_name: string;
+      enrolled_count: number;
+    }>;
+    warning?: string;
+  };
+}
+
+export interface UnassignedClass {
+  id: string;
+  subject: string;
+  description?: string;
+  level?: string;
+  start_time: string;
+  duration_minutes: number;
+  capacity: number;
+  branch_name: string;
+  branch_address: string;
+  enrolled_count: number;
+}
+
+export interface AssignTutorRequest {
+  tutorId: string;
+}
+
+export interface UserOverview {
+  role: 'parent' | 'staff' | 'admin';
+  total_count: number;
+  active_count: number;
 }

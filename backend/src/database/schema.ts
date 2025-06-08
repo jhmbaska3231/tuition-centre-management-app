@@ -219,6 +219,15 @@ export const seedDatabase = async (pool: Pool) => {
 
     console.log('Hashing test passwords...');
 
+    // Create admin user first
+    const adminUser = await pool.query(`
+      INSERT INTO "User" (email, password, role, first_name, last_name, phone)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['admin@tuition.com', hashedPassword, 'admin', 'System', 'Administrator', '61234567']);
+
+    console.log('Admin user created');
+
     // Create staff users for testing
     const staffUser1 = await pool.query(`
       INSERT INTO "User" (email, password, role, first_name, last_name, phone)

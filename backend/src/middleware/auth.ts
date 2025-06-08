@@ -54,3 +54,19 @@ export const requireRole = (role: 'parent' | 'staff' | 'admin') => {
     next(); // Continue to next middleware
   };
 };
+
+// Multiple roles middleware - allows access if user has any of the specified roles
+export const requireAnyRole = (...roles: ('parent' | 'staff' | 'admin')[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({ error: `Access denied. Required roles: ${roles.join(', ')}` });
+      return;
+    }
+    next(); // Continue to next middleware
+  };
+};
