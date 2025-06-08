@@ -68,7 +68,7 @@ router.put('/profile', authenticateToken, validateProfileUpdate, async (req: Aut
   }
 });
 
-// Delete user account (and all related data)
+// Delete user account (and all related data via CASCADE)
 router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
   const client = await pool.connect();
   
@@ -79,7 +79,7 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
     
     // Get user info for confirmation
     const userResult = await client.query(
-      'SELECT first_name, last_name, email FROM "User" WHERE id = $1',
+      'SELECT first_name, last_name, email, role FROM "User" WHERE id = $1',
       [userId]
     );
     
@@ -91,7 +91,7 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
     
     const user = userResult.rows[0];
     
-    // Get count of related data for logging
+    // Get detailed count of related data for logging (before deletion)
     const studentCount = await client.query(
       'SELECT COUNT(*) as count FROM "Student" WHERE parent_id = $1',
       [userId]
@@ -110,32 +110,43 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
        WHERE s.parent_id = $1`,
       [userId]
     );
+
+    const attendanceCount = await client.query(
+      `SELECT COUNT(*) as count FROM "Attendance" a 
+       JOIN "Student" s ON a.student_id = s.id 
+       WHERE s.parent_id = $1`,
+      [userId]
+    );
+
+    // Get specific enrollment details for verification
+    const enrollmentDetails = await client.query(
+      `SELECT c.subject, c.start_time, CONCAT(s.first_name, ' ', s.last_name) as student_name
+       FROM "Enrollment" e 
+       JOIN "Student" s ON e.student_id = s.id 
+       JOIN "Class" c ON e.class_id = c.id
+       WHERE s.parent_id = $1 AND e.status = 'enrolled'`,
+      [userId]
+    );
     
-    console.log(`Deleting user account: ${user.email}`);
-    console.log(`- Students: ${studentCount.rows[0].count}`);
-    console.log(`- Enrollments: ${enrollmentCount.rows[0].count}`);
-    console.log(`- Payments: ${paymentCount.rows[0].count}`);
-    
-    // Delete user (this will cascade to all related records due to foreign key constraints)
-    // The database schema has proper CASCADE deletes set up:
-    // - Students -> Enrollments (CASCADE)
-    // - Students -> Payments (CASCADE)
-    // - Students -> Attendance (CASCADE)
-    await client.query(
-      'DELETE FROM "User" WHERE id = $1',
+    // Delete user - with CASCADE enabled in schema, this will automatically delete:
+    // 1. Students (because parent_id references User(id) ON DELETE CASCADE)
+    // 2. Enrollments (because student_id references Student(id) ON DELETE CASCADE)
+    // 3. Payments (because student_id references Student(id) ON DELETE CASCADE)
+    // 4. Attendance (because student_id references Student(id) ON DELETE CASCADE)
+    const deletionResult = await client.query(
+      'DELETE FROM "User" WHERE id = $1 RETURNING email',
       [userId]
     );
     
     await client.query('COMMIT');
-    
-    console.log(`Successfully deleted account for: ${user.email}`);
     
     res.json({
       message: 'Account successfully deleted. All your data has been permanently removed.',
       deletedData: {
         students: parseInt(studentCount.rows[0].count),
         enrollments: parseInt(enrollmentCount.rows[0].count),
-        payments: parseInt(paymentCount.rows[0].count)
+        payments: parseInt(paymentCount.rows[0].count),
+        attendance: parseInt(attendanceCount.rows[0].count)
       }
     });
     

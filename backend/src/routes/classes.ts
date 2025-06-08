@@ -20,16 +20,19 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
              c.end_time, c.tutor_id, c.branch_id,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
-             COUNT(e.id) as enrolled_count
+             COALESCE(enrolled_count.count, 0) as enrolled_count
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
       LEFT JOIN "User" u ON c.tutor_id = u.id
-      LEFT JOIN "Enrollment" e ON c.id = e.class_id 
-        AND e.status = 'enrolled'
-        AND EXISTS (
-          SELECT 1 FROM "Student" s 
-          WHERE s.id = e.student_id AND s.active = TRUE
-        )
+      LEFT JOIN (
+        SELECT 
+          e.class_id,
+          COUNT(e.id) as count
+        FROM "Enrollment" e
+        INNER JOIN "Student" s ON e.student_id = s.id AND s.active = TRUE
+        WHERE e.status = 'enrolled'
+        GROUP BY e.class_id
+      ) enrolled_count ON c.id = enrolled_count.class_id
       WHERE c.active = TRUE
     `;
 
@@ -66,17 +69,14 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
       paramIndex++;
     }
 
-    query += `
-      GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
-               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id, b.name, b.address, u.first_name, u.last_name
-      ORDER BY c.start_time ASC
-    `;
+    query += ` ORDER BY c.start_time ASC`;
 
     const result = await pool.query(query, queryParams);
     
     // Add permission flags for frontend
     const classesWithPermissions = result.rows.map(classItem => ({
       ...classItem,
+      enrolled_count: parseInt(classItem.enrolled_count) || 0, // Ensure it's a number
       can_edit: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId),
       can_delete: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId)
     }));
@@ -101,19 +101,20 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
              c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id,
              b.name as branch_name, b.address as branch_address,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
-             COUNT(e.id) as enrolled_count
+             COALESCE(enrolled_count.count, 0) as enrolled_count
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
       LEFT JOIN "User" u ON c.tutor_id = u.id
-      LEFT JOIN "Enrollment" e ON c.id = e.class_id 
-        AND e.status = 'enrolled'
-        AND EXISTS (
-          SELECT 1 FROM "Student" s 
-          WHERE s.id = e.student_id AND s.active = TRUE
-        )
+      LEFT JOIN (
+        SELECT 
+          e.class_id,
+          COUNT(e.id) as count
+        FROM "Enrollment" e
+        INNER JOIN "Student" s ON e.student_id = s.id AND s.active = TRUE
+        WHERE e.status = 'enrolled'
+        GROUP BY e.class_id
+      ) enrolled_count ON c.id = enrolled_count.class_id
       WHERE c.id = $1 AND c.active = TRUE
-      GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
-               c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id, b.name, b.address, u.first_name, u.last_name
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -126,6 +127,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
     // Add permission flags
     const classWithPermissions = {
       ...classItem,
+      enrolled_count: parseInt(classItem.enrolled_count) || 0, // Ensure it's a number
       can_edit: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId),
       can_delete: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId)
     };

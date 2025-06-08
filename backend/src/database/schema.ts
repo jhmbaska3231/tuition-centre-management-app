@@ -70,7 +70,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
         last_name TEXT NOT NULL,
         grade TEXT,
         date_of_birth DATE,
-        parent_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
+        parent_id UUID REFERENCES "User"(id) ON DELETE CASCADE,
         home_branch_id UUID REFERENCES "Branch"(id) ON DELETE SET NULL,
         emergency_contact TEXT,
         medical_notes TEXT,
@@ -80,7 +80,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
       )
     `;
     await pool.query(createStudentsTable);
-    console.log('Students table created');
+    console.log('Students table created with CASCADE DELETE for parent_id');
 
     // Create Classes table
     const createClassesTable = `
@@ -201,7 +201,6 @@ export const createDatabaseSchema = async (pool: Pool) => {
       await pool.query(indexQuery);
     }
     console.log('Database indexes created');
-
     console.log('Database schema setup completed successfully!');
 
   } catch (error) {
@@ -351,6 +350,36 @@ export const seedDatabase = async (pool: Pool) => {
     }
 
     console.log('Classes created');
+
+    // Create some enrollments for testing cascade behavior
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'John' AND c.subject = 'Mathematics' AND c.level = 'Secondary 1'
+      LIMIT 1
+    `);
+
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'Sarah' AND c.subject = 'English' AND c.level = 'Primary 5'
+      LIMIT 1
+    `);
+
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'Emma' AND c.subject = 'Mathematics' AND c.level = 'Secondary 3'
+      LIMIT 1
+    `);
+
+    console.log('Sample enrollments created for cascade testing');
 
     // Create payment records
     const currentMonth = new Date().toISOString().slice(0, 7);

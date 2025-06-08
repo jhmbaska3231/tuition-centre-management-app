@@ -149,7 +149,7 @@ const StudentManagement: React.FC = () => {
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to remove <span className="font-semibold">{showDeleteConfirm.name}</span>? 
+              Are you sure you want to remove <span className="font-semibold">{showDeleteConfirm.first_name} {showDeleteConfirm.last_name}</span>? 
               This action cannot be undone.
             </p>
             

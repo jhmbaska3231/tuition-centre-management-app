@@ -1,7 +1,7 @@
 // frontend/src/components/parent/ClassOperations.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User, CheckCircle, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User, CheckCircle, } from 'lucide-react';
 import type { Class, Enrollment, Student, Branch } from '../../types';
 import ClassService from '../../services/class';
 import EnrollmentService from '../../services/enrollment';
@@ -9,7 +9,7 @@ import StudentService from '../../services/student';
 import BranchService from '../../services/branch';
 
 interface ClassOperationsProps {
-  refreshTrigger?: number; // Optional prop to trigger refresh from parent
+  refreshTrigger?: number; // Prop to trigger refresh from parent
 }
 
 const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 }) => {
@@ -795,7 +795,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
         </div>
       )}
       
-      {/* Success Toast Notification - Fixed Position */}
+      {/* Success Toast Notification */}
       {successMessage && (
         <div className="fixed top-20 right-6 z-50 max-w-md">
           <div className="bg-green-600 text-white p-4 rounded-lg shadow-lg border border-green-700 transform transition-all duration-300 ease-in-out">
