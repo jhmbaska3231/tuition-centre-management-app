@@ -248,6 +248,18 @@ export const seedDatabase = async (pool: Pool) => {
       RETURNING id
     `, ['alice.lim@gmail.com', hashedPassword, 'parent', 'Alice', 'Lim', '98765432']);
 
+    const parentUser3 = await pool.query(`
+      INSERT INTO "User" (email, password, role, first_name, last_name, phone)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['david.wong@gmail.com', hashedPassword, 'parent', 'David', 'Wong', '93456789']);
+
+    const parentUser4 = await pool.query(`
+      INSERT INTO "User" (email, password, role, first_name, last_name, phone)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['susan.chen@gmail.com', hashedPassword, 'parent', 'Susan', 'Chen', '94567890']);
+
     console.log('Parent users created');
 
     // Create branches
@@ -296,29 +308,77 @@ export const seedDatabase = async (pool: Pool) => {
       RETURNING id
     `, ['Emma', 'Lim', 'Secondary 3', '2008-11-10', parentUser2.rows[0].id, branch2.rows[0].id]);
 
+    const student4 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Liam', 'Tan', 'Primary 4', '2013-03-27', parentUser2.rows[0].id, branch2.rows[0].id]);
+
+    const student5 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Olivia', 'Ng', 'Secondary 2', '2009-07-12', parentUser1.rows[0].id, branch1.rows[0].id]);
+
+    const student6 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Noah', 'Lee', 'Primary 6', '2011-10-05', parentUser2.rows[0].id, branch2.rows[0].id]);
+
+    const student7 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Isabella', 'Chua', 'Secondary 1', '2010-01-18', parentUser1.rows[0].id, branch1.rows[0].id]);
+
+    const student8 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Ethan', 'Wong', 'Primary 3', '2014-06-09', parentUser2.rows[0].id, branch2.rows[0].id]);
+
     console.log('Students created');
 
-    // Create classes with varied scheduling
+    // Create classes with varied scheduling and levels matching student grades
     const classesData = [
-      // Mathematics classes
-      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 1, 90, 15, branch1.rows[0].id],
-      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 2, 120, 12, branch2.rows[0].id],
-      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 3, 60, 20, branch3.rows[0].id],
+      // Kindergarten classes
+      ['English', 'Early English language skills for young learners', 'Kindergarten 2', staffUser3.rows[0].id, 1, 45, 8, branch2.rows[0].id],
+      ['Art', 'Creative arts and crafts for kindergarten', 'Kindergarten 2', staffUser1.rows[0].id, 2, 60, 10, branch2.rows[0].id],
       
-      // English classes
-      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 5, 90, 18, branch1.rows[0].id],
-      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 6, 90, 15, branch2.rows[0].id],
-      ['English', 'Primary English basics', 'Primary 5', staffUser3.rows[0].id, 7, 60, 25, branch3.rows[0].id],
+      // Primary 1-2 classes
+      ['Mathematics', 'Basic counting and arithmetic', 'Primary 1', staffUser2.rows[0].id, 3, 60, 12, branch4.rows[0].id],
+      ['English', 'Phonics and basic reading skills', 'Primary 1', staffUser3.rows[0].id, 4, 60, 12, branch4.rows[0].id],
+      ['Mathematics', 'Addition and subtraction fundamentals', 'Primary 2', staffUser1.rows[0].id, 5, 60, 15, branch3.rows[0].id],
+      ['Chinese', 'Basic Mandarin for Primary 2', 'Primary 2', staffUser2.rows[0].id, 6, 60, 15, branch3.rows[0].id],
       
-      // Science classes
-      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 8, 90, 16, branch1.rows[0].id],
-      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser1.rows[0].id, 10, 120, 12, branch2.rows[0].id],
-      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 12, 60, 22, branch4.rows[0].id],
+      // Primary 5-6 classes
+      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 7, 90, 20, branch1.rows[0].id],
+      ['English', 'Primary English composition', 'Primary 5', staffUser1.rows[0].id, 8, 90, 18, branch1.rows[0].id],
+      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 9, 75, 20, branch1.rows[0].id],
+      ['Mathematics', 'PSLE preparation mathematics', 'Primary 6', staffUser2.rows[0].id, 10, 120, 16, branch3.rows[0].id],
+      ['English', 'PSLE English preparation', 'Primary 6', staffUser3.rows[0].id, 11, 120, 16, branch3.rows[0].id],
       
-      // Additional subjects
-      ['Chinese', 'Mandarin language skills', 'Secondary 1', staffUser2.rows[0].id, 14, 75, 20, branch3.rows[0].id],
-      ['History', 'Singapore and world history', 'Secondary 3', staffUser3.rows[0].id, 15, 90, 18, branch1.rows[0].id],
-      ['Art', 'Creative expression and techniques', 'Primary 5', staffUser1.rows[0].id, 17, 90, 15, branch4.rows[0].id],
+      // Secondary 1 classes
+      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 12, 90, 18, branch1.rows[0].id],
+      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 13, 90, 18, branch1.rows[0].id],
+      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 14, 90, 16, branch1.rows[0].id],
+      
+      // Secondary 3 classes
+      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 15, 120, 15, branch2.rows[0].id],
+      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 16, 90, 15, branch2.rows[0].id],
+      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser3.rows[0].id, 17, 120, 12, branch2.rows[0].id],
+      
+      // Secondary 4 classes (O-Level preparation)
+      ['Mathematics', 'O-Level Mathematics preparation', 'Secondary 4', staffUser1.rows[0].id, 18, 120, 14, branch4.rows[0].id],
+      ['English', 'O-Level English preparation', 'Secondary 4', staffUser2.rows[0].id, 19, 120, 14, branch4.rows[0].id],
+      ['Science', 'O-Level combined science', 'Secondary 4', staffUser3.rows[0].id, 20, 150, 12, branch4.rows[0].id],
+      
+      // Mixed level and general classes (no level specified - available to all)
+      ['Computer Programming', 'Basic coding skills for all ages', null, staffUser1.rows[0].id, 21, 90, 20, branch1.rows[0].id],
+      ['Art', 'Creative expression and techniques', null, staffUser2.rows[0].id, 22, 90, 25, branch2.rows[0].id],
+      ['Music', 'Music appreciation and basic instruments', null, staffUser3.rows[0].id, 23, 75, 15, branch3.rows[0].id],
+      ['Chess', 'Strategic thinking through chess', null, staffUser1.rows[0].id, 24, 60, 12, branch4.rows[0].id],
     ];
 
     for (let i = 0; i < classesData.length; i++) {
@@ -336,13 +396,14 @@ export const seedDatabase = async (pool: Pool) => {
 
     console.log('Classes created');
 
-    // Create some enrollments for testing cascade behavior
+    // Create some enrollments for testing cascade behavior - matching students with appropriate grade levels
     await pool.query(`
       INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
       SELECT s.id, c.id, s.parent_id, 'enrolled'
       FROM "Student" s
       CROSS JOIN "Class" c
-      WHERE s.first_name = 'John' AND c.subject = 'Mathematics' AND c.level = 'Secondary 1'
+      WHERE s.first_name = 'John' AND s.grade = 'Secondary 1' 
+        AND c.subject = 'Mathematics' AND c.level = 'Secondary 1'
       LIMIT 1
     `);
 
@@ -351,7 +412,8 @@ export const seedDatabase = async (pool: Pool) => {
       SELECT s.id, c.id, s.parent_id, 'enrolled'
       FROM "Student" s
       CROSS JOIN "Class" c
-      WHERE s.first_name = 'Sarah' AND c.subject = 'English' AND c.level = 'Primary 5'
+      WHERE s.first_name = 'Sarah' AND s.grade = 'Primary 5' 
+        AND c.subject = 'English' AND c.level = 'Primary 5'
       LIMIT 1
     `);
 
@@ -360,24 +422,88 @@ export const seedDatabase = async (pool: Pool) => {
       SELECT s.id, c.id, s.parent_id, 'enrolled'
       FROM "Student" s
       CROSS JOIN "Class" c
-      WHERE s.first_name = 'Emma' AND c.subject = 'Mathematics' AND c.level = 'Secondary 3'
+      WHERE s.first_name = 'Emma' AND s.grade = 'Secondary 3' 
+        AND c.subject = 'Mathematics' AND c.level = 'Secondary 3'
+      LIMIT 1
+    `);
+
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'Lily' AND s.grade = 'Kindergarten 2' 
+        AND c.subject = 'English' AND c.level = 'Kindergarten 2'
+      LIMIT 1
+    `);
+
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'Marcus' AND s.grade = 'Primary 2' 
+        AND c.subject = 'Mathematics' AND c.level = 'Primary 2'
+      LIMIT 1
+    `);
+
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'Chloe' AND s.grade = 'Primary 6' 
+        AND c.subject = 'Mathematics' AND c.level = 'Primary 6'
+      LIMIT 1
+    `);
+
+    // Enroll some students in general classes (no level restriction)
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'Ryan' AND c.subject = 'Computer Programming' AND c.level IS NULL
+      LIMIT 1
+    `);
+
+    await pool.query(`
+      INSERT INTO "Enrollment" (student_id, class_id, enrolled_by, status)
+      SELECT s.id, c.id, s.parent_id, 'enrolled'
+      FROM "Student" s
+      CROSS JOIN "Class" c
+      WHERE s.first_name = 'Amy' AND c.subject = 'Art' AND c.level IS NULL
       LIMIT 1
     `);
 
     console.log('Sample enrollments created for cascade testing');
 
-    // Create payment records
+    // Create payment records for the diverse student base
     const currentMonth = new Date().toISOString().slice(0, 7);
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const lastMonthString = lastMonth.toISOString().slice(0, 7);
 
     const paymentData = [
+      // Jay Toh's children (John - Secondary 1, Sarah - Primary 5)
       [student1.rows[0].id, currentMonth, 150.00, true, new Date(), 'card'],
       [student1.rows[0].id, lastMonthString, 150.00, true, lastMonth, 'bank_transfer'],
       [student2.rows[0].id, currentMonth, 120.00, false, null, null],
       [student2.rows[0].id, lastMonthString, 120.00, true, lastMonth, 'cash'],
+      
+      // Alice Lim's children (Emma - Secondary 3, Lily - Kindergarten 2)
       [student3.rows[0].id, currentMonth, 180.00, true, new Date(), 'online'],
+      [student4.rows[0].id, currentMonth, 80.00, true, new Date(), 'card'],
+      [student4.rows[0].id, lastMonthString, 80.00, false, null, null],
+      
+      // David Wong's children (Marcus - Primary 2, Chloe - Primary 6)
+      [student5.rows[0].id, currentMonth, 100.00, true, new Date(), 'bank_transfer'],
+      [student6.rows[0].id, currentMonth, 140.00, false, null, null],
+      [student6.rows[0].id, lastMonthString, 140.00, true, lastMonth, 'online'],
+      
+      // Susan Chen's children (Ryan - Secondary 4, Amy - Primary 1)
+      [student7.rows[0].id, currentMonth, 200.00, true, new Date(), 'card'],
+      [student8.rows[0].id, currentMonth, 90.00, false, null, null],
     ];
 
     for (const [studentId, month, amount, paid, paymentDate, method] of paymentData) {
