@@ -412,7 +412,9 @@ const ClassManagement: React.FC = () => {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {classes.map((classItem) => (
+            {classes
+              .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+              .map((classItem) => (
               <div key={classItem.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">

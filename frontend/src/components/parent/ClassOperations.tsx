@@ -323,7 +323,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
     });
   };
 
-  // Check for multiple children with enrollments to show filter
+  // Determine whether to show child filter (for multiple children with enrollments)
   const shouldShowChildFilter = () => {
     const studentsWithEnrollments = getStudentsWithEnrollments();
     return studentsWithEnrollments.length > 1;
@@ -597,7 +597,9 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {classes.map((classItem) => (
+              {classes
+                .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+                .map((classItem) => (
                 <div key={classItem.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
@@ -712,7 +714,9 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredEnrollments.map((enrollment) => (
+              {filteredEnrollments
+                .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+                .map((enrollment) => (
                 <div key={enrollment.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
