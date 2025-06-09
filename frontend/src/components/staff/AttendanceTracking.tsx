@@ -115,7 +115,7 @@ const AttendanceTracking: React.FC = () => {
       // Initialize attendance state from existing records
       const newAttendanceState: Record<string, AttendanceMarkRequest> = {};
       
-      // First, set all students to 'present' by default with all required fields
+      // First set all students to 'present' by default with all required fields
       studentList.forEach(student => {
         newAttendanceState[student.enrollment_id] = {
           enrollmentId: student.enrollment_id,
@@ -205,7 +205,7 @@ const AttendanceTracking: React.FC = () => {
         notes: record.notes || ''
       }));
       
-      // Validate that we have all required fields
+      // Validate for all required fields
       for (let i = 0; i < attendanceRecords.length; i++) {
         const record = attendanceRecords[i];
         if (!record.enrollmentId || !record.studentId || !record.status) {
@@ -250,6 +250,15 @@ const AttendanceTracking: React.FC = () => {
     return date.toLocaleTimeString('en-SG', {
       hour: '2-digit',
       minute: '2-digit'
+    });
+  };
+
+  const formatAttendanceTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-SG', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     });
   };
 
@@ -300,6 +309,37 @@ const AttendanceTracking: React.FC = () => {
     return classDate === today;
   };
 
+  // Check if attendance has been taken for a class
+  const isAttendanceTaken = (classId?: string) => {
+    if (classId) {
+      // For summary view - check if there's summary data with records
+      const summary = attendanceSummaries[classId];
+      return summary && summary.summary.total_records > 0;
+    } else {
+      // For individual class view - check current attendance records
+      return attendanceRecords.length > 0;
+    }
+  };
+
+  // Get the time when attendance was last taken
+  const getAttendanceTakenTime = (classId?: string) => {
+    if (classId) {
+      // For summary view, get it from the summary data
+      return null; // Implement this when the data is available
+    } else {
+      // For individual class view - get latest marked_at from attendance records
+      if (attendanceRecords.length > 0) {
+        const latestRecord = attendanceRecords.reduce((latest, record) => {
+          if (!latest.marked_at) return record;
+          if (!record.marked_at) return latest;
+          return new Date(record.marked_at) > new Date(latest.marked_at) ? record : latest;
+        });
+        return latestRecord.marked_at;
+      }
+    }
+    return null;
+  };
+
   const getClassDateStatus = () => {
     if (!selectedClass) return '';
     
@@ -324,22 +364,39 @@ const AttendanceTracking: React.FC = () => {
       year: 'numeric'
     }) : '';
     
+    const attendanceTaken = isAttendanceTaken();
+    const attendanceTime = getAttendanceTakenTime();
+    
     switch (status) {
       case 'today':
-        return { 
-          message: `This class is today (${classDate}). You can take attendance now.`, 
-          color: 'text-green-700 bg-green-50 border-green-200' 
-        };
+        if (attendanceTaken && attendanceTime) {
+          return { 
+            message: `This class is today (${classDate}). You have taken the attendance at ${formatAttendanceTime(attendanceTime)}.`, 
+            color: 'text-green-700 bg-green-50 border-green-200' 
+          };
+        } else {
+          return { 
+            message: `This class is today (${classDate}). You can take attendance now.`, 
+            color: 'text-green-700 bg-green-50 border-green-200' 
+          };
+        }
       case 'future':
         return { 
           message: `This class is scheduled for ${classDate}. Attendance can only be taken on the day of the class.`, 
           color: 'text-blue-700 bg-blue-50 border-blue-200' 
         };
       case 'past':
-        return { 
-          message: `This class was on ${classDate}. ${attendanceRecords.length > 0 ? 'Viewing saved attendance records.' : 'No attendance was recorded.'}`, 
-          color: 'text-gray-700 bg-gray-50 border-gray-200' 
-        };
+        if (attendanceTaken && attendanceTime) {
+          return { 
+            message: `This class was on ${classDate}. Attendance was taken at ${formatAttendanceTime(attendanceTime)}.`, 
+            color: 'text-gray-700 bg-gray-50 border-gray-200' 
+          };
+        } else {
+          return { 
+            message: `This class was on ${classDate}. No attendance was recorded.`, 
+            color: 'text-gray-700 bg-gray-50 border-gray-200' 
+          };
+        }
       default:
         return { message: '', color: '' };
     }
@@ -461,6 +518,7 @@ const AttendanceTracking: React.FC = () => {
                 .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
                 .map((cls) => {
                   const summary = attendanceSummaries[cls.class_id];
+                  const hasAttendance = summary && summary.summary.total_records > 0;
                   
                   return (
                     <div key={cls.class_id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
@@ -474,6 +532,25 @@ const AttendanceTracking: React.FC = () => {
                             <p className="text-gray-600">
                               {formatTime(cls.start_time)} • {formatDuration(cls.duration_minutes)} • {cls.branch_name}
                             </p>
+                            {/* Attendance Status */}
+                            {hasAttendance ? (
+                              <div className="flex items-center space-x-2 mt-2">
+                                <CheckCircle className="text-green-600" size={16} />
+                                <span className="text-sm text-green-700 font-medium">
+                                  Attendance completed
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2 mt-2">
+                                <AlertCircle className="text-orange-500" size={16} />
+                                <span className="text-sm text-orange-600 font-medium">
+                                  {summaryDate === new Date().toISOString().split('T')[0] 
+                                    ? 'Attendance not yet taken' 
+                                    : 'No attendance recorded'
+                                  }
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         
@@ -612,7 +689,7 @@ const AttendanceTracking: React.FC = () => {
                     </p>
                   </div>
                   
-                  {students.length > 0 && canTakeAttendance() && (
+                  {students.length > 0 && canTakeAttendance() && !isAttendanceTaken() && (
                     <button
                       onClick={handleSaveAttendance}
                       disabled={saving}
@@ -679,7 +756,7 @@ const AttendanceTracking: React.FC = () => {
                                 </p>
                               </div>
 
-                              {canTakeAttendance() && (
+                              {canTakeAttendance() && !isAttendanceTaken() && (
                                 <div className="ml-6 flex flex-col space-y-3">
                                   {/* Status Selection */}
                                   <div className="flex space-x-2">
@@ -710,7 +787,7 @@ const AttendanceTracking: React.FC = () => {
                                 </div>
                               )}
 
-                              {!canTakeAttendance() && attendanceRecords.find(r => r.enrollment_id === student.enrollment_id) && (
+                              {(!canTakeAttendance() || isAttendanceTaken()) && attendanceRecords.find(r => r.enrollment_id === student.enrollment_id) && (
                                 <div className="ml-6">
                                   <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-xs font-semibold border ${
                                     getStatusColor(attendance.status)
