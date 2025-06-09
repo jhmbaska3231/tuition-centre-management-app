@@ -30,6 +30,9 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
   const [endDate, setEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
+  // Child filter state
+  const [selectedChild, setSelectedChild] = useState('all'); // 'all' or student ID
+  
   // Modal states
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -264,9 +267,18 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
     return [...new Set(subjects)].sort();
   };
 
-  // Filter enrollments by subject, branch, and date range if selected
+  // Filter enrollments by subject, branch, date range, and selected child
   const getFilteredEnrollments = () => {
     let filtered = enrollments;
+    
+    // Filter by selected child first
+    if (selectedChild !== 'all') {
+      const selectedStudentName = students.find(s => s.id === selectedChild);
+      if (selectedStudentName) {
+        const fullName = `${selectedStudentName.first_name} ${selectedStudentName.last_name}`;
+        filtered = filtered.filter(enrollment => enrollment.student_name === fullName);
+      }
+    }
     
     // Filter by subject
     if (selectedSubject) {
@@ -302,6 +314,21 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
     return filtered;
   };
 
+  // Get unique students who have enrollments
+  const getStudentsWithEnrollments = () => {
+    const enrolledStudentNames = [...new Set(enrollments.map(e => e.student_name))];
+    return students.filter(student => {
+      const fullName = `${student.first_name} ${student.last_name}`;
+      return enrolledStudentNames.includes(fullName);
+    });
+  };
+
+  // Check for multiple children with enrollments to show filter
+  const shouldShowChildFilter = () => {
+    const studentsWithEnrollments = getStudentsWithEnrollments();
+    return studentsWithEnrollments.length > 1;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -314,6 +341,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
   }
 
   const filteredEnrollments = getFilteredEnrollments();
+  const studentsWithEnrollments = getStudentsWithEnrollments();
 
   return (
     <div className="px-6 py-16">
@@ -361,6 +389,44 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
           My Enrollments ({filteredEnrollments.filter(e => e.status === 'enrolled').length})
         </button>
       </div>
+
+      {/* Child Filter (only shown for enrollments view with multiple children) */}
+      {activeView === 'enrollments' && shouldShowChildFilter() && (
+        <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 mb-6">
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-medium text-gray-700">View enrollments for:</span>
+            <div className="flex flex-wrap gap-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="child-filter"
+                  value="all"
+                  checked={selectedChild === 'all'}
+                  onChange={(e) => setSelectedChild(e.target.value)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 font-medium">All Children</span>
+              </label>
+              
+              {studentsWithEnrollments.map((student) => (
+                <label key={student.id} className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="child-filter"
+                    value={student.id}
+                    checked={selectedChild === student.id}
+                    onChange={(e) => setSelectedChild(e.target.value)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 font-medium">
+                    {student.first_name} {student.last_name}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Enhanced Filters */}
       {showFilters && (
@@ -428,7 +494,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
           </div>
           
           {/* Active Filters Display */}
-          {(selectedSubject || selectedBranch) && (
+          {(selectedSubject || selectedBranch || (selectedChild !== 'all' && shouldShowChildFilter())) && (
             <div className="mt-4 flex flex-wrap gap-2 items-center">
               <span className="text-sm text-gray-600">Active filters:</span>
               {selectedSubject && (
@@ -453,12 +519,24 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                   </button>
                 </span>
               )}
+              {selectedChild !== 'all' && shouldShowChildFilter() && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  Child: {students.find(s => s.id === selectedChild)?.first_name} {students.find(s => s.id === selectedChild)?.last_name}
+                  <button
+                    onClick={() => setSelectedChild('all')}
+                    className="ml-1 text-purple-600 hover:text-purple-800"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
               
               {/* Clear All Filters Button */}
               <button
                 onClick={() => {
                   setSelectedSubject('');
                   setSelectedBranch('');
+                  setSelectedChild('all');
                   // Reset to default date range (next 30 days)
                   const today = new Date();
                   const nextMonth = new Date();
@@ -609,9 +687,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 My Enrollments ({filteredEnrollments.length})
               </h2>
               <span className="text-sm text-gray-500">
-                {selectedSubject || selectedBranch || startDate || endDate
-                  ? 'Filtered enrollments'
-                  : 'All enrollments for your students'
+                {selectedChild !== 'all' && shouldShowChildFilter() 
+                  ? `Showing enrollments for ${students.find(s => s.id === selectedChild)?.first_name} ${students.find(s => s.id === selectedChild)?.last_name}`
+                  : selectedSubject || selectedBranch || startDate || endDate
+                    ? 'Filtered enrollments'
+                    : 'All enrollments for your students'
                 }
               </span>
             </div>
@@ -622,9 +702,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <Users className="mx-auto text-gray-300 mb-4" size={64} />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">No Enrollments</h3>
               <p className="text-gray-500">
-                {selectedSubject || selectedBranch || startDate || endDate
-                  ? `No enrollments found matching your filters. Try adjusting the filters.`
-                  : 'No current enrollments found. Browse classes to enroll your students.'
+                {selectedChild !== 'all' && shouldShowChildFilter()
+                  ? `${students.find(s => s.id === selectedChild)?.first_name} has no enrollments matching the current filters.`
+                  : selectedSubject || selectedBranch || startDate || endDate
+                    ? `No enrollments found matching your filters. Try adjusting the filters.`
+                    : 'No current enrollments found. Browse classes to enroll your students.'
                 }
               </p>
             </div>
