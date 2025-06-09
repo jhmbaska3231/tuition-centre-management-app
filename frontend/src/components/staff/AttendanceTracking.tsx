@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Clock, CheckCircle, XCircle, AlertCircle, UserCheck, Loader2, BarChart3, Calendar, BookOpen, X } from 'lucide-react';
 import type { StaffClass, ClassStudent, AttendanceRecord, AttendanceMarkRequest, AttendanceSummary } from '../../types';
 import AttendanceService from '../../services/attendance';
+import DateInput from '../common/DateInput';
 
 const AttendanceTracking: React.FC = () => {
   const [classes, setClasses] = useState<StaffClass[]>([]);
@@ -480,12 +481,12 @@ const AttendanceTracking: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-800">Daily Attendance Summary</h2>
               <div className="flex items-center space-x-4">
                 <label className="text-sm font-medium text-gray-700">Select Date:</label>
-                <input
-                  type="date"
+                <DateInput
                   value={summaryDate}
+                  onChange={setSummaryDate}
+                  className="w-auto"
+                  placeholder="DD/MM/YYYY"
                   max={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setSummaryDate(e.target.value)}
-                  className="p-2 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
                 />
               </div>
             </div>

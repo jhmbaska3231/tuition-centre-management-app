@@ -7,6 +7,7 @@ import ClassService from '../../services/class';
 import EnrollmentService from '../../services/enrollment';
 import StudentService from '../../services/student';
 import BranchService from '../../services/branch';
+import DateInput from '../common/DateInput';
 
 interface ClassOperationsProps {
   refreshTrigger?: number; // Prop to trigger refresh from parent
@@ -405,11 +406,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Start Date
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                onChange={setStartDate}
+                className=""
+                placeholder="DD/MM/YYYY"
               />
             </div>
             
@@ -417,11 +418,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 End Date
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                onChange={setEndDate}
+                className=""
+                placeholder="DD/MM/YYYY"
               />
             </div>
           </div>

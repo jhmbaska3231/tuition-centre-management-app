@@ -1,4 +1,4 @@
-// src/components/staff/ClassManagement.tsx
+// frontend/src/components/staff/ClassManagement.tsx
 
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Calendar, MapPin, Users, Clock, Edit2, Trash2, Filter, X, Loader2, User, ToggleLeft, ToggleRight } from 'lucide-react';
@@ -7,6 +7,7 @@ import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
 import ClassForm from './ClassForm';
 import { useAuth } from '../../hooks/useAuth';
+import DateInput from '../common/DateInput';
 
 const ClassManagement: React.FC = () => {
   const { user } = useAuth();
@@ -275,11 +276,11 @@ const ClassManagement: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Start Date
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                onChange={setStartDate}
+                className=""
+                placeholder="DD/MM/YYYY"
               />
             </div>
             
@@ -287,11 +288,11 @@ const ClassManagement: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 End Date
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                onChange={setEndDate}
+                className=""
+                placeholder="DD/MM/YYYY"
               />
             </div>
           </div>

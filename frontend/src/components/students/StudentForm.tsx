@@ -6,6 +6,7 @@ import type { Student, CreateStudentRequest, UpdateStudentRequest, Branch } from
 import StudentService from '../../services/student';
 import BranchService from '../../services/branch';
 import { getNameValidationError } from '../../utils/validation';
+import DateInput from '../common/DateInput';
 
 interface StudentFormProps {
   isOpen: boolean;
@@ -260,11 +261,12 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Date of Birth
             </label>
-            <input
-              type="date"
+            <DateInput
               value={formData.dateOfBirth}
-              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+              onChange={(value) => handleInputChange('dateOfBirth', value)}
+              className=""
+              placeholder="DD/MM/YYYY"
+              max={new Date().toISOString().split('T')[0]}
             />
           </div>
 
