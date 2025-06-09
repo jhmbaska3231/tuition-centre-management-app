@@ -97,13 +97,6 @@ class AttendanceService {
     try {
       const requestBody = { attendanceRecords };
       
-      // Debug logging
-      console.log('Sending attendance request:', {
-        url: `${this.API_BASE_URL}/attendance/class/${classId}/date/${date}/mark`,
-        method: 'POST',
-        body: requestBody
-      });
-      
       const response = await fetch(`${this.API_BASE_URL}/attendance/class/${classId}/date/${date}/mark`, {
         method: 'POST',
         headers: this.getAuthHeaders(),

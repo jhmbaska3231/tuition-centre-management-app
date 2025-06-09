@@ -80,7 +80,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
       )
     `;
     await pool.query(createStudentsTable);
-    console.log('Students table created with CASCADE DELETE for parent_id');
+    console.log('Students table created');
 
     // Create Classes table
     const createClassesTable = `

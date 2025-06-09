@@ -1,7 +1,7 @@
 // frontend/src/components/staff/AttendanceTracking.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, Clock, CheckCircle, XCircle, AlertCircle, UserCheck, Loader2, BarChart3 } from 'lucide-react';
+import { Users, Clock, CheckCircle, XCircle, AlertCircle, UserCheck, Loader2, BarChart3 } from 'lucide-react';
 import type { StaffClass, ClassStudent, AttendanceRecord, AttendanceMarkRequest } from '../../types';
 import AttendanceService from '../../services/attendance';
 
@@ -31,11 +31,12 @@ const AttendanceTracking: React.FC = () => {
     }
   }, [selectedClass]);
 
+  // Handle date changes - reload attendance when date changes and students are already loaded
   useEffect(() => {
-    if (selectedClass && selectedDate) {
-      loadAttendanceRecords();
+    if (selectedClass && selectedDate && students.length > 0) {
+      loadAttendanceRecordsForStudents();
     }
-  }, [selectedClass, selectedDate]);
+  }, [selectedDate]);
 
   const loadClasses = async () => {
     setLoading(true);
@@ -63,6 +64,14 @@ const AttendanceTracking: React.FC = () => {
     try {
       const studentList = await AttendanceService.getClassStudents(selectedClass.class_id);
       setStudents(studentList);
+      
+      // After students are loaded, load attendance records if date is selected
+      if (selectedDate && studentList.length > 0) {
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          loadAttendanceRecordsForStudents(studentList);
+        }, 100);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load students');
     } finally {
@@ -70,8 +79,8 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  const loadAttendanceRecords = async () => {
-    if (!selectedClass || !selectedDate) return;
+  const loadAttendanceRecordsForStudents = async (studentList: ClassStudent[] = students) => {
+    if (!selectedClass || !selectedDate || studentList.length === 0) return;
     
     setAttendanceLoading(true);
     setError('');
@@ -83,7 +92,7 @@ const AttendanceTracking: React.FC = () => {
       const newAttendanceState: Record<string, AttendanceMarkRequest> = {};
       
       // First, set all students to 'present' by default with all required fields
-      students.forEach(student => {
+      studentList.forEach(student => {
         newAttendanceState[student.enrollment_id] = {
           enrollmentId: student.enrollment_id,
           studentId: student.student_id,
@@ -108,7 +117,7 @@ const AttendanceTracking: React.FC = () => {
       
       // Debug logging
       console.log('Loaded attendance state:', {
-        studentsCount: students.length,
+        studentsCount: studentList.length,
         recordsCount: records.length,
         stateKeys: Object.keys(newAttendanceState),
         sampleState: Object.values(newAttendanceState)[0]
@@ -170,7 +179,7 @@ const AttendanceTracking: React.FC = () => {
       await AttendanceService.markAttendance(selectedClass.class_id, selectedDate, attendanceRecords);
       
       // Refresh attendance records to get updated data
-      await loadAttendanceRecords();
+      await loadAttendanceRecordsForStudents();
       
       setSuccessMessage(`Attendance saved successfully for ${attendanceRecords.length} students!`);
       

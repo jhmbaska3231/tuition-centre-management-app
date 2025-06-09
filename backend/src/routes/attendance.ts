@@ -116,17 +116,8 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
     await client.query('BEGIN');
     
     const { classId, date } = req.params;
-    const { attendanceRecords } = req.body; // Array of { enrollmentId, studentId, status, timeIn?, timeOut?, notes? }
+    const { attendanceRecords } = req.body;
     const staffId = req.user!.userId;
-    
-    // Debug logging
-    console.log('Attendance request received:', {
-      classId,
-      date,
-      staffId,
-      recordsCount: attendanceRecords?.length,
-      records: attendanceRecords
-    });
     
     // Verify this staff member is assigned to this class
     const classCheck = await client.query(
@@ -174,8 +165,7 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
       if (!record.enrollmentId) {
         await client.query('ROLLBACK');
         res.status(400).json({ 
-          error: `Missing enrollmentId in record ${i + 1}`,
-          record: record
+          error: `Missing enrollmentId in record ${i + 1}`
         });
         return;
       }
@@ -183,8 +173,7 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
       if (!record.studentId) {
         await client.query('ROLLBACK');
         res.status(400).json({ 
-          error: `Missing studentId in record ${i + 1}`,
-          record: record
+          error: `Missing studentId in record ${i + 1}`
         });
         return;
       }
@@ -192,8 +181,7 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
       if (!record.status) {
         await client.query('ROLLBACK');
         res.status(400).json({ 
-          error: `Missing status in record ${i + 1}`,
-          record: record
+          error: `Missing status in record ${i + 1}`
         });
         return;
       }
@@ -201,8 +189,7 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
       if (!validStatuses.includes(record.status)) {
         await client.query('ROLLBACK');
         res.status(400).json({ 
-          error: `Invalid status "${record.status}" in record ${i + 1}. Valid statuses: ${validStatuses.join(', ')}`,
-          record: record
+          error: `Invalid status "${record.status}" in record ${i + 1}. Valid statuses: ${validStatuses.join(', ')}`
         });
         return;
       }
