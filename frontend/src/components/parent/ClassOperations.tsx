@@ -322,7 +322,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
           <Calendar className="text-blue-600" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Class Operations</h1>
-            <p className="text-gray-600">Browse classes and manage enrollments</p>
+            <p className="text-gray-600">Browse classes and manage enrollments for your children</p>
           </div>
         </div>
         

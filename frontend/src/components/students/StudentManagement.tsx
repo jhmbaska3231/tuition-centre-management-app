@@ -81,7 +81,7 @@ const StudentManagement: React.FC = () => {
         <div className="flex items-center space-x-3">
           <Users className="text-blue-600" size={32} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">My Students</h1>
+            <h1 className="text-3xl font-bold text-gray-800">My Children</h1>
             <p className="text-gray-600">Manage your children's information</p>
           </div>
         </div>
