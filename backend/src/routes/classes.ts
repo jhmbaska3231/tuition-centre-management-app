@@ -41,7 +41,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 
     // For staff, only show classes in the future OR classes assigned to them
     if (userRole === 'staff') {
-      query += ` AND (c.start_time > NOW() OR c.tutor_id = ${paramIndex})`;
+      query += ` AND (c.start_time > NOW() OR c.tutor_id = $${paramIndex})`;
       queryParams.push(userId);
       paramIndex++;
     } else if (userRole === 'parent') {
@@ -58,7 +58,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
       if (childrenGrades.rows.length > 0) {
         const grades = childrenGrades.rows.map(row => row.grade);
         // Show classes that either have no level specified OR match one of the children's grades
-        const placeholders = grades.map((_, i) => `${paramIndex + i}`).join(', ');
+        const placeholders = grades.map((_, i) => `$${paramIndex + i}`).join(', ');
         query += ` AND (c.level IS NULL OR c.level IN (${placeholders}))`;
         queryParams.push(...grades);
         paramIndex += grades.length;
