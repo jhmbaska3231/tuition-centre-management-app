@@ -1,8 +1,8 @@
 // frontend/src/components/staff/AttendanceTracking.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Users, Clock, CheckCircle, XCircle, AlertCircle, UserCheck, Loader2, BarChart3 } from 'lucide-react';
-import type { StaffClass, ClassStudent, AttendanceRecord, AttendanceMarkRequest } from '../../types';
+import { Users, Clock, CheckCircle, XCircle, AlertCircle, UserCheck, Loader2, BarChart3, Calendar, BookOpen } from 'lucide-react';
+import type { StaffClass, ClassStudent, AttendanceRecord, AttendanceMarkRequest, AttendanceSummary } from '../../types';
 import AttendanceService from '../../services/attendance';
 
 const AttendanceTracking: React.FC = () => {
@@ -10,13 +10,18 @@ const AttendanceTracking: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<StaffClass | null>(null);
   const [students, setStudents] = useState<ClassStudent[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Summary view states
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryDate, setSummaryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [todayClasses, setTodayClasses] = useState<StaffClass[]>([]);
+  const [attendanceSummaries, setAttendanceSummaries] = useState<Record<string, AttendanceSummary>>({});
 
   // Attendance state for each student
   const [attendanceState, setAttendanceState] = useState<Record<string, AttendanceMarkRequest>>({});
@@ -31,12 +36,12 @@ const AttendanceTracking: React.FC = () => {
     }
   }, [selectedClass]);
 
-  // Handle date changes - reload attendance when date changes and students are already loaded
+  // Load summary data when summary view is shown
   useEffect(() => {
-    if (selectedClass && selectedDate && students.length > 0) {
-      loadAttendanceRecordsForStudents();
+    if (showSummary) {
+      loadSummaryData();
     }
-  }, [selectedDate]);
+  }, [showSummary, summaryDate]);
 
   const loadClasses = async () => {
     setLoading(true);
@@ -45,10 +50,26 @@ const AttendanceTracking: React.FC = () => {
       const classList = await AttendanceService.getMyClasses();
       setClasses(classList);
       
-      // Auto-select first class if available
-      if (classList.length > 0 && !selectedClass) {
+      // Auto-select first class that can have attendance taken today
+      const today = new Date().toISOString().split('T')[0];
+      const todayClass = classList.find(cls => {
+        const classDate = new Date(cls.start_time).toISOString().split('T')[0];
+        return classDate === today;
+      });
+      
+      if (todayClass && !selectedClass) {
+        setSelectedClass(todayClass);
+      } else if (classList.length > 0 && !selectedClass) {
         setSelectedClass(classList[0]);
       }
+      
+      // Filter today's classes for summary
+      const todaysClasses = classList.filter(cls => {
+        const classDate = new Date(cls.start_time).toISOString().split('T')[0];
+        return classDate === today;
+      });
+      setTodayClasses(todaysClasses);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load classes');
     } finally {
@@ -65,11 +86,11 @@ const AttendanceTracking: React.FC = () => {
       const studentList = await AttendanceService.getClassStudents(selectedClass.class_id);
       setStudents(studentList);
       
-      // After students are loaded, load attendance records if date is selected
-      if (selectedDate && studentList.length > 0) {
-        // Small delay to ensure state is updated
+      // Load attendance records for the class date
+      const classDate = new Date(selectedClass.start_time).toISOString().split('T')[0];
+      if (studentList.length > 0) {
         setTimeout(() => {
-          loadAttendanceRecordsForStudents(studentList);
+          loadAttendanceRecordsForStudents(studentList, classDate);
         }, 100);
       }
     } catch (err) {
@@ -79,13 +100,16 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  const loadAttendanceRecordsForStudents = async (studentList: ClassStudent[] = students) => {
-    if (!selectedClass || !selectedDate || studentList.length === 0) return;
+  const loadAttendanceRecordsForStudents = async (studentList: ClassStudent[] = students, classDate?: string) => {
+    if (!selectedClass || studentList.length === 0) return;
+    
+    // Use class date instead of selected date
+    const attendanceDate = classDate || new Date(selectedClass.start_time).toISOString().split('T')[0];
     
     setAttendanceLoading(true);
     setError('');
     try {
-      const records = await AttendanceService.getAttendanceRecords(selectedClass.class_id, selectedDate);
+      const records = await AttendanceService.getAttendanceRecords(selectedClass.class_id, attendanceDate);
       setAttendanceRecords(records);
       
       // Initialize attendance state from existing records
@@ -124,6 +148,32 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
+  const loadSummaryData = async () => {
+    try {
+      // Get classes for the selected summary date
+      const summaryClassesList = classes.filter(cls => {
+        const classDate = new Date(cls.start_time).toISOString().split('T')[0];
+        return classDate === summaryDate;
+      });
+      
+      // Load attendance summaries for each class
+      const summaries: Record<string, AttendanceSummary> = {};
+      
+      for (const cls of summaryClassesList) {
+        try {
+          const summary = await AttendanceService.getAttendanceSummary(cls.class_id, summaryDate, summaryDate);
+          summaries[cls.class_id] = summary;
+        } catch (err) {
+          console.error(`Failed to load summary for class ${cls.class_id}:`, err);
+        }
+      }
+      
+      setAttendanceSummaries(summaries);
+    } catch (err) {
+      console.error('Load summary data error:', err);
+    }
+  };
+
   const handleAttendanceChange = (enrollmentId: string, field: keyof AttendanceMarkRequest, value: any) => {
     setAttendanceState(prev => ({
       ...prev,
@@ -135,7 +185,10 @@ const AttendanceTracking: React.FC = () => {
   };
 
   const handleSaveAttendance = async () => {
-    if (!selectedClass || !selectedDate || Object.keys(attendanceState).length === 0) return;
+    if (!selectedClass || Object.keys(attendanceState).length === 0) return;
+    
+    // Use class date for attendance
+    const classDate = new Date(selectedClass.start_time).toISOString().split('T')[0];
     
     setSaving(true);
     setError('');
@@ -160,7 +213,7 @@ const AttendanceTracking: React.FC = () => {
         }
       }
       
-      await AttendanceService.markAttendance(selectedClass.class_id, selectedDate, attendanceRecords);
+      await AttendanceService.markAttendance(selectedClass.class_id, classDate, attendanceRecords);
       
       // Refresh attendance records to get updated data
       await loadAttendanceRecordsForStudents();
@@ -187,6 +240,14 @@ const AttendanceTracking: React.FC = () => {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-SG', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -228,15 +289,60 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  // Get today's date for date input max
-  const getTodayDate = () => {
-    return new Date().toISOString().split('T')[0];
+  // Check if attendance can be taken for the selected class
+  const canTakeAttendance = () => {
+    if (!selectedClass) return false;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const classDate = new Date(selectedClass.start_time).toISOString().split('T')[0];
+    
+    // Only allow attendance on the exact date of the class
+    return classDate === today;
   };
 
-  // Check if selected date is today or in the past
-  const canTakeAttendance = () => {
+  const getClassDateStatus = () => {
+    if (!selectedClass) return '';
+    
     const today = new Date().toISOString().split('T')[0];
-    return selectedDate <= today;
+    const classDate = new Date(selectedClass.start_time).toISOString().split('T')[0];
+    
+    if (classDate === today) {
+      return 'today';
+    } else if (classDate > today) {
+      return 'future';
+    } else {
+      return 'past';
+    }
+  };
+
+  const getClassDateMessage = () => {
+    const status = getClassDateStatus();
+    const classDate = selectedClass ? new Date(selectedClass.start_time).toLocaleDateString('en-SG', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }) : '';
+    
+    switch (status) {
+      case 'today':
+        return { 
+          message: `This class is today (${classDate}). You can take attendance now.`, 
+          color: 'text-green-700 bg-green-50 border-green-200' 
+        };
+      case 'future':
+        return { 
+          message: `This class is scheduled for ${classDate}. Attendance can only be taken on the day of the class.`, 
+          color: 'text-blue-700 bg-blue-50 border-blue-200' 
+        };
+      case 'past':
+        return { 
+          message: `This class was on ${classDate}. ${attendanceRecords.length > 0 ? 'Viewing saved attendance records.' : 'No attendance was recorded.'}`, 
+          color: 'text-gray-700 bg-gray-50 border-gray-200' 
+        };
+      default:
+        return { message: '', color: '' };
+    }
   };
 
   if (loading) {
@@ -260,6 +366,30 @@ const AttendanceTracking: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-800">Attendance Tracking</h1>
             <p className="text-gray-600">Track attendance for your classes</p>
           </div>
+        </div>
+        
+        {/* View Toggle */}
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setShowSummary(false)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              !showSummary 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Individual Class
+          </button>
+          <button
+            onClick={() => setShowSummary(true)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              showSummary 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Daily Summary
+          </button>
         </div>
       </div>
 
@@ -291,66 +421,181 @@ const AttendanceTracking: React.FC = () => {
             You don't have any classes assigned to you yet. Contact your administrator.
           </p>
         </div>
-      ) : (
+      ) : showSummary ? (
+        /* Summary View */
         <div>
-          {/* Class Selection and Date Picker */}
+          {/* Summary Date Picker */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Class
-                </label>
-                <select
-                  value={selectedClass?.class_id || ''}
-                  onChange={(e) => {
-                    const classItem = classes.find(c => c.class_id === e.target.value);
-                    setSelectedClass(classItem || null);
-                  }}
-                  className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">Choose a class</option>
-                  {classes.map((classItem) => (
-                    <option key={classItem.class_id} value={classItem.class_id}>
-                      {classItem.subject} {classItem.level && `(${classItem.level})`} - {classItem.branch_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date
-                </label>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-800">Daily Attendance Summary</h2>
+              <div className="flex items-center space-x-4">
+                <label className="text-sm font-medium text-gray-700">Select Date:</label>
                 <input
                   type="date"
-                  value={selectedDate}
-                  max={getTodayDate()}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                  value={summaryDate}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setSummaryDate(e.target.value)}
+                  className="p-2 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  You can only take attendance for today or past dates
-                </p>
               </div>
             </div>
+          </div>
 
-            {/* Class Info */}
+          {/* Summary Cards */}
+          <div className="space-y-6">
+            {classes.filter(cls => {
+              const classDate = new Date(cls.start_time).toISOString().split('T')[0];
+              return classDate === summaryDate;
+            }).length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="mx-auto text-gray-300 mb-4" size={64} />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Classes on This Date</h3>
+                <p className="text-gray-500">
+                  You don't have any classes scheduled for {new Date(summaryDate).toLocaleDateString('en-SG', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  })}.
+                </p>
+              </div>
+            ) : (
+              classes
+                .filter(cls => {
+                  const classDate = new Date(cls.start_time).toISOString().split('T')[0];
+                  return classDate === summaryDate;
+                })
+                .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+                .map((cls) => {
+                  const summary = attendanceSummaries[cls.class_id];
+                  
+                  return (
+                    <div key={cls.class_id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <BookOpen className="text-blue-600" size={24} />
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-800">
+                              {cls.subject} {cls.level && `(${cls.level})`}
+                            </h3>
+                            <p className="text-gray-600">
+                              {formatTime(cls.start_time)} • {formatDuration(cls.duration_minutes)} • {cls.branch_name}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            setSelectedClass(cls);
+                            setShowSummary(false);
+                          }}
+                          className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
+                        >
+                          View Details
+                        </button>
+                      </div>
+
+                      {summary ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center p-3 bg-green-50 rounded-lg">
+                            <div className="text-2xl font-bold text-green-600">
+                              {summary.summary.present_count}
+                            </div>
+                            <div className="text-sm text-green-700">Present</div>
+                          </div>
+                          <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                            <div className="text-2xl font-bold text-yellow-600">
+                              {summary.summary.late_count}
+                            </div>
+                            <div className="text-sm text-yellow-700">Late</div>
+                          </div>
+                          <div className="text-center p-3 bg-red-50 rounded-lg">
+                            <div className="text-2xl font-bold text-red-600">
+                              {summary.summary.absent_count}
+                            </div>
+                            <div className="text-sm text-red-700">Absent</div>
+                          </div>
+                          <div className="text-center p-3 bg-blue-50 rounded-lg">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {cls.enrolled_count}
+                            </div>
+                            <div className="text-sm text-blue-700">Total Enrolled</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          {summaryDate === new Date().toISOString().split('T')[0] 
+                            ? 'Attendance not yet taken' 
+                            : 'No attendance records found'
+                          }
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Individual Class View */
+        <div>
+          {/* Class Selection */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Class
+              </label>
+              <select
+                value={selectedClass?.class_id || ''}
+                onChange={(e) => {
+                  const classItem = classes.find(c => c.class_id === e.target.value);
+                  setSelectedClass(classItem || null);
+                }}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">Choose a class</option>
+                {classes.map((classItem) => (
+                  <option key={classItem.class_id} value={classItem.class_id}>
+                    {classItem.subject} {classItem.level && `(${classItem.level})`} - {formatDateTime(classItem.start_time)} - {classItem.branch_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Class Info and Date Status */}
             {selectedClass && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <div className="grid md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-blue-800">Subject:</span>
-                    <p className="text-blue-700">{selectedClass.subject}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-blue-800">Schedule:</span>
-                    <p className="text-blue-700">{formatDateTime(selectedClass.start_time)}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-blue-800">Duration:</span>
-                    <p className="text-blue-700">{formatDuration(selectedClass.duration_minutes)}</p>
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="grid md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-blue-800">Subject:</span>
+                      <p className="text-blue-700">{selectedClass.subject} {selectedClass.level && `(${selectedClass.level})`}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-blue-800">Schedule:</span>
+                      <p className="text-blue-700">{formatDateTime(selectedClass.start_time)}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-blue-800">Duration:</span>
+                      <p className="text-blue-700">{formatDuration(selectedClass.duration_minutes)}</p>
+                    </div>
                   </div>
                 </div>
+
+                {/* Date Status Message */}
+                {(() => {
+                  const { message, color } = getClassDateMessage();
+                  return message && (
+                    <div className={`p-4 rounded-lg border ${color}`}>
+                      <div className="flex items-center space-x-2">
+                        {getClassDateStatus() === 'today' && <CheckCircle size={20} />}
+                        {getClassDateStatus() === 'future' && <Clock size={20} />}
+                        {getClassDateStatus() === 'past' && <AlertCircle size={20} />}
+                        <p className="text-sm font-medium">{message}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -365,7 +610,7 @@ const AttendanceTracking: React.FC = () => {
                       Enrolled Students ({students.length})
                     </h3>
                     <p className="text-blue-100">
-                      Attendance for {new Date(selectedDate).toLocaleDateString('en-SG', {
+                      Attendance for {new Date(selectedClass.start_time).toLocaleDateString('en-SG', {
                         weekday: 'long',
                         day: '2-digit',
                         month: 'long',
@@ -414,17 +659,6 @@ const AttendanceTracking: React.FC = () => {
                   </div>
                 ) : (
                   <div>
-                    {!canTakeAttendance() && (
-                      <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <AlertCircle className="text-yellow-600" size={20} />
-                          <p className="text-yellow-800">
-                            You can only take attendance for today or past dates. Please select a valid date.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
                     <div className="space-y-4">
                       {students.map((student) => {
                         const attendance = attendanceState[student.enrollment_id] || {
@@ -509,7 +743,7 @@ const AttendanceTracking: React.FC = () => {
                       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
                         <h4 className="font-semibold text-gray-800 mb-3 flex items-center space-x-2">
                           <BarChart3 size={16} />
-                          <span>Today's Summary</span>
+                          <span>Class Summary</span>
                         </h4>
                         
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
