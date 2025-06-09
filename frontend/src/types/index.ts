@@ -282,8 +282,6 @@ export interface AttendanceRecord {
   enrollment_id: string;
   student_id: string;
   status: 'present' | 'absent' | 'late' | 'excused';
-  time_in?: string;
-  time_out?: string;
   notes?: string;
   marked_at?: string;
   first_name: string;
@@ -295,8 +293,6 @@ export interface AttendanceMarkRequest {
   enrollmentId: string;
   studentId: string;
   status: 'present' | 'absent' | 'late' | 'excused';
-  timeIn?: string;
-  timeOut?: string;
   notes?: string;
 }
 

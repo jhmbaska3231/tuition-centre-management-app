@@ -91,7 +91,7 @@ router.get('/class/:classId/date/:date', authenticateToken, requireRole('staff')
     }
     
     const result = await pool.query(`
-      SELECT a.id, a.enrollment_id, a.student_id, a.status, a.time_in, a.time_out, a.notes, a.marked_at,
+      SELECT a.id, a.enrollment_id, a.student_id, a.status, a.notes, a.marked_at,
              s.first_name, s.last_name, s.grade,
              e.id as enrollment_id_check
       FROM "Attendance" a
@@ -200,25 +200,21 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
     for (const record of attendanceRecords) {
       // Upsert attendance record
       const result = await client.query(`
-        INSERT INTO "Attendance" (student_id, class_id, enrollment_id, date, status, time_in, time_out, notes, marked_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO "Attendance" (student_id, class_id, enrollment_id, date, status, notes, marked_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (enrollment_id, date)
         DO UPDATE SET 
           status = EXCLUDED.status,
-          time_in = EXCLUDED.time_in,
-          time_out = EXCLUDED.time_out,
           notes = EXCLUDED.notes,
           marked_by = EXCLUDED.marked_by,
           marked_at = NOW()
-        RETURNING id, status, time_in, time_out, notes, marked_at
+        RETURNING id, status, notes, marked_at
       `, [
         record.studentId,
         classId,
         record.enrollmentId,
         date,
         record.status,
-        record.timeIn || null,
-        record.timeOut || null,
         record.notes || null,
         staffId
       ]);

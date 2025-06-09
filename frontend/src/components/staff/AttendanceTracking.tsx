@@ -133,8 +133,6 @@ const AttendanceTracking: React.FC = () => {
             enrollmentId: record.enrollment_id,
             studentId: record.student_id,
             status: record.status,
-            timeIn: record.time_in || undefined,
-            timeOut: record.time_out || undefined,
             notes: record.notes || ''
           };
         }
@@ -201,8 +199,6 @@ const AttendanceTracking: React.FC = () => {
         enrollmentId: record.enrollmentId,
         studentId: record.studentId,
         status: record.status,
-        timeIn: record.timeIn || undefined,
-        timeOut: record.timeOut || undefined,
         notes: record.notes || ''
       }));
       

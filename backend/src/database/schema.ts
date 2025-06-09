@@ -35,7 +35,6 @@ export const createDatabaseSchema = async (pool: Pool) => {
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
         phone TEXT,
-        email_verified BOOLEAN DEFAULT FALSE,
         active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -51,9 +50,6 @@ export const createDatabaseSchema = async (pool: Pool) => {
         name TEXT NOT NULL,
         address TEXT NOT NULL,
         phone TEXT,
-        email TEXT,
-        manager_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
-        operating_hours JSONB,
         active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -72,8 +68,6 @@ export const createDatabaseSchema = async (pool: Pool) => {
         date_of_birth DATE,
         parent_id UUID REFERENCES "User"(id) ON DELETE CASCADE,
         home_branch_id UUID REFERENCES "Branch"(id) ON DELETE SET NULL,
-        emergency_contact TEXT,
-        medical_notes TEXT,
         active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -94,17 +88,14 @@ export const createDatabaseSchema = async (pool: Pool) => {
         end_time TIMESTAMP GENERATED ALWAYS AS (start_time + INTERVAL '1 minute' * duration_minutes) STORED,
         duration_minutes INTEGER NOT NULL,
         capacity INTEGER NOT NULL DEFAULT 10,
-        price NUMERIC(10, 2),
         branch_id UUID REFERENCES "Branch"(id) ON DELETE SET NULL,
         created_by UUID REFERENCES "User"(id) ON DELETE SET NULL,
-        recurring_type TEXT CHECK (recurring_type IN ('one-time', 'weekly', 'monthly')) DEFAULT 'one-time',
         active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW(),
         
         CONSTRAINT valid_capacity CHECK (capacity > 0),
-        CONSTRAINT valid_duration CHECK (duration_minutes > 0),
-        CONSTRAINT valid_price CHECK (price >= 0)
+        CONSTRAINT valid_duration CHECK (duration_minutes > 0)
       )
     `;
     await pool.query(createClassesTable);
@@ -119,10 +110,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
         enrolled_at TIMESTAMP DEFAULT NOW(),
         enrolled_by UUID REFERENCES "User"(id) ON DELETE SET NULL,
         status TEXT CHECK (status IN ('enrolled', 'cancelled', 'completed', 'no-show')) DEFAULT 'enrolled',
-        cancelled_at TIMESTAMP NULL,
-        cancelled_reason TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        cancelled_at TIMESTAMP NULL
       )
     `;
     await pool.query(createEnrollmentsTable);
@@ -138,7 +126,6 @@ export const createDatabaseSchema = async (pool: Pool) => {
         paid BOOLEAN DEFAULT FALSE,
         payment_date TIMESTAMP NULL,
         payment_method TEXT CHECK (payment_method IN ('cash', 'card', 'bank_transfer', 'online', 'cheque')),
-        reference_number TEXT,
         notes TEXT,
         processed_by UUID REFERENCES "User"(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT NOW(),
@@ -158,8 +145,6 @@ export const createDatabaseSchema = async (pool: Pool) => {
         class_id UUID REFERENCES "Class"(id) ON DELETE CASCADE,
         enrollment_id UUID REFERENCES "Enrollment"(id) ON DELETE CASCADE,
         date DATE NOT NULL,
-        time_in TIMESTAMP,
-        time_out TIMESTAMP,
         status TEXT CHECK (status IN ('present', 'absent', 'late', 'excused')) DEFAULT 'present',
         notes TEXT,
         marked_by UUID REFERENCES "User"(id) ON DELETE SET NULL,
@@ -267,28 +252,28 @@ export const seedDatabase = async (pool: Pool) => {
 
     // Create branches
     const branch1 = await pool.query(`
-      INSERT INTO "Branch" (name, address, phone, email, manager_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO "Branch" (name, address, phone)
+      VALUES ($1, $2, $3)
       RETURNING id
-    `, ['Main Branch', 'Block 123, Tampines Street 45, #05-67, Singapore 520123', '61234567', 'main@tuition.com', staffUser1.rows[0].id]);
+    `, ['Main Branch', 'Block 123, Tampines Street 45, #05-67, Singapore 520123', '61234567']);
 
     const branch2 = await pool.query(`
-      INSERT INTO "Branch" (name, address, phone, email, manager_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO "Branch" (name, address, phone)
+      VALUES ($1, $2, $3)
       RETURNING id
-    `, ['North Branch', '789 Orchard Road, #12-34, Lucky Plaza, Singapore 238863', '63457890', 'north@tuition.com', staffUser2.rows[0].id]);
+    `, ['North Branch', '789 Orchard Road, #12-34, Lucky Plaza, Singapore 238863', '63457890']);
 
     const branch3 = await pool.query(`
-      INSERT INTO "Branch" (name, address, phone, email, manager_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO "Branch" (name, address, phone)
+      VALUES ($1, $2, $3)
       RETURNING id
-    `, ['East Branch', '21 Jurong East Avenue 1, #03-09, Singapore 609732', '62223344', 'east@tuition.com', staffUser3.rows[0].id]);
+    `, ['East Branch', '21 Jurong East Avenue 1, #03-09, Singapore 609732', '62223344']);
 
     const branch4 = await pool.query(`
-      INSERT INTO "Branch" (name, address, phone, email)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO "Branch" (name, address, phone)
+      VALUES ($1, $2, $3)
       RETURNING id
-    `, ['West Branch', '456 Bedok North Street 3, #10-88, Singapore 460456', '65557788', 'west@tuition.com']);
+    `, ['West Branch', '456 Bedok North Street 3, #10-88, Singapore 460456', '65557788']);
 
     console.log('Branches created');
 
@@ -316,37 +301,37 @@ export const seedDatabase = async (pool: Pool) => {
     // Create classes with varied scheduling
     const classesData = [
       // Mathematics classes
-      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 1, 90, 15, 80.00, branch1.rows[0].id],
-      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 2, 120, 12, 120.00, branch2.rows[0].id],
-      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 3, 60, 20, 60.00, branch3.rows[0].id],
+      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 1, 90, 15, branch1.rows[0].id],
+      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 2, 120, 12, branch2.rows[0].id],
+      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 3, 60, 20, branch3.rows[0].id],
       
       // English classes
-      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 5, 90, 18, 75.00, branch1.rows[0].id],
-      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 6, 90, 15, 100.00, branch2.rows[0].id],
-      ['English', 'Primary English basics', 'Primary 5', staffUser3.rows[0].id, 7, 60, 25, 50.00, branch3.rows[0].id],
+      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 5, 90, 18, branch1.rows[0].id],
+      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 6, 90, 15, branch2.rows[0].id],
+      ['English', 'Primary English basics', 'Primary 5', staffUser3.rows[0].id, 7, 60, 25, branch3.rows[0].id],
       
       // Science classes
-      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 8, 90, 16, 85.00, branch1.rows[0].id],
-      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser1.rows[0].id, 10, 120, 12, 130.00, branch2.rows[0].id],
-      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 12, 60, 22, 55.00, branch4.rows[0].id],
+      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 8, 90, 16, branch1.rows[0].id],
+      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser1.rows[0].id, 10, 120, 12, branch2.rows[0].id],
+      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 12, 60, 22, branch4.rows[0].id],
       
       // Additional subjects
-      ['Chinese', 'Mandarin language skills', 'Secondary 1', staffUser2.rows[0].id, 14, 75, 20, 70.00, branch3.rows[0].id],
-      ['History', 'Singapore and world history', 'Secondary 3', staffUser3.rows[0].id, 15, 90, 18, 65.00, branch1.rows[0].id],
-      ['Art', 'Creative expression and techniques', 'Primary 5', staffUser1.rows[0].id, 17, 90, 15, 45.00, branch4.rows[0].id],
+      ['Chinese', 'Mandarin language skills', 'Secondary 1', staffUser2.rows[0].id, 14, 75, 20, branch3.rows[0].id],
+      ['History', 'Singapore and world history', 'Secondary 3', staffUser3.rows[0].id, 15, 90, 18, branch1.rows[0].id],
+      ['Art', 'Creative expression and techniques', 'Primary 5', staffUser1.rows[0].id, 17, 90, 15, branch4.rows[0].id],
     ];
 
     for (let i = 0; i < classesData.length; i++) {
-      const [subject, description, level, tutorId, daysFromNow, duration, capacity, price, branchId] = classesData[i];
+      const [subject, description, level, tutorId, daysFromNow, duration, capacity, branchId] = classesData[i];
       
       const classDate = new Date();
       classDate.setDate(classDate.getDate() + (daysFromNow as number));
       classDate.setHours(10 + (i % 8), 0, 0, 0); // Vary start times between 10 AM and 5 PM
       
       await pool.query(`
-        INSERT INTO "Class" (subject, description, level, tutor_id, start_time, duration_minutes, capacity, price, branch_id, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `, [subject, description, level, tutorId, classDate, duration, capacity, price, branchId, tutorId]);
+        INSERT INTO "Class" (subject, description, level, tutor_id, start_time, duration_minutes, capacity, branch_id, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [subject, description, level, tutorId, classDate, duration, capacity, branchId, tutorId]);
     }
 
     console.log('Classes created');
