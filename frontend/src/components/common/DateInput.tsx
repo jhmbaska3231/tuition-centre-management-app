@@ -1,6 +1,6 @@
 // frontend/src/components/common/DateInput.tsx
 
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Calendar } from 'lucide-react';
 
 interface DateInputProps {
@@ -24,7 +24,6 @@ const DateInput: React.FC<DateInputProps> = ({
   required,
   disabled
 }) => {
-  const [showNativePicker, setShowNativePicker] = useState(false);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   const displayInputRef = useRef<HTMLInputElement>(null);
 

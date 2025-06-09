@@ -1,6 +1,6 @@
 // frontend/src/components/common/DateTimeInput.tsx
 
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Calendar, Clock } from 'lucide-react';
 
 interface DateTimeInputProps {

@@ -1,10 +1,11 @@
-// src/components/staff/ClassForm.tsx
+// frontend/src/components/staff/ClassForm.tsx
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Class, Branch, CreateClassRequest, UpdateClassRequest } from '../../types';
 import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
+import DateTimeInput from '../common/DateTimeInput';
 import { useAuth } from '../../hooks/useAuth';
 
 interface ClassFormProps {
@@ -333,16 +334,16 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Start Date & Time *
               </label>
-              <input
-                type="datetime-local"
+              <DateTimeInput
                 value={formData.startTime}
+                onChange={(value) => handleInputChange('startTime', value)}
                 min={getMinDateTime()}
-                onChange={(e) => handleInputChange('startTime', e.target.value)}
-                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                className={`${
                   fieldErrors.startTime 
                     ? 'border-red-300 focus:border-red-500' 
                     : 'border-gray-200 focus:border-blue-500'
                 }`}
+                placeholder="DD/MM/YYYY HH:MM"
                 required
               />
               {fieldErrors.startTime && (
