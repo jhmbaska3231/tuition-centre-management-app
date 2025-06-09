@@ -15,6 +15,7 @@ import paymentRoutes from './routes/payments';
 import studentRoutes from './routes/students';
 import userRoutes from './routes/users';
 import adminRoutes from './routes/admin';
+import attendanceRoutes from './routes/attendance';
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // Health check endpoints
 app.get('/', (req, res) => {

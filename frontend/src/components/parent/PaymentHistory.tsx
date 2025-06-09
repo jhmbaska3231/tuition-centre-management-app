@@ -1,4 +1,4 @@
-// src/components/parent/PaymentHistory.tsx
+// frontend/src/components/parent/PaymentHistory.tsx
 
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Calendar, DollarSign, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
@@ -65,18 +65,18 @@ const PaymentHistory: React.FC = () => {
       : 'bg-red-100 text-red-800 border-red-200';
   };
 
-  const getPaymentMethodIcon = (method?: string) => {
+  const getPaymentMethodDisplay = (method?: string) => {
     switch (method) {
       case 'card':
-        return '💳';
+        return 'Card';
       case 'bank_transfer':
-        return '🏦';
+        return 'Transfer';
       case 'cash':
-        return '💰';
+        return 'Cash';
       case 'online':
-        return '🌐';
+        return 'Online';
       default:
-        return '💳';
+        return 'Card';
     }
   };
 
@@ -190,8 +190,8 @@ const PaymentHistory: React.FC = () => {
                     .map((payment) => (
                     <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <div className="flex items-center space-x-4">
-                        <div className="text-2xl">
-                          {getPaymentMethodIcon(payment.payment_method)}
+                        <div className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                          {getPaymentMethodDisplay(payment.payment_method)}
                         </div>
                         <div>
                           <h4 className="font-semibold text-gray-800">

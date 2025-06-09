@@ -1,4 +1,4 @@
-// src/components/admin/StaffManagement.tsx
+// frontend/src/components/admin/StaffManagement.tsx
 
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, AlertTriangle, Loader2, UserCheck, UserX } from 'lucide-react';
@@ -290,7 +290,7 @@ const StaffManagement: React.FC = () => {
                 <div className="text-left">
                   {deletionImpact.impact.warning && (
                     <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-                      <p className="text-yellow-800 text-sm font-medium mb-2">⚠️ Impact Warning</p>
+                      <p className="text-yellow-800 text-sm font-medium mb-2">Impact Warning</p>
                       <p className="text-yellow-700 text-sm">{deletionImpact.impact.warning}</p>
                     </div>
                   )}
@@ -310,7 +310,7 @@ const StaffManagement: React.FC = () => {
                         ))}
                       </div>
                       <p className="text-sm text-blue-600 mt-2">
-                        💡 These classes will have no assigned tutor after deletion. 
+                        These classes will have no assigned tutor after deletion. 
                         You can reassign them to other staff members later.
                       </p>
                     </div>

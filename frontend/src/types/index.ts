@@ -251,3 +251,68 @@ export interface UserOverview {
   total_count: number;
   active_count: number;
 }
+
+// Attendance-related types
+export interface StaffClass {
+  class_id: string;
+  subject: string;
+  description?: string;
+  level?: string;
+  start_time: string;
+  duration_minutes: number;
+  branch_name: string;
+  branch_address: string;
+  enrolled_count: number;
+}
+
+export interface ClassStudent {
+  enrollment_id: string;
+  student_id: string;
+  enrolled_at: string;
+  first_name: string;
+  last_name: string;
+  grade: string;
+  parent_first_name: string;
+  parent_last_name: string;
+  parent_email: string;
+}
+
+export interface AttendanceRecord {
+  id?: string;
+  enrollment_id: string;
+  student_id: string;
+  status: 'present' | 'absent' | 'late' | 'excused';
+  time_in?: string;
+  time_out?: string;
+  notes?: string;
+  marked_at?: string;
+  first_name: string;
+  last_name: string;
+  grade: string;
+}
+
+export interface AttendanceMarkRequest {
+  enrollmentId: string;
+  studentId: string;
+  status: 'present' | 'absent' | 'late' | 'excused';
+  timeIn?: string;
+  timeOut?: string;
+  notes?: string;
+}
+
+export interface AttendanceSummary {
+  classInfo: {
+    id: string;
+    subject: string;
+    start_time: string;
+  };
+  summary: {
+    present_count: number;
+    absent_count: number;
+    late_count: number;
+    excused_count: number;
+    total_records: number;
+    days_recorded: number;
+    unique_students: number;
+  };
+}

@@ -1,11 +1,12 @@
-// src/components/staff/StaffDashboard.tsx
+// frontend/src/components/staff/StaffDashboard.tsx
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Users, Settings } from 'lucide-react';
+import { BookOpen, UserCheck, Settings } from 'lucide-react';
 import ClassManagement from './ClassManagement';
+import AttendanceTracking from './AttendanceTracking';
 import ProfileManagement from '../profile/ProfileManagement';
 
-type StaffTabType = 'classes' | 'students' | 'profile';
+type StaffTabType = 'classes' | 'attendance' | 'profile';
 
 interface TabConfig {
   id: StaffTabType;
@@ -46,18 +47,10 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({
       component: <ClassManagement />,
     },
     {
-      id: 'students',
-      label: 'Student Overview',
-      icon: <Users size={20} />,
-      component: (
-        <div className="px-6 py-16">
-          <div className="text-center">
-            <Users className="mx-auto text-gray-300 mb-4" size={64} />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">Student Overview</h3>
-            <p className="text-gray-500">Coming soon - View all enrolled students across your classes</p>
-          </div>
-        </div>
-      ),
+      id: 'attendance',
+      label: 'Attendance Tracking',
+      icon: <UserCheck size={20} />,
+      component: <AttendanceTracking />,
     },
     {
       id: 'profile',

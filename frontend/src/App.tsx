@@ -1,4 +1,4 @@
-// src/App.tsx
+// frontend/src/App.tsx
 
 import React, { useState } from 'react';
 import { BookOpen, User, BarChart3, Users, Calendar, CreditCard, UserPlus, Star, CheckCircle } from 'lucide-react';
@@ -63,7 +63,7 @@ const LoadingScreen: React.FC = () => (
 const AppContent: React.FC = () => {
   const { user, loading, isAuthenticated } = useAuth();
   const [currentTab, setCurrentTab] = useState<'students' | 'classes' | 'payments' | 'profile'>('students');
-  const [currentStaffTab, setCurrentStaffTab] = useState<'classes' | 'students' | 'profile'>('classes');
+  const [currentStaffTab, setCurrentStaffTab] = useState<'classes' | 'attendance' | 'profile'>('classes');
   const [currentAdminTab, setCurrentAdminTab] = useState<'staff' | 'classes' | 'profile'>('staff');
 
   const handleProfileClick = () => {
@@ -80,7 +80,7 @@ const AppContent: React.FC = () => {
     setCurrentTab(tab);
   };
 
-  const handleStaffTabChange = (tab: 'classes' | 'students' | 'profile') => {
+  const handleStaffTabChange = (tab: 'classes' | 'attendance' | 'profile') => {
     setCurrentStaffTab(tab);
   };
 
