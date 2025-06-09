@@ -156,7 +156,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
             <UserPlus className="text-white" size={24} />
           </div>
           <h2 className="text-2xl font-bold text-gray-800">Create Account</h2>
-          <p className="text-gray-600 mt-2">Join our tuition center community</p>
+          <p className="text-gray-600 mt-2">Join our tuition centre community</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">

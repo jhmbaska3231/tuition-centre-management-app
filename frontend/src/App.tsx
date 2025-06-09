@@ -130,7 +130,7 @@ const AppContent: React.FC = () => {
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-800 mb-6">
-            Welcome to Our Tuition Center
+            Welcome to Our Tuition Centre
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
             Comprehensive learning management system designed for modern education.

@@ -50,7 +50,7 @@ const Navigation: React.FC<NavigationProps> = ({ onProfileClick }) => {
             <div className="flex items-center space-x-2">
               <GraduationCap className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-800 hidden sm:block">
-                Tuition Center Management
+                Tuition Centre Management
               </span>
               <span className="text-lg font-bold text-gray-800 sm:hidden">
                 TCM
