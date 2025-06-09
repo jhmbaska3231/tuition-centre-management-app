@@ -1,7 +1,7 @@
 // frontend/src/components/staff/AttendanceTracking.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Users, Clock, CheckCircle, XCircle, AlertCircle, UserCheck, Loader2, BarChart3, Calendar, BookOpen } from 'lucide-react';
+import { Users, Clock, CheckCircle, XCircle, AlertCircle, UserCheck, Loader2, BarChart3, Calendar, BookOpen, X } from 'lucide-react';
 import type { StaffClass, ClassStudent, AttendanceRecord, AttendanceMarkRequest, AttendanceSummary } from '../../types';
 import AttendanceService from '../../services/attendance';
 
@@ -406,13 +406,6 @@ const AttendanceTracking: React.FC = () => {
         </div>
       )}
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-600">{successMessage}</p>
-        </div>
-      )}
-
       {classes.length === 0 ? (
         <div className="text-center py-12">
           <Users className="mx-auto text-gray-300 mb-4" size={64} />
@@ -779,6 +772,26 @@ const AttendanceTracking: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Success Toast Notification */}
+      {successMessage && (
+        <div className="fixed top-20 right-6 z-50 max-w-md">
+          <div className="bg-green-600 text-white p-4 rounded-lg shadow-lg border border-green-700 transform transition-all duration-300 ease-in-out">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="text-white" size={20} />
+              <div className="flex-1">
+                <p className="font-medium">{successMessage}</p>
+              </div>
+              <button
+                onClick={() => setSuccessMessage('')}
+                className="text-white hover:text-green-200 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
