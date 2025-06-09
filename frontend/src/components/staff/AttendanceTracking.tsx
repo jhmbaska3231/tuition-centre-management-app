@@ -115,14 +115,6 @@ const AttendanceTracking: React.FC = () => {
         }
       });
       
-      // Debug logging
-      console.log('Loaded attendance state:', {
-        studentsCount: studentList.length,
-        recordsCount: records.length,
-        stateKeys: Object.keys(newAttendanceState),
-        sampleState: Object.values(newAttendanceState)[0]
-      });
-      
       setAttendanceState(newAttendanceState);
     } catch (err) {
       console.error('Load attendance error:', err);
@@ -159,14 +151,6 @@ const AttendanceTracking: React.FC = () => {
         timeOut: record.timeOut || undefined,
         notes: record.notes || ''
       }));
-      
-      // Debug logging
-      console.log('Saving attendance:', {
-        classId: selectedClass.class_id,
-        date: selectedDate,
-        recordsCount: attendanceRecords.length,
-        records: attendanceRecords
-      });
       
       // Validate that we have all required fields
       for (let i = 0; i < attendanceRecords.length; i++) {

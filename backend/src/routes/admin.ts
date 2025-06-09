@@ -220,9 +220,6 @@ router.delete('/staff/:id', authenticateToken, requireRole('admin'), async (req:
       [id]
     );
     
-    console.log(`Deleting staff account: ${staff.email}`);
-    console.log(`- Affected classes: ${classesCount.rows[0].count} (will have tutor_id set to NULL)`);
-    
     // Delete staff member - classes will automatically have tutor_id set to NULL due to ON DELETE SET NULL
     await client.query(
       'DELETE FROM "User" WHERE id = $1 AND role = $2',
@@ -230,8 +227,6 @@ router.delete('/staff/:id', authenticateToken, requireRole('admin'), async (req:
     );
     
     await client.query('COMMIT');
-    
-    console.log(`Successfully deleted staff account: ${staff.email}`);
     
     res.json({
       message: 'Staff account deleted successfully',

@@ -55,10 +55,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         .toISOString()
         .slice(0, 16);
 
-      // Debug branch_id value
-      console.log('ClassForm - Setting branchId:', classData.branch_id);
-      console.log('ClassForm - Available branches:', branches.map(b => ({ id: b.id, name: b.name })));
-        
       setFormData({
         subject: classData.subject,
         description: classData.description || '',

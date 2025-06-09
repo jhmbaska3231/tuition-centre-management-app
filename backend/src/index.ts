@@ -103,13 +103,11 @@ initDatabase().then(() => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
   await pool.end();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('Received SIGTERM, shutting down gracefully...');
   await pool.end();
   process.exit(0);
 });
