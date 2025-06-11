@@ -68,6 +68,7 @@ export interface Branch {
   phone?: string;
   active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Student {
@@ -177,6 +178,33 @@ export interface UpdateClassRequest {
   durationMinutes?: number;
   capacity?: number;
   branchId?: string;
+}
+
+// Branch-related types
+export interface CreateBranchRequest {
+  name: string;
+  address: string;
+  phone?: string;
+}
+
+export interface UpdateBranchRequest {
+  name?: string;
+  address?: string;
+  phone?: string;
+  active?: boolean;
+}
+
+export interface BranchDeletionImpact {
+  branch: {
+    name: string;
+    address: string;
+  };
+  impact: {
+    studentsAffected: number;
+    totalClasses: number;
+    futureClasses: number;
+    warning?: string;
+  };
 }
 
 // Admin-specific types

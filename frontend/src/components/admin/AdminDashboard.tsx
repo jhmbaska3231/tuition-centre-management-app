@@ -1,12 +1,13 @@
-// src/components/admin/AdminDashboard.tsx
+// frontend/src/components/admin/AdminDashboard.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Users, UserCheck, Settings } from 'lucide-react';
+import { Users, UserCheck, Settings, MapPin } from 'lucide-react';
 import StaffManagement from './StaffManagement';
 import ClassReassignment from './ClassReassignment';
+import BranchManagement from './BranchManagement';
 import ProfileManagement from '../profile/ProfileManagement';
 
-type AdminTabType = 'staff' | 'classes' | 'profile';
+type AdminTabType = 'staff' | 'classes' | 'branches' | 'profile';
 
 interface TabConfig {
   id: AdminTabType;
@@ -51,6 +52,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       label: 'Class Assignments',
       icon: <UserCheck size={20} />,
       component: <ClassReassignment />,
+    },
+    {
+      id: 'branches',
+      label: 'Branch Management',
+      icon: <MapPin size={20} />,
+      component: <BranchManagement />,
     },
     {
       id: 'profile',

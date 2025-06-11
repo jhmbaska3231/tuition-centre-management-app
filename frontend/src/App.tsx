@@ -64,7 +64,7 @@ const AppContent: React.FC = () => {
   const { user, loading, isAuthenticated } = useAuth();
   const [currentTab, setCurrentTab] = useState<'students' | 'classes' | 'payments' | 'profile'>('students');
   const [currentStaffTab, setCurrentStaffTab] = useState<'classes' | 'attendance' | 'profile'>('classes');
-  const [currentAdminTab, setCurrentAdminTab] = useState<'staff' | 'classes' | 'profile'>('staff');
+  const [currentAdminTab, setCurrentAdminTab] = useState<'staff' | 'classes' | 'branches' | 'profile'>('staff');
 
   const handleProfileClick = () => {
     if (user?.role === 'parent') {
@@ -84,7 +84,7 @@ const AppContent: React.FC = () => {
     setCurrentStaffTab(tab);
   };
 
-  const handleAdminTabChange = (tab: 'staff' | 'classes' | 'profile') => {
+  const handleAdminTabChange = (tab: 'staff' | 'classes' | 'branches' | 'profile') => {
     setCurrentAdminTab(tab);
   };
 
