@@ -49,23 +49,29 @@ const AttendanceTracking: React.FC = () => {
     setError('');
     try {
       const classList = await AttendanceService.getMyClasses();
-      setClasses(classList);
+      
+      // Sort classes by start_time in ascending order (earliest first)
+      const sortedClasses = classList.sort((a, b) => {
+        return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+      });
+      
+      setClasses(sortedClasses);
       
       // Auto-select first class that can have attendance taken today
       const today = new Date().toISOString().split('T')[0];
-      const todayClass = classList.find(cls => {
+      const todayClass = sortedClasses.find(cls => {
         const classDate = new Date(cls.start_time).toISOString().split('T')[0];
         return classDate === today;
       });
       
       if (todayClass && !selectedClass) {
         setSelectedClass(todayClass);
-      } else if (classList.length > 0 && !selectedClass) {
-        setSelectedClass(classList[0]);
+      } else if (sortedClasses.length > 0 && !selectedClass) {
+        setSelectedClass(sortedClasses[0]);
       }
       
       // Filter today's classes for summary
-      const todaysClasses = classList.filter(cls => {
+      const todaysClasses = sortedClasses.filter(cls => {
         const classDate = new Date(cls.start_time).toISOString().split('T')[0];
         return classDate === today;
       });
