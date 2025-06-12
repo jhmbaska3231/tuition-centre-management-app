@@ -46,6 +46,18 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
   // View toggle
   const [activeView, setActiveView] = useState<'browse' | 'enrollments'>('browse');
 
+  // Helper function to get one month from today (matching backend logic)
+  const getOneMonthFromToday = () => {
+    const oneMonthFromNow = new Date();
+    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+    return oneMonthFromNow;
+  };
+
+  // Helper function to get max allowed end date (1 month from today)
+  const getMaxEndDate = () => {
+    return getOneMonthFromToday().toISOString().split('T')[0];
+  };
+
   // Load initial data when component mounts
   useEffect(() => {
     loadInitialData();
@@ -78,13 +90,12 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       setBranches(branchList);
       setEnrollments(enrollmentList);
       
-      // Set default date range (next 30 days)
+      // Set default date range (today to 1 month from today - matching backend validation)
       const today = new Date();
-      const nextMonth = new Date();
-      nextMonth.setDate(today.getDate() + 30);
+      const oneMonthFromToday = getOneMonthFromToday();
       
       setStartDate(today.toISOString().split('T')[0]);
-      setEndDate(nextMonth.toISOString().split('T')[0]);
+      setEndDate(oneMonthFromToday.toISOString().split('T')[0]);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -109,6 +120,15 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       let filteredClasses = selectedSubject 
         ? classList.filter(cls => cls.subject.toLowerCase().includes(selectedSubject.toLowerCase()))
         : classList;
+
+      // Only show classes within 1 month from today
+      const today = new Date();
+      const oneMonthFromToday = getOneMonthFromToday();
+      
+      filteredClasses = filteredClasses.filter(cls => {
+        const classDate = new Date(cls.start_time);
+        return classDate > today && classDate <= oneMonthFromToday;
+      });
 
       // Filter classes to only show those that match student grades or are Mixed Levels
       const studentGrades = students.map(student => student.grade);
@@ -218,6 +238,21 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       setShowCancelConfirm(null);
     } finally {
       setCancelling(false);
+    }
+  };
+
+  // Handler for end date changes with validation
+  const handleEndDateChange = (newEndDate: string) => {
+    const maxEndDate = getMaxEndDate();
+    
+    // If the selected date is beyond the max allowed date, use the max date instead
+    if (newEndDate > maxEndDate) {
+      setEndDate(maxEndDate);
+      setError('End date cannot be more than 1 month from today. Date has been adjusted to the maximum allowed.');
+      // Clear error after 3 seconds
+      setTimeout(() => setError(''), 3000);
+    } else {
+      setEndDate(newEndDate);
     }
   };
 
@@ -366,6 +401,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
   const filteredEnrollments = getFilteredEnrollments();
   const studentsWithEnrollments = getStudentsWithEnrollments();
   const eligibleStudentsForSelectedClass = selectedClass ? getEligibleStudents(selectedClass) : [];
+  const maxEndDate = getMaxEndDate();
 
   return (
     <div className="px-6 py-16">
@@ -501,6 +537,8 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 onChange={setStartDate}
                 className=""
                 placeholder="DD/MM/YYYY"
+                min={new Date().toISOString().split('T')[0]}
+                max={maxEndDate}
               />
             </div>
             
@@ -510,10 +548,15 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               </label>
               <DateInput
                 value={endDate}
-                onChange={setEndDate}
+                onChange={handleEndDateChange}
                 className=""
                 placeholder="DD/MM/YYYY"
+                min={startDate || new Date().toISOString().split('T')[0]}
+                max={maxEndDate}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Maximum: {new Date(maxEndDate).toLocaleDateString('en-SG')} (1 month from today)
+              </p>
             </div>
           </div>
           
@@ -561,12 +604,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                   setSelectedSubject('');
                   setSelectedBranch('');
                   setSelectedChild('all');
-                  // Reset to default date range (next 30 days)
+                  // Reset to default date range (today to 1 month from today)
                   const today = new Date();
-                  const nextMonth = new Date();
-                  nextMonth.setDate(today.getDate() + 30);
+                  const oneMonthFromToday = getOneMonthFromToday();
                   setStartDate(today.toISOString().split('T')[0]);
-                  setEndDate(nextMonth.toISOString().split('T')[0]);
+                  setEndDate(oneMonthFromToday.toISOString().split('T')[0]);
                 }}
                 className="ml-2 px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-full text-xs font-medium transition-colors"
               >
@@ -574,11 +616,6 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               </button>
             </div>
           )}
-
-          {/* Date Range Info */}
-          <div className="mt-4 text-sm text-gray-500">
-            <span>Date range: {startDate ? new Date(startDate).toLocaleDateString('en-SG') : 'Any'} - {endDate ? new Date(endDate).toLocaleDateString('en-SG') : 'Any'}</span>
-          </div>
         </div>
       )}
 
@@ -591,7 +628,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <h3 className="text-sm font-semibold text-blue-800 mb-1">Grade Level Information</h3>
               <p className="text-sm text-blue-700">
                 Classes shown are filtered for your children's grade levels: {[...new Set(students.map(s => s.grade))].join(', ')}. 
-                Mixed Levels classes are available to all students.
+                Mixed Levels classes are available to all students. Only classes within 1 month are available for enrollment.
               </p>
             </div>
           </div>
@@ -622,7 +659,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 Available Classes ({classes.length})
               </h2>
               <span className="text-sm text-gray-500">
-                Showing classes for your children's grade levels
+                Showing classes for your children's grade levels (within 1 month)
               </span>
             </div>
           </div>
@@ -634,7 +671,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <p className="text-gray-500">
                 {students.length === 0 
                   ? 'Please add your children first to see available classes for their grade levels.'
-                  : 'No classes match your current filters or your children\'s grade levels. Try adjusting the filters.'
+                  : 'No classes match your current filters, your children\'s grade levels, or are within the 1-month enrollment window. Try adjusting the filters.'
                 }
               </p>
             </div>
