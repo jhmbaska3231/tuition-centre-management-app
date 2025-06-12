@@ -1,7 +1,7 @@
 // frontend/src/components/parent/ClassOperations.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User, CheckCircle, } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Plus, X, Loader2, Filter, User, CheckCircle, AlertCircle } from 'lucide-react';
 import type { Class, Enrollment, Student, Branch } from '../../types';
 import ClassService from '../../services/class';
 import EnrollmentService from '../../services/enrollment';
@@ -106,9 +106,19 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       setAllClasses(classList);
       
       // Apply subject filter on frontend if selected
-      const filteredClasses = selectedSubject 
+      let filteredClasses = selectedSubject 
         ? classList.filter(cls => cls.subject.toLowerCase().includes(selectedSubject.toLowerCase()))
         : classList;
+
+      // Filter classes to only show those that match student grades or are Mixed Levels
+      const studentGrades = students.map(student => student.grade);
+      const uniqueGrades = [...new Set(studentGrades)];
+      
+      if (uniqueGrades.length > 0) {
+        filteredClasses = filteredClasses.filter(cls => 
+          cls.level === 'Mixed Levels' || uniqueGrades.includes(cls.level || '')
+        );
+      }
         
       setClasses(filteredClasses);
     } catch (err) {
@@ -154,11 +164,8 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       setEnrollments(enrollmentList);
       setAllClasses(classList);
       
-      // Apply subject filter
-      const filteredClasses = selectedSubject 
-        ? classList.filter(cls => cls.subject.toLowerCase().includes(selectedSubject.toLowerCase()))
-        : classList;
-      setClasses(filteredClasses);
+      // Apply filters again
+      await loadClasses();
       
       // Show success message
       setSuccessMessage(`${studentName} has been successfully enrolled in ${selectedClass.subject}!`);
@@ -202,11 +209,8 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       setEnrollments(enrollmentList);
       setAllClasses(classList);
       
-      // Apply subject filter
-      const filteredClasses = selectedSubject 
-        ? classList.filter(cls => cls.subject.toLowerCase().includes(selectedSubject.toLowerCase()))
-        : classList;
-      setClasses(filteredClasses);
+      // Apply filters again
+      await loadClasses();
       
       setShowCancelConfirm(null);
     } catch (err) {
@@ -255,15 +259,34 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
     );
   };
 
-  const canEnrollInClass = (classItem: Class) => {
-    return getAvailableSpots(classItem) > 0 && students.some(student => 
+  // Check if student can enroll based on grade matching
+  const canStudentEnrollInClass = (classItem: Class, student: Student) => {
+    return classItem.level === 'Mixed Levels' || student.grade === classItem.level;
+  };
+
+  // Get eligible students for a class
+  const getEligibleStudents = (classItem: Class) => {
+    return students.filter(student => 
+      canStudentEnrollInClass(classItem, student) && 
       !isStudentEnrolled(classItem.id, student.id)
     );
   };
 
-  // Get unique subjects from all available classes
+  const canEnrollInClass = (classItem: Class) => {
+    return getAvailableSpots(classItem) > 0 && getEligibleStudents(classItem).length > 0;
+  };
+
+  // Get unique subjects from all available classes (including filtered by grade)
   const getUniqueSubjects = () => {
-    const subjects = allClasses.map(cls => cls.subject);
+    const studentGrades = students.map(student => student.grade);
+    const uniqueGrades = [...new Set(studentGrades)];
+    
+    // Filter classes by grade eligibility first, then extract subjects
+    const eligibleClasses = uniqueGrades.length > 0 
+      ? allClasses.filter(cls => cls.level === 'Mixed Levels' || uniqueGrades.includes(cls.level || ''))
+      : allClasses;
+      
+    const subjects = eligibleClasses.map(cls => cls.subject);
     return [...new Set(subjects)].sort();
   };
 
@@ -342,6 +365,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
 
   const filteredEnrollments = getFilteredEnrollments();
   const studentsWithEnrollments = getStudentsWithEnrollments();
+  const eligibleStudentsForSelectedClass = selectedClass ? getEligibleStudents(selectedClass) : [];
 
   return (
     <div className="px-6 py-16">
@@ -558,6 +582,22 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
         </div>
       )}
 
+      {/* Grade Information Notice */}
+      {activeView === 'browse' && students.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="text-blue-600 mt-0.5" size={20} />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-800 mb-1">Grade Level Information</h3>
+              <p className="text-sm text-blue-700">
+                Classes shown are filtered for your children's grade levels: {[...new Set(students.map(s => s.grade))].join(', ')}. 
+                Mixed Levels classes are available to all students.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Error Message */}
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -582,7 +622,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 Available Classes ({classes.length})
               </h2>
               <span className="text-sm text-gray-500">
-                Showing classes available for enrollment
+                Showing classes for your children's grade levels
               </span>
             </div>
           </div>
@@ -592,7 +632,10 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <Calendar className="mx-auto text-gray-300 mb-4" size={64} />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">No Classes Available</h3>
               <p className="text-gray-500">
-                No classes match your current filters. Try adjusting the filters.
+                {students.length === 0 
+                  ? 'Please add your children first to see available classes for their grade levels.'
+                  : 'No classes match your current filters or your children\'s grade levels. Try adjusting the filters.'
+                }
               </p>
             </div>
           ) : (
@@ -605,7 +648,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-gray-800 mb-1">{classItem.subject}</h3>
                       {classItem.level && (
-                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded mb-2">
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded mb-2 ${
+                          classItem.level === 'Mixed Levels' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
                           {classItem.level}
                         </span>
                       )}
@@ -671,7 +718,9 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                   >
                     <Plus size={20} />
                     <span>
-                      {getAvailableSpots(classItem) === 0 ? 'Class Full' : 'Enroll Student'}
+                      {getAvailableSpots(classItem) === 0 ? 'Class Full' : 
+                       getEligibleStudents(classItem).length === 0 ? 'No Eligible Students' :
+                       'Enroll Student'}
                     </span>
                   </button>
                 </div>
@@ -779,7 +828,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">{selectedClass.subject}</h3>
               {selectedClass.level && (
-                <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded mb-2">
+                <span className={`inline-block px-2 py-1 text-xs font-medium rounded mb-2 ${
+                  selectedClass.level === 'Mixed Levels' 
+                    ? 'bg-purple-100 text-purple-800' 
+                    : 'bg-gray-100 text-gray-700'
+                }`}>
                   {selectedClass.level}
                 </span>
               )}
@@ -803,14 +856,25 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
               >
                 <option value="">Choose a student</option>
-                {students
-                  .filter(student => !isStudentEnrolled(selectedClass.id, student.id))
-                  .map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.first_name} {student.last_name} ({student.grade})
-                    </option>
-                  ))}
+                {eligibleStudentsForSelectedClass.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.first_name} {student.last_name} ({student.grade})
+                  </option>
+                ))}
               </select>
+              
+              {/* Show grade matching info */}
+              {selectedClass.level !== 'Mixed Levels' && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Only students in {selectedClass.level} can enroll in this class.
+                </p>
+              )}
+              
+              {eligibleStudentsForSelectedClass.length === 0 && (
+                <p className="text-xs text-red-600 mt-2">
+                  No eligible students. Students must be in {selectedClass.level} grade to enroll.
+                </p>
+              )}
             </div>
             
             <div className="flex space-x-3">

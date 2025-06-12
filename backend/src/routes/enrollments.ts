@@ -66,9 +66,9 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
       return;
     }
 
-    // Verify student belongs to this parent
+    // Verify student belongs to this parent and get student details
     const studentCheck = await pool.query(
-      'SELECT id, first_name, last_name FROM "Student" WHERE id = $1 AND parent_id = $2 AND active = TRUE',
+      'SELECT id, first_name, last_name, grade FROM "Student" WHERE id = $1 AND parent_id = $2 AND active = TRUE',
       [studentId, req.user!.userId]
     );
 
@@ -77,12 +77,14 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
       return;
     }
 
+    const student = studentCheck.rows[0];
+
     // Verify class exists and is in the future (within 1 month)
     const oneMonthFromNow = new Date();
     oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
 
     const classCheck = await pool.query(`
-      SELECT c.id, c.subject, c.start_time, c.capacity,
+      SELECT c.id, c.subject, c.level, c.start_time, c.capacity,
              COUNT(e.id) as enrolled_count
       FROM "Class" c
       LEFT JOIN "Enrollment" e ON c.id = e.class_id 
@@ -94,7 +96,7 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
       WHERE c.id = $1 AND c.active = TRUE 
         AND c.start_time > NOW() 
         AND c.start_time <= $2
-      GROUP BY c.id, c.subject, c.start_time, c.capacity
+      GROUP BY c.id, c.subject, c.level, c.start_time, c.capacity
     `, [classId, oneMonthFromNow]);
 
     if (classCheck.rows.length === 0) {
@@ -103,6 +105,17 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
     }
 
     const classInfo = classCheck.rows[0];
+
+    // Check if student's grade matches class level or class allows mixed levels
+    const studentGrade = student.grade;
+    const classLevel = classInfo.level;
+    
+    if (classLevel !== 'Mixed Levels' && studentGrade !== classLevel) {
+      res.status(400).json({ 
+        error: `Student grade (${studentGrade}) does not match class level (${classLevel}). Students can only enroll in classes for their grade level or Mixed Levels classes.` 
+      });
+      return;
+    }
 
     // Check if class is full
     if (parseInt(classInfo.enrolled_count) >= classInfo.capacity) {
@@ -128,7 +141,6 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
       RETURNING id, enrolled_at, status
     `, [studentId, classId, req.user!.userId, 'enrolled']);
 
-    const student = studentCheck.rows[0];
     const studentFullName = `${student.first_name} ${student.last_name}`;
 
     res.status(201).json({
