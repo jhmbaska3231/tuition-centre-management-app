@@ -7,6 +7,81 @@ import { validateClass } from '../middleware/validation';
 
 const router = express.Router();
 
+// Helper function to check for teacher schedule conflicts
+const checkTeacherScheduleConflict = async (
+  tutorId: string, 
+  startTime: string, 
+  durationMinutes: number, 
+  excludeClassId?: string
+): Promise<{ hasConflict: boolean; conflictingClass?: any }> => {
+  try {
+    const classStartTime = new Date(startTime);
+    const classEndTime = new Date(classStartTime.getTime() + (durationMinutes * 60 * 1000));
+
+    // Query to find overlapping classes for the same tutor
+    let query = `
+      SELECT c.id, c.subject, c.level, c.start_time, c.duration_minutes,
+             b.name as branch_name
+      FROM "Class" c
+      LEFT JOIN "Branch" b ON c.branch_id = b.id
+      WHERE c.tutor_id = $1 
+        AND c.active = TRUE 
+        AND c.start_time + INTERVAL '1 minute' * c.duration_minutes > $2
+        AND c.start_time < $3
+    `;
+    
+    const queryParams = [tutorId, classStartTime.toISOString(), classEndTime.toISOString()];
+    
+    // If editing an existing class, exclude it from the conflict check
+    if (excludeClassId) {
+      query += ' AND c.id != $4';
+      queryParams.push(excludeClassId);
+    }
+
+    const result = await pool.query(query, queryParams);
+
+    if (result.rows.length > 0) {
+      return {
+        hasConflict: true,
+        conflictingClass: result.rows[0]
+      };
+    }
+
+    return { hasConflict: false };
+  } catch (error) {
+    console.error('Error checking teacher schedule conflict:', error);
+    throw new Error('Failed to check teacher availability');
+  }
+};
+
+// Helper function to format conflict error message
+const formatConflictErrorMessage = (conflictingClass: any, requestedStartTime: string, requestedDuration: number): string => {
+  const conflictStart = new Date(conflictingClass.start_time);
+  const conflictEnd = new Date(conflictStart.getTime() + (conflictingClass.duration_minutes * 60 * 1000));
+  const requestedStart = new Date(requestedStartTime);
+  const requestedEnd = new Date(requestedStart.getTime() + (requestedDuration * 60 * 1000));
+
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleDateString('en-SG', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-SG', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return `Schedule conflict detected! You already have "${conflictingClass.subject}${conflictingClass.level ? ` (${conflictingClass.level})` : ''}" scheduled from ${formatDateTime(conflictStart)} to ${formatTime(conflictEnd)} at ${conflictingClass.branch_name}. Your requested class time (${formatDateTime(requestedStart)} to ${formatTime(requestedEnd)}) overlaps with this existing class.`;
+};
+
 // Get all active classes (available to parents, staff, and admin with different permissions)
 router.get('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -171,6 +246,15 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
       return;
     }
 
+    // Check for teacher schedule conflicts
+    const conflictCheck = await checkTeacherScheduleConflict(userId, startTime, durationMinutes);
+    
+    if (conflictCheck.hasConflict) {
+      const errorMessage = formatConflictErrorMessage(conflictCheck.conflictingClass, startTime, durationMinutes);
+      res.status(409).json({ error: errorMessage });
+      return;
+    }
+
     const result = await pool.query(`
       INSERT INTO "Class" (subject, description, level, tutor_id, start_time, duration_minutes, capacity, branch_id, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -238,6 +322,25 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
     if (level !== undefined && (!level || level.trim().length === 0)) {
       res.status(400).json({ error: 'Level/Grade is required and cannot be empty' });
       return;
+    }
+
+    // Check for teacher schedule conflicts if start time or duration is being updated
+    if (startTime || durationMinutes) {
+      const newStartTime = startTime || classItem.start_time;
+      const newDuration = durationMinutes || classItem.duration_minutes;
+      
+      const conflictCheck = await checkTeacherScheduleConflict(
+        classItem.tutor_id, 
+        newStartTime, 
+        newDuration, 
+        id // Exclude current class from conflict check
+      );
+      
+      if (conflictCheck.hasConflict) {
+        const errorMessage = formatConflictErrorMessage(conflictCheck.conflictingClass, newStartTime, newDuration);
+        res.status(409).json({ error: errorMessage });
+        return;
+      }
     }
 
     const result = await pool.query(`
