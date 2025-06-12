@@ -30,6 +30,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({
     subject: '',
+    level: '',
     startTime: '',
     durationMinutes: '',
     capacity: '',
@@ -80,6 +81,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     setError('');
     setFieldErrors({
       subject: '',
+      level: '',
       startTime: '',
       durationMinutes: '',
       capacity: '',
@@ -107,6 +109,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       case 'subject':
         if (!value || value.trim().length < 2) {
           error = 'Subject must be at least 2 characters';
+        }
+        break;
+      case 'level':
+        if (!value || value.trim().length < 1) {
+          error = 'Level/Grade is required';
         }
         break;
       case 'startTime':
@@ -156,12 +163,13 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
 
   const validateForm = (): boolean => {
     const subjectValid = validateField('subject', formData.subject);
+    const levelValid = validateField('level', formData.level);
     const startTimeValid = validateField('startTime', formData.startTime);
     const durationValid = validateField('durationMinutes', formData.durationMinutes);
     const capacityValid = validateField('capacity', formData.capacity);
     const branchValid = validateField('branchId', formData.branchId);
     
-    return subjectValid && startTimeValid && durationValid && capacityValid && branchValid;
+    return subjectValid && levelValid && startTimeValid && durationValid && capacityValid && branchValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,7 +187,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       const requestData: CreateClassRequest | UpdateClassRequest = {
         subject: formData.subject.trim(),
         description: formData.description.trim() || undefined,
-        level: formData.level.trim() || undefined,
+        level: formData.level.trim(),
         startTime: formData.startTime,
         durationMinutes: formData.durationMinutes,
         capacity: formData.capacity,
@@ -215,6 +223,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     setError('');
     setFieldErrors({
       subject: '',
+      level: '',
       startTime: '',
       durationMinutes: '',
       capacity: '',
@@ -286,14 +295,19 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Grade/Level
+                Grade/Level *
               </label>
               <select
                 value={formData.level}
                 onChange={(e) => handleInputChange('level', e.target.value)}
-                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                  fieldErrors.level 
+                    ? 'border-red-300 focus:border-red-500' 
+                    : 'border-gray-200 focus:border-blue-500'
+                }`}
+                required
               >
-                <option value="">Select Level (Optional)</option>
+                <option value="">Select Level *</option>
                 <option value="Nursery 1">Nursery 1 (N1)</option>
                 <option value="Nursery 2">Nursery 2 (N2)</option>
                 <option value="Kindergarten 1">Kindergarten 1 (K1)</option>
@@ -309,8 +323,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 <option value="Secondary 3">Secondary 3 (Sec 3)</option>
                 <option value="Secondary 4">Secondary 4 (Sec 4)</option>
                 <option value="Secondary 5">Secondary 5 (Sec 5)</option>
-                <option value="Mixed Levels">Mixed Levels</option>
+                <option value="Mixed Levels">Mixed Levels (All Grades)</option>
               </select>
+              {fieldErrors.level && (
+                <p className="text-red-600 text-sm mt-1">{fieldErrors.level}</p>
+              )}
             </div>
           </div>
 
@@ -453,7 +470,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
           {/* Info Box */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 text-sm">
-              <span className="font-medium">Note:</span> Class creation and update times will be automatically recorded. 
+              <span className="font-medium">Note:</span> Level/Grade is required for all classes. Use "Mixed Levels" for classes or activities that accept students of different grades.
               {isEdit ? ' Only future classes can be modified.' : ' Make sure all details are correct before creating.'}
             </p>
           </div>

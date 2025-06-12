@@ -1,4 +1,4 @@
-// src/components/auth/RegistrationModal.tsx
+// frontend/src/components/auth/RegistrationModal.tsx
 
 import React, { useState } from 'react';
 import { X, UserPlus } from 'lucide-react';
@@ -51,8 +51,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
         error = getNameValidationError(value, 'Last name') || '';
         break;
       case 'email':
-        if (!value) error = 'Email is required';
-        else if (!isValidEmail(value)) error = 'Please enter a valid email address';
+        const trimmedEmail = value.trim();
+        if (!trimmedEmail) error = 'Email is required';
+        else if (!isValidEmail(trimmedEmail)) error = 'Please enter a valid email address';
         break;
       case 'phone':
         error = getPhoneValidationError(value) || '';
@@ -81,6 +82,15 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
     // Also revalidate confirm password if password changed
     if (field === 'password' && formData.confirmPassword) {
       validateField('confirmPassword', formData.confirmPassword);
+    }
+  };
+
+  const handleEmailBlur = () => {
+    // Trim email whitespace when user leaves the field
+    const trimmedEmail = formData.email.trim();
+    if (trimmedEmail !== formData.email) {
+      setFormData(prev => ({ ...prev, email: trimmedEmail }));
+      validateField('email', trimmedEmail);
     }
   };
 
@@ -213,6 +223,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
+              onBlur={handleEmailBlur}
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.email 
                   ? 'border-red-300 focus:border-red-500' 

@@ -1,4 +1,4 @@
-// src/components/auth/LoginModal.tsx
+// frontend/src/components/auth/LoginModal.tsx
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
@@ -19,7 +19,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    // Trim email whitespace before validation
+    const trimmedEmail = email.trim();
+    
+    if (!trimmedEmail || !password) {
       setError('Please fill in all fields');
       return;
     }
@@ -28,7 +31,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      await login(email, password);
+      await login(trimmedEmail, password);
       onClose();
       setEmail('');
       setPassword('');
@@ -37,6 +40,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Store the raw value but trim on blur for better UX
+    setEmail(e.target.value);
+    setError('');
+  };
+
+  const handleEmailBlur = () => {
+    // Trim whitespace when user leaves the email field
+    setEmail(email.trim());
   };
 
   const handleClose = () => {
@@ -69,7 +83,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={handleEmailChange}
+              onBlur={handleEmailBlur}
               className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
               placeholder="Enter your email"
               required

@@ -28,6 +28,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
   const [fieldErrors, setFieldErrors] = useState({
     firstName: '',
     lastName: '',
+    grade: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
@@ -62,7 +63,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
       });
     }
     setError('');
-    setFieldErrors({ firstName: '', lastName: '' });
+    setFieldErrors({ firstName: '', lastName: '', grade: '' });
   }, [student, isOpen]);
 
   const loadBranches = async () => {
@@ -88,6 +89,11 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
       case 'lastName':
         error = getNameValidationError(value, 'Last name') || '';
         break;
+      case 'grade':
+        if (!value || value.trim().length < 1) {
+          error = 'Grade is required';
+        }
+        break;
     }
     
     setFieldErrors(prev => ({ ...prev, [field]: error }));
@@ -98,8 +104,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
     
-    // Real-time validation for name fields
-    if (field === 'firstName' || field === 'lastName') {
+    // Real-time validation for required fields
+    if (field === 'firstName' || field === 'lastName' || field === 'grade') {
       validateField(field, value);
     }
   };
@@ -107,19 +113,16 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
   const validateForm = (): boolean => {
     const firstNameValid = validateField('firstName', formData.firstName);
     const lastNameValid = validateField('lastName', formData.lastName);
+    const gradeValid = validateField('grade', formData.grade);
     
-    if (!formData.grade.trim()) {
-      setError('Grade is required');
-      return false;
-    }
-    
-    return firstNameValid && lastNameValid;
+    return firstNameValid && lastNameValid && gradeValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
+      setError('Please correct the errors above');
       return;
     }
 
@@ -160,7 +163,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
       homeBranchId: '',
     });
     setError('');
-    setFieldErrors({ firstName: '', lastName: '' });
+    setFieldErrors({ firstName: '', lastName: '', grade: '' });
   };
 
   if (!isOpen) return null;
@@ -234,10 +237,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
             <select
               value={formData.grade}
               onChange={(e) => handleInputChange('grade', e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+              className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                fieldErrors.grade 
+                  ? 'border-red-300 focus:border-red-500' 
+                  : 'border-gray-200 focus:border-blue-500'
+              }`}
               required
             >
-              <option value="">Select Grade</option>
+              <option value="">Select Grade *</option>
               <option value="Nursery 1">Nursery 1 (N1)</option>
               <option value="Nursery 2">Nursery 2 (N2)</option>
               <option value="Kindergarten 1">Kindergarten 1 (K1)</option>
@@ -254,6 +261,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
               <option value="Secondary 4">Secondary 4 (Sec 4)</option>
               <option value="Secondary 5">Secondary 5 (Sec 5)</option>
             </select>
+            {fieldErrors.grade && (
+              <p className="text-red-600 text-sm mt-1">{fieldErrors.grade}</p>
+            )}
           </div>
 
           {/* Date of Birth Field */}
@@ -300,6 +310,13 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
+
+          {/* Info Box */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-800 text-sm">
+              <span className="font-medium">Note:</span> Grade is required to ensure students are enrolled in appropriate classes.
+            </p>
+          </div>
           
           <button
             type="submit"

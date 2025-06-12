@@ -57,10 +57,13 @@ router.post('/staff', authenticateToken, requireRole('admin'), validateParentReg
   try {
     const { firstName, lastName, email, phone, password } = req.body;
 
+    // Trim and normalize email
+    const trimmedEmail = email.trim().toLowerCase();
+
     // Check if user already exists
     const existingUser = await pool.query(
       'SELECT id FROM "User" WHERE email = $1',
-      [email.toLowerCase()]
+      [trimmedEmail]
     );
 
     if (existingUser.rows.length > 0) {
@@ -77,7 +80,7 @@ router.post('/staff', authenticateToken, requireRole('admin'), validateParentReg
       `INSERT INTO "User" (email, password, role, first_name, last_name, phone) 
        VALUES ($1, $2, $3, $4, $5, $6) 
        RETURNING id, email, role, first_name, last_name, phone, active, created_at`,
-      [email.toLowerCase(), hashedPassword, 'staff', firstName.trim(), lastName.trim(), phone?.trim() || null]
+      [trimmedEmail, hashedPassword, 'staff', firstName.trim(), lastName.trim(), phone?.trim() || null]
     );
 
     const user = result.rows[0];

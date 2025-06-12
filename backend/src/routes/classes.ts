@@ -57,9 +57,9 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
       
       if (childrenGrades.rows.length > 0) {
         const grades = childrenGrades.rows.map(row => row.grade);
-        // Show classes that either have no level specified OR match one of the children's grades
+        // Show classes that either have "Mixed Levels" specified OR match one of the children's grades
         const placeholders = grades.map((_, i) => `$${paramIndex + i}`).join(', ');
-        query += ` AND (c.level IS NULL OR c.level IN (${placeholders}))`;
+        query += ` AND (c.level = 'Mixed Levels' OR c.level IN (${placeholders}))`;
         queryParams.push(...grades);
         paramIndex += grades.length;
       }
@@ -165,11 +165,17 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
     const { subject, description, level, startTime, durationMinutes, capacity, branchId } = req.body;
     const userId = req.user!.userId;
 
+    // Ensure level is provided (validation middleware should catch this, but double-check)
+    if (!level || level.trim().length === 0) {
+      res.status(400).json({ error: 'Level/Grade is required for all classes' });
+      return;
+    }
+
     const result = await pool.query(`
       INSERT INTO "Class" (subject, description, level, tutor_id, start_time, duration_minutes, capacity, branch_id, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id, subject, description, level, start_time, duration_minutes, capacity, active, created_at, updated_at
-    `, [subject, description || null, level || null, userId, startTime, durationMinutes, capacity, branchId, userId]);
+    `, [subject, description || null, level.trim(), userId, startTime, durationMinutes, capacity, branchId, userId]);
 
     const newClass = result.rows[0];
 
@@ -228,6 +234,12 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
       return;
     }
 
+    // Validate required fields for updates
+    if (level !== undefined && (!level || level.trim().length === 0)) {
+      res.status(400).json({ error: 'Level/Grade is required and cannot be empty' });
+      return;
+    }
+
     const result = await pool.query(`
       UPDATE "Class" 
       SET subject = COALESCE($1, subject),
@@ -240,7 +252,7 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
           updated_at = NOW()
       WHERE id = $8
       RETURNING id, subject, description, level, start_time, duration_minutes, capacity, active, created_at, updated_at
-    `, [subject, description, level, startTime, durationMinutes, capacity, branchId, id]);
+    `, [subject, description, level?.trim(), startTime, durationMinutes, capacity, branchId, id]);
 
     res.json({
       message: 'Class updated successfully',

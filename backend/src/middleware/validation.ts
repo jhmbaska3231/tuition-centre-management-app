@@ -41,7 +41,9 @@ export const validateParentRegistration = (req: Request, res: Response, next: Ne
     return;
   }
   
-  if (!isValidEmail(email)) {
+  // Trim email before validation
+  const trimmedEmail = email.trim();
+  if (!isValidEmail(trimmedEmail)) {
     res.status(400).json({ error: 'Invalid email format' });
     return;
   }
@@ -79,7 +81,9 @@ export const validateLogin = (req: Request, res: Response, next: NextFunction): 
     return;
   }
   
-  if (!isValidEmail(email)) {
+  // Trim email before validation
+  const trimmedEmail = email.trim();
+  if (!isValidEmail(trimmedEmail)) {
     res.status(400).json({ error: 'Invalid email format' });
     return;
   }
@@ -129,7 +133,7 @@ export const validateStudent = (req: Request, res: Response, next: NextFunction)
     return;
   }
   
-  if (grade.trim().length < 1) {
+  if (!grade || grade.trim().length < 1) {
     res.status(400).json({ error: 'Grade is required' });
     return;
   }
@@ -166,17 +170,22 @@ export const validateStudent = (req: Request, res: Response, next: NextFunction)
   next();
 };
 
-// Class creation validation
+// Class creation validation with REQUIRED level
 export const validateClass = (req: Request, res: Response, next: NextFunction): void => {
-  const { subject, startTime, durationMinutes, capacity, branchId } = req.body;
+  const { subject, startTime, durationMinutes, capacity, branchId, level } = req.body;
   
-  if (!subject || !startTime || !durationMinutes || !capacity || !branchId) {
-    res.status(400).json({ error: 'All fields are required' });
+  if (!subject || !startTime || !durationMinutes || !capacity || !branchId || !level) {
+    res.status(400).json({ error: 'All fields including level are required' });
     return;
   }
   
   if (subject.trim().length < 2) {
     res.status(400).json({ error: 'Subject must be at least 2 characters' });
+    return;
+  }
+  
+  if (!level || level.trim().length < 1) {
+    res.status(400).json({ error: 'Level/Grade is required' });
     return;
   }
   
