@@ -1,4 +1,4 @@
-// src/utils/validation.ts
+// frontend/src/utils/validation.ts
 
 // Email validation
 export const isValidEmail = (email: string): boolean => {

@@ -1,4 +1,4 @@
-// src/components/parent/ParentDashboard.tsx
+// frontend/src/components/parent/ParentDashboard.tsx
 
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar, CreditCard, Settings } from 'lucide-react';

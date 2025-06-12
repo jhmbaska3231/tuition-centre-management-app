@@ -40,6 +40,11 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
   });
   const { register } = useAuth();
 
+  // Helper function to normalize email (trim and lowercase)
+  const normalizeEmail = (emailValue: string): string => {
+    return emailValue.trim().toLowerCase();
+  };
+
   const validateField = (field: string, value: string): boolean => {
     let error = '';
     
@@ -51,9 +56,13 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
         error = getNameValidationError(value, 'Last name') || '';
         break;
       case 'email':
-        const trimmedEmail = value.trim();
-        if (!trimmedEmail) error = 'Email is required';
-        else if (!isValidEmail(trimmedEmail)) error = 'Please enter a valid email address';
+        const normalizedEmail = normalizeEmail(value);
+        // Update form data if email was normalized during validation
+        if (normalizedEmail !== value) {
+          setFormData(prev => ({ ...prev, email: normalizedEmail }));
+        }
+        if (!normalizedEmail) error = 'Email is required';
+        else if (!isValidEmail(normalizedEmail)) error = 'Please enter a valid email address';
         break;
       case 'phone':
         error = getPhoneValidationError(value) || '';
@@ -73,6 +82,20 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
   };
 
   const handleInputChange = (field: string, value: string) => {
+    // Special handling for email to normalize excessive spaces
+    if (field === 'email') {
+      const hasExcessiveSpaces = value.startsWith('  ') || value.endsWith('  ') || value.includes('   ');
+      
+      if (hasExcessiveSpaces && value.trim() !== '') {
+        // If there are excessive spaces but there's actual content, normalize it
+        const normalized = normalizeEmail(value);
+        setFormData(prev => ({ ...prev, [field]: normalized }));
+        setError('');
+        validateField(field, normalized);
+        return;
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
     
@@ -86,12 +109,22 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
   };
 
   const handleEmailBlur = () => {
-    // Trim email whitespace when user leaves the field
-    const trimmedEmail = formData.email.trim();
-    if (trimmedEmail !== formData.email) {
-      setFormData(prev => ({ ...prev, email: trimmedEmail }));
-      validateField('email', trimmedEmail);
+    // Always normalize on blur to ensure clean final state
+    const normalized = normalizeEmail(formData.email);
+    if (normalized !== formData.email) {
+      setFormData(prev => ({ ...prev, email: normalized }));
+      validateField('email', normalized);
     }
+  };
+
+  const handleEmailPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Handle paste events to automatically normalize pasted content
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const normalized = normalizeEmail(pastedText);
+    setFormData(prev => ({ ...prev, email: normalized }));
+    setError('');
+    validateField('email', normalized);
   };
 
   const validateForm = (): boolean => {
@@ -101,6 +134,12 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Ensure email is normalized before final validation
+    const normalizedEmail = normalizeEmail(formData.email);
+    if (normalizedEmail !== formData.email) {
+      setFormData(prev => ({ ...prev, email: normalizedEmail }));
+    }
     
     if (!validateForm()) {
       setError('Please correct the errors above');
@@ -114,7 +153,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
       await register({
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        email: formData.email.trim().toLowerCase(),
+        email: normalizedEmail,
         phone: formData.phone.trim() || undefined,
         password: formData.password,
       });
@@ -224,6 +263,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               onBlur={handleEmailBlur}
+              onPaste={handleEmailPaste}
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.email 
                   ? 'border-red-300 focus:border-red-500' 

@@ -1,4 +1,4 @@
-// src/components/admin/StaffForm.tsx
+// frontend/src/components/admin/StaffForm.tsx
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
@@ -35,6 +35,11 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
   const [isLoading, setIsLoading] = useState(false);
 
   const isEdit = !!staffMember;
+
+  // Helper function to normalize email (trim and lowercase)
+  const normalizeEmail = (emailValue: string): string => {
+    return emailValue.trim().toLowerCase();
+  };
 
   // Populate form when editing
   useEffect(() => {
@@ -82,8 +87,13 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
         error = getNameValidationError(value, 'Last name') || '';
         break;
       case 'email':
-        if (!value) error = 'Email is required';
-        else if (!isValidEmail(value)) error = 'Please enter a valid email address';
+        const normalizedEmail = normalizeEmail(value);
+        // Update form data if email was normalized during validation (only for new staff)
+        if (!isEdit && normalizedEmail !== value) {
+          setFormData(prev => ({ ...prev, email: normalizedEmail }));
+        }
+        if (!normalizedEmail) error = 'Email is required';
+        else if (!isValidEmail(normalizedEmail)) error = 'Please enter a valid email address';
         break;
       case 'phone':
         error = getPhoneValidationError(value) || '';
@@ -107,6 +117,22 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
   };
 
   const handleInputChange = (field: string, value: any) => {
+    // Special handling for email to normalize excessive spaces (only for new staff)
+    if (field === 'email' && !isEdit) {
+      if (typeof value === 'string') {
+        const hasExcessiveSpaces = value.startsWith('  ') || value.endsWith('  ') || value.includes('   ');
+        
+        if (hasExcessiveSpaces && value.trim() !== '') {
+          // If there are excessive spaces but there's actual content, normalize it
+          const normalized = normalizeEmail(value);
+          setFormData(prev => ({ ...prev, [field]: normalized }));
+          setError('');
+          validateField(field, normalized);
+          return;
+        }
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
     
@@ -116,6 +142,29 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
     // Also revalidate confirm password if password changed
     if (field === 'password' && formData.confirmPassword) {
       validateField('confirmPassword', formData.confirmPassword);
+    }
+  };
+
+  const handleEmailBlur = () => {
+    // Only normalize on blur for new staff (email is disabled for existing staff)
+    if (!isEdit) {
+      const normalized = normalizeEmail(formData.email);
+      if (normalized !== formData.email) {
+        setFormData(prev => ({ ...prev, email: normalized }));
+        validateField('email', normalized);
+      }
+    }
+  };
+
+  const handleEmailPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Only handle paste for new staff (email is disabled for existing staff)
+    if (!isEdit) {
+      e.preventDefault();
+      const pastedText = e.clipboardData.getData('text');
+      const normalized = normalizeEmail(pastedText);
+      setFormData(prev => ({ ...prev, email: normalized }));
+      setError('');
+      validateField('email', normalized);
     }
   };
 
@@ -139,6 +188,14 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Ensure email is normalized before final validation (only for new staff)
+    if (!isEdit) {
+      const normalizedEmail = normalizeEmail(formData.email);
+      if (normalizedEmail !== formData.email) {
+        setFormData(prev => ({ ...prev, email: normalizedEmail }));
+      }
+    }
+    
     if (!validateForm()) {
       setError('Please correct the errors above');
       return;
@@ -157,10 +214,11 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
         };
         await AdminService.updateStaffMember(staffMember.id, updateData);
       } else {
+        const normalizedEmail = normalizeEmail(formData.email);
         const createData: CreateStaffRequest = {
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
-          email: formData.email.trim().toLowerCase(),
+          email: normalizedEmail,
           phone: formData.phone.trim() || undefined,
           password: formData.password,
         };
@@ -269,6 +327,8 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
+              onBlur={handleEmailBlur}
+              onPaste={handleEmailPaste}
               disabled={isEdit} // Can't change email for existing users
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 isEdit ? 'bg-gray-100 cursor-not-allowed' : ''

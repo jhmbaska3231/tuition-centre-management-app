@@ -1,4 +1,4 @@
-// src/components/layout/Navigation.tsx
+// frontend/src/components/layout/Navigation.tsx
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GraduationCap, LogIn, User, Settings, UserPlus, ChevronDown } from 'lucide-react';

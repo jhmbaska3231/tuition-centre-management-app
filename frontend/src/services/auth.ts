@@ -1,4 +1,4 @@
-// src/services/auth.ts
+// frontend/src/services/auth.ts
 
 import type { 
   LoginRequest, 

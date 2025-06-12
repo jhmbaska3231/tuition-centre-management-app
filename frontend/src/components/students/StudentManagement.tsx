@@ -1,4 +1,4 @@
-// src/components/students/StudentManagement.tsx
+// frontend/src/components/students/StudentManagement.tsx
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Users, Loader2 } from 'lucide-react';

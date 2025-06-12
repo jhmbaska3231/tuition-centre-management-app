@@ -16,13 +16,23 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
+  // Helper function to normalize email (trim and lowercase)
+  const normalizeEmail = (emailValue: string): string => {
+    return emailValue.trim().toLowerCase();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Trim email whitespace before validation
-    const trimmedEmail = email.trim();
+    // Normalize email before validation
+    const normalizedEmail = normalizeEmail(email);
     
-    if (!trimmedEmail || !password) {
+    // Update the email state if it was changed by normalization
+    if (normalizedEmail !== email) {
+      setEmail(normalizedEmail);
+    }
+    
+    if (!normalizedEmail || !password) {
       setError('Please fill in all fields');
       return;
     }
@@ -31,7 +41,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      await login(trimmedEmail, password);
+      await login(normalizedEmail, password);
       onClose();
       setEmail('');
       setPassword('');
@@ -43,14 +53,39 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Store the raw value but trim on blur for better UX
-    setEmail(e.target.value);
+    const value = e.target.value;
+    
+    // Check if the value contains only whitespace or is just spaces around content
+    // If user is typing normally, allow it, but if they paste or type excessive spaces, normalize it
+    const hasExcessiveSpaces = value.startsWith('  ') || value.endsWith('  ') || value.includes('   ');
+    
+    if (hasExcessiveSpaces && value.trim() !== '') {
+      // If there are excessive spaces but there's actual content, normalize it
+      const normalized = normalizeEmail(value);
+      setEmail(normalized);
+    } else {
+      // Normal typing - allow it as is
+      setEmail(value);
+    }
+    
     setError('');
   };
 
   const handleEmailBlur = () => {
-    // Trim whitespace when user leaves the email field
-    setEmail(email.trim());
+    // Always normalize on blur to ensure clean final state
+    const normalized = normalizeEmail(email);
+    if (normalized !== email) {
+      setEmail(normalized);
+    }
+  };
+
+  const handleEmailPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Handle paste events to automatically normalize pasted content
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const normalized = normalizeEmail(pastedText);
+    setEmail(normalized);
+    setError('');
   };
 
   const handleClose = () => {
@@ -85,6 +120,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               value={email}
               onChange={handleEmailChange}
               onBlur={handleEmailBlur}
+              onPaste={handleEmailPaste}
               className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
               placeholder="Enter your email"
               required

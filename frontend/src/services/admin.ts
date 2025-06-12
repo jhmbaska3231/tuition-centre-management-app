@@ -1,4 +1,4 @@
-// src/services/admin.ts
+// frontend/src/services/admin.ts
 
 import type { 
   StaffMember, 

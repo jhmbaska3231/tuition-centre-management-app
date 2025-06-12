@@ -1,4 +1,4 @@
-// src/services/payment.ts
+// frontend/src/services/payment.ts
 
 import type { Payment, ApiError } from '../types';
 import AuthService from './auth';

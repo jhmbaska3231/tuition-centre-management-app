@@ -1,4 +1,4 @@
-// src/services/class.ts
+// frontend/src/services/class.ts
 
 import type { Class, CreateClassRequest, UpdateClassRequest, ApiError } from '../types';
 import AuthService from './auth';

@@ -1,4 +1,4 @@
-// src/components/profile/ProfileManagement.tsx
+// frontend/src/components/profile/ProfileManagement.tsx
 
 import React, { useState, useEffect } from 'react';
 import { User, Phone, Mail, Save, Loader2, CheckCircle, Trash2, AlertTriangle, X } from 'lucide-react';

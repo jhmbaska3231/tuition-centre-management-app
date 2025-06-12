@@ -1,4 +1,4 @@
-// src/components/admin/ClassReassignment.tsx
+// frontend/src/components/admin/ClassReassignment.tsx
 
 import React, { useState, useEffect } from 'react';
 import { UserCheck, Calendar, MapPin, Users, Clock, AlertCircle, Loader2 } from 'lucide-react';

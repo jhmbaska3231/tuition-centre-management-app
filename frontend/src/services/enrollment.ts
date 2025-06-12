@@ -1,4 +1,4 @@
-// src/services/enrollment.ts
+// frontend/src/services/enrollment.ts
 
 import type { Enrollment, CreateEnrollmentRequest, ApiError } from '../types';
 import AuthService from './auth';
