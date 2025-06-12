@@ -203,6 +203,10 @@ export interface BranchDeletionImpact {
     studentsAffected: number;
     totalClasses: number;
     futureClasses: number;
+    pastClasses: number;
+    enrollmentsAffected: number;
+    attendanceRecordsLost: number;
+    paymentsAffected: number;
     warning?: string;
   };
 }

@@ -234,7 +234,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
 
           {/* Active Status (only for editing) */}
           {isEdit && (
-            <div>
+            <div className="bg-gray-50 p-4 rounded-lg">
               <label className="flex items-center space-x-3">
                 <input
                   type="checkbox"
@@ -242,11 +242,21 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
                   onChange={(e) => handleInputChange('active', e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <span className="text-sm font-medium text-gray-700">Active Branch</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Branch is Active (Operational)
+                </span>
               </label>
-              <p className="text-sm text-gray-500 mt-1">
-                Inactive branches will not be available for selection when creating classes or students.
-              </p>
+              <div className="mt-2 text-sm text-gray-600">
+                <p className="mb-1">
+                  <span className="font-medium">Active:</span> Branch is operational and available for class creation and student enrollment.
+                </p>
+                <p>
+                  <span className="font-medium">Inactive:</span> Branch is temporarily closed (e.g., for renovation) but data is preserved.
+                </p>
+                <p className="mt-2 text-orange-600 font-medium">
+                  Note: To permanently close a branch and remove all data, use the "Delete Branch" button instead.
+                </p>
+              </div>
             </div>
           )}
           

@@ -1,7 +1,7 @@
 // frontend/src/components/admin/BranchManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Plus, Edit2, Trash2, AlertTriangle, Loader2, CheckCircle, XCircle, Phone } from 'lucide-react';
+import { MapPin, Plus, Edit2, Trash2, AlertTriangle, Loader2, CheckCircle, XCircle, Phone, Calendar, Users, BookOpen, UserX } from 'lucide-react';
 import type { Branch, BranchDeletionImpact } from '../../types';
 import BranchService from '../../services/branch';
 import BranchForm from './BranchForm';
@@ -227,7 +227,7 @@ const BranchManagement: React.FC = () => {
                   <button
                     onClick={() => handleDeleteBranch(branch)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete Branch"
+                    title="Delete Branch (Permanent)"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -278,16 +278,19 @@ const BranchManagement: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Confirm Branch Deletion</h3>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-3xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">PERMANENT Branch Deletion</h3>
             
             <div className="mb-6 text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="text-red-600" size={24} />
               </div>
               
-              <p className="text-gray-700 mb-2">
-                Are you sure you want to delete this branch?
+              <p className="text-gray-700 mb-2 font-medium">
+                You are about to permanently delete this branch and ALL associated data.
+              </p>
+              <p className="text-red-600 text-sm mb-4">
+                This action cannot be undone. All data will be permanently lost.
               </p>
               
               <div className="bg-gray-50 p-4 rounded-lg text-left mb-4">
@@ -298,46 +301,91 @@ const BranchManagement: React.FC = () => {
                 )}
               </div>
 
-              {/* Impact Analysis */}
+              {/* Enhanced Impact Analysis */}
               {loadingImpact ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="animate-spin text-blue-600 mr-2" size={20} />
-                  <span className="text-gray-600">Checking deletion impact...</span>
+                  <span className="text-gray-600">Analyzing deletion impact...</span>
                 </div>
               ) : deletionImpact ? (
                 <div className="text-left">
                   {deletionImpact.impact.warning && (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-                      <p className="text-yellow-800 text-sm font-medium mb-2">Impact Warning</p>
-                      <p className="text-yellow-700 text-sm">{deletionImpact.impact.warning}</p>
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
+                      <p className="text-red-800 text-sm font-medium mb-2">Critical Warning</p>
+                      <p className="text-red-700 text-sm">{deletionImpact.impact.warning}</p>
                     </div>
                   )}
 
                   <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <p className="font-medium text-gray-800 mb-2">Impact Summary:</p>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div className="text-center">
+                    <p className="font-medium text-gray-800 mb-3">Permanent Deletion Impact:</p>
+                    
+                    {/* Impact Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                      <div className="text-center p-3 bg-red-100 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <BookOpen className="text-red-600" size={16} />
+                        </div>
+                        <div className="text-lg font-bold text-red-600">
+                          {deletionImpact.impact.totalClasses}
+                        </div>
+                        <div className="text-xs text-red-700">Classes Deleted</div>
+                        {deletionImpact.impact.futureClasses > 0 && (
+                          <div className="text-xs text-red-600 mt-1">
+                            ({deletionImpact.impact.futureClasses} future)
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="text-center p-3 bg-orange-100 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <Users className="text-orange-600" size={16} />
+                        </div>
+                        <div className="text-lg font-bold text-orange-600">
+                          {deletionImpact.impact.enrollmentsAffected}
+                        </div>
+                        <div className="text-xs text-orange-700">Enrollments Lost</div>
+                      </div>
+                      
+                      <div className="text-center p-3 bg-yellow-100 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <Calendar className="text-yellow-600" size={16} />
+                        </div>
+                        <div className="text-lg font-bold text-yellow-600">
+                          {deletionImpact.impact.attendanceRecordsLost}
+                        </div>
+                        <div className="text-xs text-yellow-700">Attendance Lost</div>
+                      </div>
+                      
+                      <div className="text-center p-3 bg-blue-100 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <UserX className="text-blue-600" size={16} />
+                        </div>
                         <div className="text-lg font-bold text-blue-600">
                           {deletionImpact.impact.studentsAffected}
                         </div>
-                        <div className="text-gray-600">Students</div>
+                        <div className="text-xs text-blue-700">Students Affected</div>
+                        <div className="text-xs text-blue-600 mt-1">(home branch cleared)</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-orange-600">
-                          {deletionImpact.impact.totalClasses}
+                      
+                      <div className="text-center p-3 bg-purple-100 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <CheckCircle className="text-purple-600" size={16} />
                         </div>
-                        <div className="text-gray-600">Total Classes</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-red-600">
-                          {deletionImpact.impact.futureClasses}
+                        <div className="text-lg font-bold text-purple-600">
+                          {deletionImpact.impact.paymentsAffected}
                         </div>
-                        <div className="text-gray-600">Future Classes</div>
+                        <div className="text-xs text-purple-700">Payment Records</div>
+                        <div className="text-xs text-purple-600 mt-1">(preserved)</div>
                       </div>
                     </div>
-                    <p className="text-sm text-blue-600 mt-3">
-                      This branch will be deactivated, and affected students/classes will have their branch reference removed.
-                    </p>
+                    
+                    <div className="p-3 bg-red-50 border border-red-200 rounded">
+                      <p className="text-sm text-red-800 font-medium">
+                        All classes, enrollments, and attendance records will be permanently deleted. 
+                        Students will lose their home branch association but remain in the system. 
+                        Payment records are preserved for auditing purposes.
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -362,10 +410,10 @@ const BranchManagement: React.FC = () => {
                 {deleting ? (
                   <div className="flex items-center justify-center">
                     <Loader2 className="animate-spin mr-2" size={16} />
-                    Deleting...
+                    Permanently Deleting...
                   </div>
                 ) : (
-                  'Delete Branch'
+                  'PERMANENTLY Delete Branch'
                 )}
               </button>
             </div>

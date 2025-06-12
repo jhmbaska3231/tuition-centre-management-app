@@ -88,7 +88,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
         end_time TIMESTAMP GENERATED ALWAYS AS (start_time + INTERVAL '1 minute' * duration_minutes) STORED,
         duration_minutes INTEGER NOT NULL,
         capacity INTEGER NOT NULL DEFAULT 10,
-        branch_id UUID REFERENCES "Branch"(id) ON DELETE SET NULL,
+        branch_id UUID REFERENCES "Branch"(id) ON DELETE CASCADE,
         created_by UUID REFERENCES "User"(id) ON DELETE SET NULL,
         active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW(),

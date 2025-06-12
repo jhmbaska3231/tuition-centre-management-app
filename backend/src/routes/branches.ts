@@ -188,25 +188,80 @@ router.get('/:id/deletion-impact', authenticateToken, requireRole('admin'), asyn
       return;
     }
 
-    // Get impact data
-    const [studentsResult, classesResult] = await Promise.all([
+    // Get impact data - classes will be DELETED (not just nullified) due to CASCADE
+    const [studentsResult, classesResult, enrollmentsResult, paymentsResult, attendanceResult] = await Promise.all([
+      // Students with home_branch_id will have it set to NULL (no cascade)
       pool.query(`
         SELECT COUNT(*) as count
         FROM "Student" 
         WHERE home_branch_id = $1 AND active = TRUE
       `, [id]),
+      
+      // Classes will be DELETED due to CASCADE
       pool.query(`
-        SELECT COUNT(*) as count,
-               COUNT(CASE WHEN start_time > NOW() THEN 1 END) as future_count
+        SELECT COUNT(*) as total_count,
+               COUNT(CASE WHEN start_time > NOW() THEN 1 END) as future_count,
+               COUNT(CASE WHEN start_time <= NOW() THEN 1 END) as past_count
         FROM "Class" 
         WHERE branch_id = $1 AND active = TRUE
+      `, [id]),
+      
+      // Get enrollments that will be affected (through class deletion)
+      pool.query(`
+        SELECT COUNT(DISTINCT e.id) as count
+        FROM "Enrollment" e
+        JOIN "Class" c ON e.class_id = c.id
+        WHERE c.branch_id = $1 AND c.active = TRUE AND e.status = 'enrolled'
+      `, [id]),
+      
+      // Get payment records that will be affected (indirectly through student impacts)
+      pool.query(`
+        SELECT COUNT(*) as count
+        FROM "Payment" p
+        JOIN "Student" s ON p.student_id = s.id
+        WHERE s.home_branch_id = $1 AND s.active = TRUE
+      `, [id]),
+      
+      // Get attendance records that will be affected (through class deletion)
+      pool.query(`
+        SELECT COUNT(*) as count
+        FROM "Attendance" a
+        JOIN "Class" c ON a.class_id = c.id
+        WHERE c.branch_id = $1 AND c.active = TRUE
       `, [id])
     ]);
 
     const branch = branchResult.rows[0];
     const studentsCount = parseInt(studentsResult.rows[0].count);
-    const totalClasses = parseInt(classesResult.rows[0].count);
+    const totalClasses = parseInt(classesResult.rows[0].total_count);
     const futureClasses = parseInt(classesResult.rows[0].future_count);
+    const pastClasses = parseInt(classesResult.rows[0].past_count);
+    const enrollmentsCount = parseInt(enrollmentsResult.rows[0].count);
+    const paymentsCount = parseInt(paymentsResult.rows[0].count);
+    const attendanceCount = parseInt(attendanceResult.rows[0].count);
+
+    // Create detailed warning message
+    let warningParts = [];
+    
+    if (totalClasses > 0) {
+      warningParts.push(`${totalClasses} class(es) will be permanently deleted`);
+    }
+    
+    if (enrollmentsCount > 0) {
+      warningParts.push(`${enrollmentsCount} active enrollment(s) will be cancelled`);
+    }
+    
+    if (attendanceCount > 0) {
+      warningParts.push(`${attendanceCount} attendance record(s) will be lost`);
+    }
+    
+    if (studentsCount > 0) {
+      warningParts.push(`${studentsCount} student(s) will lose their home branch reference`);
+    }
+
+    const warning = warningParts.length > 0 
+      ? `PERMANENT DELETION: ${warningParts.join(', ')}.`
+      : null;
 
     res.json({
       branch,
@@ -214,9 +269,11 @@ router.get('/:id/deletion-impact', authenticateToken, requireRole('admin'), asyn
         studentsAffected: studentsCount,
         totalClasses,
         futureClasses,
-        warning: studentsCount > 0 || totalClasses > 0 ? 
-          `This branch has ${studentsCount} student(s) and ${totalClasses} class(es) associated with it. Deletion will set their home branch/class branch to null.` :
-          null
+        pastClasses,
+        enrollmentsAffected: enrollmentsCount,
+        attendanceRecordsLost: attendanceCount,
+        paymentsAffected: paymentsCount,
+        warning
       }
     });
 
@@ -256,30 +313,51 @@ router.delete('/:id', authenticateToken, requireRole('admin'), async (req: AuthR
     
     const branch = branchResult.rows[0];
     
-    // Get counts for logging
-    const [studentsCount, classesCount] = await Promise.all([
+    // Get counts for logging before deletion
+    const [studentsCount, classesCount, enrollmentsCount, attendanceCount] = await Promise.all([
       client.query('SELECT COUNT(*) as count FROM "Student" WHERE home_branch_id = $1 AND active = TRUE', [id]),
-      client.query('SELECT COUNT(*) as count FROM "Class" WHERE branch_id = $1 AND active = TRUE', [id])
+      client.query('SELECT COUNT(*) as count FROM "Class" WHERE branch_id = $1 AND active = TRUE', [id]),
+      client.query(`
+        SELECT COUNT(DISTINCT e.id) as count
+        FROM "Enrollment" e
+        JOIN "Class" c ON e.class_id = c.id
+        WHERE c.branch_id = $1 AND c.active = TRUE AND e.status = 'enrolled'
+      `, [id]),
+      client.query(`
+        SELECT COUNT(*) as count
+        FROM "Attendance" a
+        JOIN "Class" c ON a.class_id = c.id
+        WHERE c.branch_id = $1 AND c.active = TRUE
+      `, [id])
     ]);
     
-    // Soft delete the branch (set active = false)
-    await client.query(
-      'UPDATE "Branch" SET active = FALSE, updated_at = NOW() WHERE id = $1',
+    // HARD DELETE the branch - CASCADE will automatically delete all classes
+    // This will trigger the CASCADE constraint and delete:
+    // 1. All classes in this branch (due to branch_id CASCADE)
+    // 2. All enrollments for those classes (due to class_id CASCADE)  
+    // 3. All attendance records for those classes (due to class_id CASCADE)
+    // 4. Students will have home_branch_id set to NULL (due to SET NULL)
+    const deletionResult = await client.query(
+      'DELETE FROM "Branch" WHERE id = $1 RETURNING name',
       [id]
     );
     
     await client.query('COMMIT');
     
     res.json({
-      message: `Branch "${branch.name}" deactivated successfully`,
-      affectedStudents: parseInt(studentsCount.rows[0].count),
-      affectedClasses: parseInt(classesCount.rows[0].count)
+      message: `Branch "${branch.name}" and all associated data permanently deleted`,
+      deletedData: {
+        studentsAffected: parseInt(studentsCount.rows[0].count),
+        classesDeleted: parseInt(classesCount.rows[0].count),
+        enrollmentsCancelled: parseInt(enrollmentsCount.rows[0].count),
+        attendanceRecordsLost: parseInt(attendanceCount.rows[0].count)
+      }
     });
     
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Delete branch error:', error);
-    res.status(500).json({ error: 'Failed to delete branch' });
+    res.status(500).json({ error: 'Failed to delete branch. Please try again or contact support.' });
   } finally {
     client.release();
   }
