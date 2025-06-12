@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import type { Class, Branch, CreateClassRequest, UpdateClassRequest } from '../../types';
 import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
-import DateTimeInput from '../common/DateTimeInput';
+import DateInput from '../common/DateInput';
 import { useAuth } from '../../hooks/useAuth';
 
 interface ClassFormProps {
@@ -21,6 +21,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     subject: '',
     description: '',
     level: '',
+    startDate: '',
     startTime: '',
     durationMinutes: 60,
     capacity: 10,
@@ -31,6 +32,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   const [fieldErrors, setFieldErrors] = useState({
     subject: '',
     level: '',
+    startDate: '',
     startTime: '',
     durationMinutes: '',
     capacity: '',
@@ -51,28 +53,29 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   // Populate form when editing
   useEffect(() => {
     if (classData) {
-      // Convert start_time to local datetime format for input
-      const startDate = new Date(classData.start_time);
-      const localDateTime = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
+      // Split the start_time into date and time components
+      const startDateTime = new Date(classData.start_time);
+      const localDate = startDateTime.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const localTime = startDateTime.toTimeString().slice(0, 5); // HH:MM format
 
       setFormData({
         subject: classData.subject,
         description: classData.description || '',
         level: classData.level || '',
-        startTime: localDateTime,
+        startDate: localDate,
+        startTime: localTime,
         durationMinutes: classData.duration_minutes,
         capacity: classData.capacity,
         branchId: classData.branch_id || '',
       });
     } else {
-      // Reset form for new class
+      // Reset form for new class with default time
       setFormData({
         subject: '',
         description: '',
         level: '',
-        startTime: '',
+        startDate: '',
+        startTime: '10:00', // Default to 10:00 AM
         durationMinutes: 60,
         capacity: 10,
         branchId: '',
@@ -82,12 +85,13 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     setFieldErrors({
       subject: '',
       level: '',
+      startDate: '',
       startTime: '',
       durationMinutes: '',
       capacity: '',
       branchId: '',
     });
-  }, [classData, isOpen, branches]); // Added branches as dependency
+  }, [classData, isOpen, branches]);
 
   const loadBranches = async () => {
     setLoadingBranches(true);
@@ -100,6 +104,24 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     } finally {
       setLoadingBranches(false);
     }
+  };
+
+  // Combine date and time into datetime string for validation and submission
+  const combineDateTime = (date: string, time: string): string => {
+    if (!date || !time) return '';
+    return `${date}T${time}:00`; // Creates YYYY-MM-DDTHH:MM:SS format
+  };
+
+  // Get minimum date (today)
+  const getMinDate = (): string => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // Get maximum date (1 month from today)
+  const getMaxDate = (): string => {
+    const oneMonthFromNow = new Date();
+    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+    return oneMonthFromNow.toISOString().split('T')[0];
   };
 
   const validateField = (field: string, value: any): boolean => {
@@ -116,13 +138,36 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
           error = 'Level/Grade is required';
         }
         break;
+      case 'startDate':
+        if (!value) {
+          error = 'Start date is required';
+        } else {
+          const selectedDate = new Date(value);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Reset time to start of day
+          
+          const oneMonthFromNow = new Date();
+          oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+          oneMonthFromNow.setHours(23, 59, 59, 999); // End of day
+          
+          if (selectedDate < today) {
+            error = 'Class date cannot be in the past';
+          } else if (selectedDate > oneMonthFromNow) {
+            error = 'Class date cannot be more than 1 month in the future';
+          }
+        }
+        break;
       case 'startTime':
         if (!value) {
           error = 'Start time is required';
-        } else {
-          const startDate = new Date(value);
-          if (startDate <= new Date()) {
-            error = 'Class start time must be in the future';
+        } else if (formData.startDate) {
+          // Check if the combined datetime is at least 1 hour from now
+          const combinedDateTime = new Date(combineDateTime(formData.startDate, value));
+          const oneHourFromNow = new Date();
+          oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
+          
+          if (combinedDateTime <= oneHourFromNow) {
+            error = 'Class must be scheduled at least 1 hour from now';
           }
         }
         break;
@@ -159,17 +204,25 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     
     // Real-time validation
     validateField(field, value);
+    
+    // If date or time changes, revalidate the other field to check combined datetime
+    if (field === 'startDate' && formData.startTime) {
+      setTimeout(() => validateField('startTime', formData.startTime), 0);
+    } else if (field === 'startTime' && formData.startDate) {
+      setTimeout(() => validateField('startTime', value), 0);
+    }
   };
 
   const validateForm = (): boolean => {
     const subjectValid = validateField('subject', formData.subject);
     const levelValid = validateField('level', formData.level);
+    const startDateValid = validateField('startDate', formData.startDate);
     const startTimeValid = validateField('startTime', formData.startTime);
     const durationValid = validateField('durationMinutes', formData.durationMinutes);
     const capacityValid = validateField('capacity', formData.capacity);
     const branchValid = validateField('branchId', formData.branchId);
     
-    return subjectValid && levelValid && startTimeValid && durationValid && capacityValid && branchValid;
+    return subjectValid && levelValid && startDateValid && startTimeValid && durationValid && capacityValid && branchValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,11 +237,14 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     setError('');
 
     try {
+      // Combine date and time for submission
+      const startDateTime = combineDateTime(formData.startDate, formData.startTime);
+      
       const requestData: CreateClassRequest | UpdateClassRequest = {
         subject: formData.subject.trim(),
         description: formData.description.trim() || undefined,
         level: formData.level.trim(),
-        startTime: formData.startTime,
+        startTime: startDateTime,
         durationMinutes: formData.durationMinutes,
         capacity: formData.capacity,
         branchId: formData.branchId,
@@ -215,7 +271,8 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       subject: '',
       description: '',
       level: '',
-      startTime: '',
+      startDate: '',
+      startTime: '10:00',
       durationMinutes: 60,
       capacity: 10,
       branchId: '',
@@ -224,6 +281,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     setFieldErrors({
       subject: '',
       level: '',
+      startDate: '',
       startTime: '',
       durationMinutes: '',
       capacity: '',
@@ -240,12 +298,27 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     return 'Current User';
   };
 
-  // Get minimum date-time (current time + 1 hour)
-  const getMinDateTime = () => {
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    return now.toISOString().slice(0, 16);
+  // Generate time options (every 30 minutes from 8:00 to 20:00)
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 8; hour <= 20; hour++) {
+      for (let minute of [0, 30]) {
+        if (hour === 20 && minute === 30) break; // Stop at 20:00
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const displayTime = new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-SG', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+        options.push({ value: timeString, label: displayTime });
+      }
+    }
+    return options;
   };
+
+  const timeOptions = generateTimeOptions();
+  const minDate = getMinDate();
+  const maxDate = getMaxDate();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -345,29 +418,62 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
             />
           </div>
 
-          {/* Date/Time and Duration Row */}
+          {/* Date and Time Row */}
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date & Time *
+                Start Date *
               </label>
-              <DateTimeInput
-                value={formData.startTime}
-                onChange={(value) => handleInputChange('startTime', value)}
-                min={getMinDateTime()}
+              <DateInput
+                value={formData.startDate}
+                onChange={(value) => handleInputChange('startDate', value)}
                 className={`${
+                  fieldErrors.startDate 
+                    ? 'border-red-300 focus:border-red-500' 
+                    : 'border-gray-200 focus:border-blue-500'
+                }`}
+                placeholder="DD/MM/YYYY"
+                min={minDate}
+                max={maxDate}
+                required
+              />
+              {fieldErrors.startDate && (
+                <p className="text-red-600 text-sm mt-1">{fieldErrors.startDate}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                Valid range: Today to {new Date(maxDate).toLocaleDateString('en-SG')}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Time *
+              </label>
+              <select
+                value={formData.startTime}
+                onChange={(e) => handleInputChange('startTime', e.target.value)}
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.startTime 
                     ? 'border-red-300 focus:border-red-500' 
                     : 'border-gray-200 focus:border-blue-500'
                 }`}
-                placeholder="DD/MM/YYYY HH:MM"
                 required
-              />
+              >
+                <option value="">Select Time *</option>
+                {timeOptions.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
               {fieldErrors.startTime && (
                 <p className="text-red-600 text-sm mt-1">{fieldErrors.startTime}</p>
               )}
             </div>
+          </div>
 
+          {/* Duration and Capacity Row */}
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Duration (minutes) *
@@ -396,10 +502,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 <p className="text-red-600 text-sm mt-1">{fieldErrors.durationMinutes}</p>
               )}
             </div>
-          </div>
 
-          {/* Capacity and Branch Row */}
-          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Capacity *
@@ -427,38 +530,39 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 </p>
               )}
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Branch *
-              </label>
-              {loadingBranches ? (
-                <div className="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50">
-                  <span className="text-gray-500">Loading branches...</span>
-                </div>
-              ) : (
-                <select
-                  value={formData.branchId}
-                  onChange={(e) => handleInputChange('branchId', e.target.value)}
-                  className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                    fieldErrors.branchId 
-                      ? 'border-red-300 focus:border-red-500' 
-                      : 'border-gray-200 focus:border-blue-500'
-                  }`}
-                  required
-                >
-                  <option value="">Select Branch</option>
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {fieldErrors.branchId && (
-                <p className="text-red-600 text-sm mt-1">{fieldErrors.branchId}</p>
-              )}
-            </div>
+          {/* Branch Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Branch *
+            </label>
+            {loadingBranches ? (
+              <div className="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50">
+                <span className="text-gray-500">Loading branches...</span>
+              </div>
+            ) : (
+              <select
+                value={formData.branchId}
+                onChange={(e) => handleInputChange('branchId', e.target.value)}
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                  fieldErrors.branchId 
+                    ? 'border-red-300 focus:border-red-500' 
+                    : 'border-gray-200 focus:border-blue-500'
+                }`}
+                required
+              >
+                <option value="">Select Branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {fieldErrors.branchId && (
+              <p className="text-red-600 text-sm mt-1">{fieldErrors.branchId}</p>
+            )}
           </div>
           
           {error && (
@@ -471,7 +575,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 text-sm">
               <span className="font-medium">Note:</span> Level/Grade is required for all classes. Use "Mixed Levels" for classes or activities that accept students of different grades.
-              {isEdit ? ' Only future classes can be modified.' : ' Make sure all details are correct before creating.'}
+              {isEdit ? ' Only future classes can be modified.' : ' Classes can be scheduled from today up to 1 month in advance, and must be at least 1 hour from now.'}
             </p>
           </div>
           
