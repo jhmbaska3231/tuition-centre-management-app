@@ -7,7 +7,7 @@ import { validateClass } from '../middleware/validation';
 
 const router = express.Router();
 
-// Helper function to check for teacher schedule conflicts with improved timezone handling
+// Helper function to check for teacher schedule conflicts
 const checkTeacherScheduleConflict = async (
   tutorId: string, 
   startTime: string, 
@@ -15,42 +15,22 @@ const checkTeacherScheduleConflict = async (
   excludeClassId?: string
 ): Promise<{ hasConflict: boolean; conflictingClass?: any }> => {
   try {
-    // Ensure working with proper date objects
     const classStartTime = new Date(startTime);
     const classEndTime = new Date(classStartTime.getTime() + (durationMinutes * 60 * 1000));
 
-    // Validate the input dates
-    if (isNaN(classStartTime.getTime()) || isNaN(classEndTime.getTime())) {
-      throw new Error('Invalid start time provided for conflict check');
-    }
-
-    console.log('Conflict check for tutor:', tutorId);
-    console.log('New class time:', classStartTime.toISOString(), 'to', classEndTime.toISOString());
-    console.log('Duration:', durationMinutes, 'minutes');
-
     // Query to find overlapping classes for the same tutor
-    // Using proper timezone-aware comparison with AT TIME ZONE to ensure consistent timezone handling
     let query = `
       SELECT c.id, c.subject, c.level, c.start_time, c.duration_minutes,
-             b.name as branch_name,
-             c.start_time AT TIME ZONE 'UTC' as start_time_utc,
-             (c.start_time + INTERVAL '1 minute' * c.duration_minutes) AT TIME ZONE 'UTC' as end_time_utc
+             b.name as branch_name
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
       WHERE c.tutor_id = $1 
         AND c.active = TRUE 
-        AND (
-          -- Check for any time overlap using standard interval overlap logic
-          (c.start_time AT TIME ZONE 'UTC') < $3 AND 
-          (c.start_time + INTERVAL '1 minute' * c.duration_minutes) AT TIME ZONE 'UTC' > $2
-        )
+        AND c.start_time + INTERVAL '1 minute' * c.duration_minutes > $2
+        AND c.start_time < $3
     `;
     
-    const queryParams = [
-      tutorId, 
-      classStartTime.toISOString(), 
-      classEndTime.toISOString()
-    ];
+    const queryParams = [tutorId, classStartTime.toISOString(), classEndTime.toISOString()];
     
     // If editing an existing class, exclude it from the conflict check
     if (excludeClassId) {
@@ -58,34 +38,15 @@ const checkTeacherScheduleConflict = async (
       queryParams.push(excludeClassId);
     }
 
-    query += ' ORDER BY c.start_time ASC';
-
-    console.log('Conflict check query params:', queryParams);
-
     const result = await pool.query(query, queryParams);
 
-    console.log('Conflict check found', result.rows.length, 'potentially conflicting classes');
-
     if (result.rows.length > 0) {
-      // Log the conflicting classes for debugging
-      result.rows.forEach((row, index) => {
-        console.log(`Conflicting class ${index + 1}:`, {
-          id: row.id,
-          subject: row.subject,
-          level: row.level,
-          start_time: row.start_time,
-          duration: row.duration_minutes,
-          branch: row.branch_name
-        });
-      });
-
       return {
         hasConflict: true,
         conflictingClass: result.rows[0]
       };
     }
 
-    console.log('No schedule conflicts found');
     return { hasConflict: false };
   } catch (error) {
     console.error('Error checking teacher schedule conflict:', error);
@@ -279,43 +240,20 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
     const { subject, description, level, startTime, durationMinutes, capacity, branchId } = req.body;
     const userId = req.user!.userId;
 
-    console.log('Creating new class for tutor:', userId);
-    console.log('Class details:', { subject, level, startTime, durationMinutes, capacity, branchId });
-
     // Ensure level is provided (validation middleware should catch this, but double-check)
     if (!level || level.trim().length === 0) {
       res.status(400).json({ error: 'Level/Grade is required for all classes' });
       return;
     }
 
-    // Validate the start time format and ensure it's in the future
-    const classStartTime = new Date(startTime);
-    if (isNaN(classStartTime.getTime())) {
-      res.status(400).json({ error: 'Invalid start time format provided' });
-      return;
-    }
-
-    // Ensure the class is at least 1 hour in the future
-    const oneHourFromNow = new Date();
-    oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
-    
-    if (classStartTime <= oneHourFromNow) {
-      res.status(400).json({ error: 'Class must be scheduled at least 1 hour from now' });
-      return;
-    }
-
     // Check for teacher schedule conflicts
-    console.log('Checking for schedule conflicts...');
     const conflictCheck = await checkTeacherScheduleConflict(userId, startTime, durationMinutes);
     
     if (conflictCheck.hasConflict) {
-      console.log('Schedule conflict detected!');
       const errorMessage = formatConflictErrorMessage(conflictCheck.conflictingClass, startTime, durationMinutes);
       res.status(409).json({ error: errorMessage });
       return;
     }
-
-    console.log('No conflicts found, creating class...');
 
     const result = await pool.query(`
       INSERT INTO "Class" (subject, description, level, tutor_id, start_time, duration_minutes, capacity, branch_id, created_by)
@@ -342,8 +280,6 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
       can_delete: true
     };
 
-    console.log('Class created successfully:', classWithDetails.id);
-
     res.status(201).json({
       message: 'Class created successfully',
       class: classWithDetails
@@ -363,11 +299,9 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
     const userRole = req.user!.role;
     const userId = req.user!.userId;
 
-    console.log('Updating class:', id, 'by user:', userId);
-
     // Check if class exists and is in the future
     const classCheck = await pool.query(
-      'SELECT id, start_time, tutor_id, duration_minutes FROM "Class" WHERE id = $1 AND active = TRUE AND start_time > NOW()',
+      'SELECT id, start_time, tutor_id FROM "Class" WHERE id = $1 AND active = TRUE AND start_time > NOW()',
       [id]
     );
 
@@ -395,25 +329,6 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
       const newStartTime = startTime || classItem.start_time;
       const newDuration = durationMinutes || classItem.duration_minutes;
       
-      // Validate the new start time if provided
-      if (startTime) {
-        const newClassStartTime = new Date(startTime);
-        if (isNaN(newClassStartTime.getTime())) {
-          res.status(400).json({ error: 'Invalid start time format provided' });
-          return;
-        }
-
-        // Ensure the updated class is at least 1 hour in the future
-        const oneHourFromNow = new Date();
-        oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
-        
-        if (newClassStartTime <= oneHourFromNow) {
-          res.status(400).json({ error: 'Class must be scheduled at least 1 hour from now' });
-          return;
-        }
-      }
-      
-      console.log('Checking for schedule conflicts during update...');
       const conflictCheck = await checkTeacherScheduleConflict(
         classItem.tutor_id, 
         newStartTime, 
@@ -422,14 +337,11 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
       );
       
       if (conflictCheck.hasConflict) {
-        console.log('Schedule conflict detected during update!');
         const errorMessage = formatConflictErrorMessage(conflictCheck.conflictingClass, newStartTime, newDuration);
         res.status(409).json({ error: errorMessage });
         return;
       }
     }
-
-    console.log('No conflicts found, updating class...');
 
     const result = await pool.query(`
       UPDATE "Class" 
@@ -444,8 +356,6 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
       WHERE id = $8
       RETURNING id, subject, description, level, start_time, duration_minutes, capacity, active, created_at, updated_at
     `, [subject, description, level?.trim(), startTime, durationMinutes, capacity, branchId, id]);
-
-    console.log('Class updated successfully:', id);
 
     res.json({
       message: 'Class updated successfully',

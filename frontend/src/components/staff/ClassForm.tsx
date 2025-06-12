@@ -53,18 +53,10 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   // Populate form when editing
   useEffect(() => {
     if (classData) {
-      // Split the start_time into date and time components using proper timezone handling
+      // Split the start_time into date and time components
       const startDateTime = new Date(classData.start_time);
-      
-      // Convert to local timezone for display
-      const year = startDateTime.getFullYear();
-      const month = String(startDateTime.getMonth() + 1).padStart(2, '0');
-      const day = String(startDateTime.getDate()).padStart(2, '0');
-      const hours = String(startDateTime.getHours()).padStart(2, '0');
-      const minutes = String(startDateTime.getMinutes()).padStart(2, '0');
-      
-      const localDate = `${year}-${month}-${day}`;
-      const localTime = `${hours}:${minutes}`;
+      const localDate = startDateTime.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const localTime = startDateTime.toTimeString().slice(0, 5); // HH:MM format
 
       setFormData({
         subject: classData.subject,
@@ -78,17 +70,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       });
     } else {
       // Reset form for new class with default time
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(10, 0, 0, 0); // Default to 10:00 AM tomorrow
-      
-      const defaultDate = tomorrow.toISOString().split('T')[0];
-      
       setFormData({
         subject: '',
         description: '',
         level: '',
-        startDate: defaultDate,
+        startDate: '',
         startTime: '10:00', // Default to 10:00 AM
         durationMinutes: 60,
         capacity: 10,
@@ -120,20 +106,10 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     }
   };
 
-  // Combine date and time into proper ISO datetime string for validation and submission
+  // Combine date and time into datetime string for validation and submission
   const combineDateTime = (date: string, time: string): string => {
     if (!date || !time) return '';
-    
-    // Create a proper Date object in local timezone
-    const localDateTime = new Date(`${date}T${time}:00`);
-    
-    // Validate the date
-    if (isNaN(localDateTime.getTime())) {
-      throw new Error('Invalid date/time combination');
-    }
-    
-    // Return ISO string which will be in UTC
-    return localDateTime.toISOString();
+    return `${date}T${time}:00`; // Creates YYYY-MM-DDTHH:MM:SS format
   };
 
   // Get minimum date (today)
@@ -146,22 +122,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     const oneMonthFromNow = new Date();
     oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
     return oneMonthFromNow.toISOString().split('T')[0];
-  };
-
-  // Get minimum time for today (1 hour from now)
-  const getMinTimeForToday = (): string => {
-    const oneHourFromNow = new Date();
-    oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
-    const hours = String(oneHourFromNow.getHours()).padStart(2, '0');
-    const minutes = String(Math.ceil(oneHourFromNow.getMinutes() / 30) * 30).padStart(2, '0'); // Round up to next 30-minute interval
-    
-    // Handle case where minutes round up to 60
-    if (minutes === '60') {
-      oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
-      return `${String(oneHourFromNow.getHours()).padStart(2, '0')}:00`;
-    }
-    
-    return `${hours}:${minutes}`;
   };
 
   const validateField = (field: string, value: any): boolean => {
@@ -201,17 +161,13 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         if (!value) {
           error = 'Start time is required';
         } else if (formData.startDate) {
-          try {
-            // Check if the combined datetime is at least 1 hour from now
-            const combinedDateTime = new Date(combineDateTime(formData.startDate, value));
-            const oneHourFromNow = new Date();
-            oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
-            
-            if (combinedDateTime <= oneHourFromNow) {
-              error = 'Class must be scheduled at least 1 hour from now';
-            }
-          } catch (dateError) {
-            error = 'Invalid time format';
+          // Check if the combined datetime is at least 1 hour from now
+          const combinedDateTime = new Date(combineDateTime(formData.startDate, value));
+          const oneHourFromNow = new Date();
+          oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
+          
+          if (combinedDateTime <= oneHourFromNow) {
+            error = 'Class must be scheduled at least 1 hour from now';
           }
         }
         break;
@@ -281,15 +237,8 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     setError('');
 
     try {
-      // Combine date and time for submission with proper timezone handling
+      // Combine date and time for submission
       const startDateTime = combineDateTime(formData.startDate, formData.startTime);
-      
-      console.log('Submitting class with start time:', startDateTime);
-      console.log('Local form data:', { 
-        date: formData.startDate, 
-        time: formData.startTime,
-        duration: formData.durationMinutes 
-      });
       
       const requestData: CreateClassRequest | UpdateClassRequest = {
         subject: formData.subject.trim(),
@@ -310,15 +259,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       onSuccess();
       handleClose();
     } catch (err) {
-      console.error('Class form error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      
-      // Check for schedule conflict errors
-      if (errorMessage.includes('Schedule conflict detected')) {
-        setError(errorMessage);
-      } else {
-        setError(errorMessage);
-      }
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -326,17 +267,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
 
   const handleClose = () => {
     onClose();
-    
-    // Reset form with default values
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const defaultDate = tomorrow.toISOString().split('T')[0];
-    
     setFormData({
       subject: '',
       description: '',
       level: '',
-      startDate: defaultDate,
+      startDate: '',
       startTime: '10:00',
       durationMinutes: 60,
       capacity: 10,
@@ -366,20 +301,10 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   // Generate time options (every 30 minutes from 8:00 to 20:00)
   const generateTimeOptions = () => {
     const options = [];
-    const today = new Date().toISOString().split('T')[0];
-    const isToday = formData.startDate === today;
-    const minTimeForToday = isToday ? getMinTimeForToday() : '08:00';
-    
     for (let hour = 8; hour <= 20; hour++) {
       for (let minute of [0, 30]) {
         if (hour === 20 && minute === 30) break; // Stop at 20:00
         const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        
-        // Skip times that are too early for today
-        if (isToday && timeString < minTimeForToday) {
-          continue;
-        }
-        
         const displayTime = new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-SG', {
           hour: '2-digit',
           minute: '2-digit',
@@ -544,11 +469,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
               {fieldErrors.startTime && (
                 <p className="text-red-600 text-sm mt-1">{fieldErrors.startTime}</p>
               )}
-              {formData.startDate === new Date().toISOString().split('T')[0] && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Times shown are at least 1 hour from now
-                </p>
-              )}
             </div>
           </div>
 
@@ -646,16 +566,16 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
           </div>
           
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm whitespace-pre-line">{error}</p>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
           {/* Info Box */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 text-sm">
-              <span className="font-medium">Note:</span> The system will check for schedule conflicts with your existing classes. 
-              {isEdit ? ' Only future classes can be modified.' : ' Classes must be at least 1 hour from now and within 1 month.'}
+              <span className="font-medium">Note:</span> Level/Grade is required for all classes. Use "Mixed Levels" for classes or activities that accept students of different grades.
+              {isEdit ? ' Only future classes can be modified.' : ' Classes can be scheduled from today up to 1 month in advance, and must be at least 1 hour from now.'}
             </p>
           </div>
           
