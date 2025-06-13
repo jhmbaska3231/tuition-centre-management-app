@@ -1,7 +1,7 @@
 // frontend/src/components/admin/ClassReassignment.tsx
 
 import React, { useState, useEffect } from 'react';
-import { UserCheck, Calendar, MapPin, Users, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { X, UserCheck, Calendar, MapPin, Users, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import type { UnassignedClass, StaffMember } from '../../types';
 import AdminService from '../../services/admin';
 
@@ -95,7 +95,7 @@ const ClassReassignment: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading classes...</span>
         </div>
       </div>
@@ -107,7 +107,7 @@ const ClassReassignment: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <UserCheck className="text-blue-600" size={32} />
+          <UserCheck className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Class Assignments</h1>
             <p className="text-gray-600">Assign tutors to classes without teachers</p>
@@ -116,7 +116,7 @@ const ClassReassignment: React.FC = () => {
         
         <button
           onClick={loadData}
-          className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          className="flex items-center space-x-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -142,7 +142,7 @@ const ClassReassignment: React.FC = () => {
       <div className="grid md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
           <div className="flex items-center space-x-3 mb-2">
-            <AlertCircle className="text-orange-600" size={24} />
+            <AlertCircle className="text-gray-600" size={24} />
             <h3 className="text-lg font-semibold text-gray-800">Unassigned Classes</h3>
           </div>
           <p className="text-2xl font-bold text-orange-600">{unassignedClasses.length}</p>
@@ -151,7 +151,7 @@ const ClassReassignment: React.FC = () => {
 
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
           <div className="flex items-center space-x-3 mb-2">
-            <Calendar className="text-blue-600" size={24} />
+            <Calendar className="text-gray-600" size={24} />
             <h3 className="text-lg font-semibold text-gray-800">Upcoming Classes</h3>
           </div>
           <p className="text-2xl font-bold text-blue-600">
@@ -162,7 +162,7 @@ const ClassReassignment: React.FC = () => {
 
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
           <div className="flex items-center space-x-3 mb-2">
-            <Users className="text-green-600" size={24} />
+            <Users className="text-gray-600" size={24} />
             <h3 className="text-lg font-semibold text-gray-800">Available Staff</h3>
           </div>
           <p className="text-2xl font-bold text-green-600">{staff.length}</p>
@@ -289,7 +289,7 @@ const ClassReassignment: React.FC = () => {
                       <div className="ml-6 flex flex-col space-y-2">
                         <button
                           onClick={() => handleAssignTutor(classItem)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                          className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium"
                         >
                           Assign Tutor
                         </button>
@@ -310,13 +310,14 @@ const ClassReassignment: React.FC = () => {
 
       {/* Assignment Modal */}
       {showAssignModal && selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <button
               onClick={() => setShowAssignModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              type="button"
             >
-              ×
+              <X size={24} />
             </button>
             
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Assign Tutor</h2>
@@ -338,7 +339,7 @@ const ClassReassignment: React.FC = () => {
               <select
                 value={selectedTutor}
                 onChange={(e) => setSelectedTutor(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">Choose a staff member</option>
                 {staff.map((staffMember) => (
@@ -359,7 +360,7 @@ const ClassReassignment: React.FC = () => {
               <button
                 onClick={handleAssignSubmit}
                 disabled={!selectedTutor || assigning}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {assigning ? 'Assigning...' : 'Assign Tutor'}
               </button>

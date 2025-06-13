@@ -169,7 +169,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
         <button
           onClick={handleClose}
@@ -197,7 +197,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.firstName 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 placeholder="John"
                 required
@@ -218,9 +218,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.lastName 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
-                placeholder="Doe"
+                placeholder="Tan"
                 required
               />
               {fieldErrors.lastName && (
@@ -240,7 +240,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.grade 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
               required
             >
@@ -293,7 +293,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
               <select
                 value={formData.homeBranchId}
                 onChange={(e) => handleInputChange('homeBranchId', e.target.value)}
-                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors"
               >
                 <option value="">Select Home Branch (Optional)</option>
                 {branches.map((branch) => (
@@ -321,7 +321,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ isOpen, onClose, student, onS
           <button
             type="submit"
             disabled={isLoading || Object.values(fieldErrors).some(error => error !== '')}
-            className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full bg-indigo-500 text-white p-3 rounded-lg font-semibold hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {isLoading ? (
               <div className="flex items-center justify-center">

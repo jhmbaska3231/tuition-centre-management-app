@@ -152,7 +152,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
         <button
           onClick={handleClose}
@@ -179,9 +179,9 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.name 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
-              placeholder="e.g., Main Branch, North Branch"
+              placeholder="e.g. Main Branch, North Branch"
               required
             />
             {fieldErrors.name && (
@@ -200,9 +200,9 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.address 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
-              placeholder="e.g., Block 123, Tampines Street 45, #05-67, Singapore 520123"
+              placeholder="e.g. Block 123, Tampines Street 45, #05-67, Singapore 520123"
               rows={3}
               required
             />
@@ -223,7 +223,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.phone 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
               placeholder="61234567"
             />
@@ -240,7 +240,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
                   type="checkbox"
                   checked={formData.active}
                   onChange={(e) => handleInputChange('active', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
                   Branch is Active (Operational)
@@ -251,7 +251,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
                   <span className="font-medium">Active:</span> Branch is operational and available for class creation and student enrollment.
                 </p>
                 <p>
-                  <span className="font-medium">Inactive:</span> Branch is temporarily closed (e.g., for renovation) but data is preserved.
+                  <span className="font-medium">Inactive:</span> Branch is temporarily closed (e.g. for renovation) but data is preserved.
                 </p>
                 <p className="mt-2 text-orange-600 font-medium">
                   Note: To permanently close a branch and remove all data, use the "Delete Branch" button instead.
@@ -265,16 +265,6 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
-
-          {/* Info Box */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-sm">
-              <span className="font-medium">Note:</span> {isEdit ? 
-                'Branch details will be updated immediately. Students and classes associated with this branch will see the updated information.' : 
-                'The new branch will be available immediately for creating classes and assigning to students.'
-              }
-            </p>
-          </div>
           
           <div className="flex space-x-3">
             <button
@@ -288,7 +278,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
             <button
               type="submit"
               disabled={isLoading || Object.values(fieldErrors).some(error => error !== '')}
-              className="flex-1 bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="flex-1 bg-indigo-500 text-white p-3 rounded-lg font-semibold hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">

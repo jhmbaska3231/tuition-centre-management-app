@@ -391,7 +391,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading classes...</span>
         </div>
       </div>
@@ -408,7 +408,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <Calendar className="text-blue-600" size={32} />
+          <Calendar className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Class Operations</h1>
             <p className="text-gray-600">Browse classes and manage enrollments for your children</p>
@@ -418,7 +418,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
           >
             <Filter size={20} />
             <span>Filters</span>
@@ -432,7 +432,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
           onClick={() => setActiveView('browse')}
           className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
             activeView === 'browse'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-indigo-500 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -442,7 +442,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
           onClick={() => setActiveView('enrollments')}
           className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
             activeView === 'enrollments'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-indigo-500 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -463,7 +463,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                   value="all"
                   checked={selectedChild === 'all'}
                   onChange={(e) => setSelectedChild(e.target.value)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                 />
                 <span className="text-sm text-gray-700 font-medium">All Children</span>
               </label>
@@ -476,7 +476,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                     value={student.id}
                     checked={selectedChild === student.id}
                     onChange={(e) => setSelectedChild(e.target.value)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                   />
                   <span className="text-sm text-gray-700 font-medium">
                     {student.first_name} {student.last_name}
@@ -499,7 +499,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">All Subjects</option>
                 {getUniqueSubjects().map((subject) => (
@@ -517,7 +517,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">All Branches</option>
                 {branches.map((branch) => (
@@ -565,11 +565,11 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
             <div className="mt-4 flex flex-wrap gap-2 items-center">
               <span className="text-sm text-gray-600">Active filters:</span>
               {selectedSubject && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                   Subject: {selectedSubject}
                   <button
                     onClick={() => setSelectedSubject('')}
-                    className="ml-1 text-blue-600 hover:text-blue-800"
+                    className="ml-1 text-indigo-600 hover:text-indigo-800"
                   >
                     <X size={12} />
                   </button>
@@ -749,7 +749,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                     disabled={!canEnrollInClass(classItem)}
                     className={`w-full flex items-center justify-center space-x-2 py-3 rounded-lg font-semibold transition-colors ${
                       canEnrollInClass(classItem)
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        ? 'bg-indigo-500 text-white hover:bg-indigo-600'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                   >
@@ -890,7 +890,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <select
                 value={selectedStudent}
                 onChange={(e) => setSelectedStudent(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">Choose a student</option>
                 {eligibleStudentsForSelectedClass.map((student) => (
@@ -924,7 +924,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <button
                 onClick={handleEnrollSubmit}
                 disabled={!selectedStudent || enrolling}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {enrolling ? 'Enrolling...' : 'Enroll'}
               </button>
@@ -935,7 +935,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
 
       {/* Cancel Confirmation Modal */}
       {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Confirm Cancellation</h3>
             

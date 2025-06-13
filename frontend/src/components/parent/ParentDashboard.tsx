@@ -82,7 +82,7 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({
                 className={`
                   flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap
                   ${activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
                 `}
@@ -90,7 +90,7 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({
                 {tab.icon}
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                  <span className="ml-2 bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
                     {tab.badge}
                   </span>
                 )}

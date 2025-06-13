@@ -1,7 +1,7 @@
 // frontend/src/components/auth/RegistrationModal.tsx
 
 import React, { useState } from 'react';
-import { X, UserPlus } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { isValidEmail, isValidPassword, getNameValidationError, getPhoneValidationError } from '../../utils/validation';
 
@@ -190,8 +190,8 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl max-h-[85vh] overflow-y-auto">
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -201,9 +201,6 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
         </button>
         
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <UserPlus className="text-white" size={24} />
-          </div>
           <h2 className="text-2xl font-bold text-gray-800">Create Account</h2>
           <p className="text-gray-600 mt-2">Join our tuition centre community</p>
         </div>
@@ -222,7 +219,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.firstName 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 placeholder="John"
                 required
@@ -242,9 +239,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.lastName 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
-                placeholder="Doe"
+                placeholder="Tan"
                 required
               />
               {fieldErrors.lastName && (
@@ -267,9 +264,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.email 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
-              placeholder="john.doe@example.com"
+              placeholder="john.tan@email.com"
               required
             />
             {fieldErrors.email && (
@@ -289,7 +286,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.phone 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
               placeholder="91234567"
             />
@@ -310,7 +307,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.password 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
               placeholder="Minimum 8 characters"
               required
@@ -331,7 +328,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.confirmPassword 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
               placeholder="Re-enter your password"
               required
@@ -357,7 +354,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
           <button
             type="submit"
             disabled={isLoading || Object.values(fieldErrors).some(error => error !== '')}
-            className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full bg-indigo-500 text-white p-3 rounded-lg font-semibold hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {isLoading ? (
               <div className="flex items-center justify-center">

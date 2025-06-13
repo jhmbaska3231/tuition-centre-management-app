@@ -67,7 +67,7 @@ const StudentManagement: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading students...</span>
         </div>
       </div>
@@ -79,7 +79,7 @@ const StudentManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <Users className="text-blue-600" size={32} />
+          <Users className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">My Children</h1>
             <p className="text-gray-600">Manage your children's information</p>
@@ -87,7 +87,7 @@ const StudentManagement: React.FC = () => {
         </div>
         <button
           onClick={handleAddStudent}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-md text-lg font-semibold min-w-fit whitespace-nowrap"
+          className="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-md text-lg font-semibold min-w-fit whitespace-nowrap"
         >
           <Plus size={20} />
           <span>Add Student</span>
@@ -117,7 +117,7 @@ const StudentManagement: React.FC = () => {
           </p>
           <button
             onClick={handleAddStudent}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
+            className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
           >
             Add Your First Student
           </button>
@@ -145,7 +145,7 @@ const StudentManagement: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">

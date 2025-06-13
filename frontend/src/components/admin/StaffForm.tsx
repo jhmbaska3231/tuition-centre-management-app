@@ -259,7 +259,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
         <button
           onClick={handleClose}
@@ -287,7 +287,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.firstName 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 placeholder="John"
                 required
@@ -307,9 +307,9 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.lastName 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
-                placeholder="Doe"
+                placeholder="Tan"
                 required
               />
               {fieldErrors.lastName && (
@@ -335,9 +335,9 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
               } ${
                 fieldErrors.email 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
-              placeholder="john.doe@tuition.com"
+              placeholder="john.tan@eduspark.com"
               required
             />
             {fieldErrors.email && (
@@ -362,7 +362,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
               className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                 fieldErrors.phone 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-blue-500'
+                  : 'border-gray-200 focus:border-indigo-500'
               }`}
               placeholder="91234567"
             />
@@ -385,7 +385,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
                   className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                     fieldErrors.password 
                       ? 'border-red-300 focus:border-red-500' 
-                      : 'border-gray-200 focus:border-blue-500'
+                      : 'border-gray-200 focus:border-indigo-500'
                   }`}
                   placeholder="Minimum 8 characters"
                   required
@@ -406,7 +406,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
                   className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                     fieldErrors.confirmPassword 
                       ? 'border-red-300 focus:border-red-500' 
-                      : 'border-gray-200 focus:border-blue-500'
+                      : 'border-gray-200 focus:border-indigo-500'
                   }`}
                   placeholder="Re-enter password"
                   required
@@ -426,7 +426,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
                   type="checkbox"
                   checked={formData.active}
                   onChange={(e) => handleInputChange('active', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
                 <span className="text-sm font-medium text-gray-700">Active Staff Member</span>
               </label>
@@ -464,7 +464,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ isOpen, onClose, staffMember, onS
             <button
               type="submit"
               disabled={isLoading || Object.values(fieldErrors).some(error => error !== '')}
-              className="flex-1 bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="flex-1 bg-indigo-500 text-white p-3 rounded-lg font-semibold hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">

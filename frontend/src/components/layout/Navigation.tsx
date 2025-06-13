@@ -48,12 +48,9 @@ const Navigation: React.FC<NavigationProps> = ({ onProfileClick }) => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center space-x-2">
-              <GraduationCap className="h-8 w-8 text-blue-600" />
+              <GraduationCap className="h-8 w-8 text-indigo-500" />
               <span className="text-xl font-bold text-gray-800 hidden sm:block">
-                Tuition Centre Management
-              </span>
-              <span className="text-lg font-bold text-gray-800 sm:hidden">
-                TCM
+                EduSpark Tuition
               </span>
             </div>
             
@@ -103,7 +100,7 @@ const Navigation: React.FC<NavigationProps> = ({ onProfileClick }) => {
                           setShowProfileDropdown(false);
                           logout();
                         }}
-                        className="flex items-center space-x-2 w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
+                        className="flex items-center space-x-2 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors"
                       >
                         <LogIn size={16} />
                         <span>Sign Out</span>
@@ -125,7 +122,7 @@ const Navigation: React.FC<NavigationProps> = ({ onProfileClick }) => {
                   <button
                     onClick={() => setShowRegistrationModal(true)}
                     data-register-btn
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-all duration-200 transform hover:-translate-y-0.5"
+                    className="flex items-center space-x-2 bg-indigo-500 text-white px-6 py-2 rounded-full hover:bg-indigo-600 transition-all duration-200 transform hover:-translate-y-0.5"
                   >
                     <UserPlus size={18} />
                     <span>Register</span>

@@ -44,7 +44,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onEdit, onDelete }) 
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+          <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
             <User className="text-white" size={20} />
           </div>
           <div>
@@ -75,7 +75,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onEdit, onDelete }) 
       {/* Student Details */}
       <div className="space-y-2">
         <div className="flex items-center space-x-3">
-          <GraduationCap className="text-green-600" size={16} />
+          <GraduationCap className="text-gray-600" size={16} />
           <span className="text-gray-700">
             <span className="font-medium">Grade:</span> <span className="ml-2">{student.grade}</span>
           </span>
@@ -83,7 +83,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onEdit, onDelete }) 
 
         {student.date_of_birth && (
           <div className="flex items-center space-x-3">
-            <Calendar className="text-blue-600" size={16} />
+            <Calendar className="text-gray-600" size={16} />
             <span className="text-gray-700">
               <span className="font-medium">Born:</span> <span className="ml-2">{formatDate(student.date_of_birth)}</span>
               {age && <span className="text-gray-500 ml-2">({age} years old)</span>}
@@ -93,7 +93,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onEdit, onDelete }) 
 
         {student.home_branch_name && (
           <div className="flex items-center space-x-3">
-            <MapPin className="text-orange-600" size={16} />
+            <MapPin className="text-gray-600" size={16} />
             <span className="text-gray-700">
               <span className="font-medium">Home Branch:</span> <span className="ml-2">{student.home_branch_name}</span>
             </span>

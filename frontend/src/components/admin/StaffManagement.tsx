@@ -1,7 +1,7 @@
 // frontend/src/components/admin/StaffManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit2, Trash2, AlertTriangle, Loader2, UserCheck, UserX } from 'lucide-react';
+import { X, Users, Plus, Edit2, Trash2, Loader2, UserCheck, UserX } from 'lucide-react';
 import type { StaffMember, StaffDeletionImpact } from '../../types';
 import AdminService from '../../services/admin';
 import StaffForm from './StaffForm';
@@ -47,6 +47,11 @@ const StaffManagement: React.FC = () => {
     setEditingStaff(staffMember);
     setShowStaffForm(true);
   };
+
+  const handleClose = () => {
+    setShowDeleteConfirm(null);
+    setDeletionImpact(null);
+  }
 
   const handleDeleteStaff = async (staffMember: StaffMember) => {
     setShowDeleteConfirm(staffMember);
@@ -112,7 +117,7 @@ const StaffManagement: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading staff...</span>
         </div>
       </div>
@@ -124,7 +129,7 @@ const StaffManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <Users className="text-blue-600" size={32} />
+          <Users className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Staff Management</h1>
             <p className="text-gray-600">Manage teacher and staff accounts</p>
@@ -133,7 +138,7 @@ const StaffManagement: React.FC = () => {
         
         <button
           onClick={handleCreateStaff}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-md text-lg font-semibold"
+          className="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-md text-lg font-semibold"
         >
           <Plus size={20} />
           <span>Add Staff Member</span>
@@ -163,7 +168,7 @@ const StaffManagement: React.FC = () => {
           </p>
           <button
             onClick={handleCreateStaff}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
+            className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
           >
             Add First Staff Member
           </button>
@@ -175,10 +180,10 @@ const StaffManagement: React.FC = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    staffMember.active ? 'bg-green-100' : 'bg-gray-100'
+                    staffMember.active ? 'bg-indigo-100' : 'bg-gray-100'
                   }`}>
                     {staffMember.active ? (
-                      <UserCheck className="text-green-600" size={20} />
+                      <UserCheck className="text-indigo-600" size={20} />
                     ) : (
                       <UserX className="text-gray-600" size={20} />
                     )}
@@ -222,7 +227,7 @@ const StaffManagement: React.FC = () => {
                   <span className="font-medium">Status:</span>{' '}
                   <span className={`px-2 py-1 rounded text-xs font-semibold ${
                     staffMember.active 
-                      ? 'bg-green-100 text-green-800' 
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-gray-100 text-gray-800'
                   }`}>
                     {staffMember.active ? 'Active' : 'Inactive'}
@@ -231,7 +236,7 @@ const StaffManagement: React.FC = () => {
 
                 {staffMember.class_count !== undefined && (
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium">Classes:</span> {staffMember.class_count} total
+                    <span className="font-medium">Classes@@@:</span> {staffMember.class_count} total
                     {staffMember.future_class_count !== undefined && staffMember.future_class_count > 0 && (
                       <span className="text-blue-600"> ({staffMember.future_class_count} upcoming)</span>
                     )}
@@ -260,15 +265,18 @@ const StaffManagement: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={handleClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              type="button"
+            >
+              <X size={24} />
+            </button>
             <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Confirm Staff Deletion</h3>
             
-            <div className="mb-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-              
+            <div className="mb-6 text-center">              
               <p className="text-gray-700 mb-2">
                 Are you sure you want to delete this staff member?
               </p>
@@ -283,7 +291,7 @@ const StaffManagement: React.FC = () => {
               {/* Impact Analysis */}
               {loadingImpact ? (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="animate-spin text-blue-600 mr-2" size={20} />
+                  <Loader2 className="animate-spin text-indigo-600 mr-2" size={20} />
                   <span className="text-gray-600">Checking deletion impact...</span>
                 </div>
               ) : deletionImpact ? (
@@ -300,7 +308,7 @@ const StaffManagement: React.FC = () => {
                       <p className="font-medium text-gray-800 mb-2">
                         Affected Classes ({deletionImpact.impact.affectedClasses.length}):
                       </p>
-                      <div className="max-h-32 overflow-y-auto space-y-2">
+                      <div className="max-h-42 overflow-y-auto space-y-2">
                         {deletionImpact.impact.affectedClasses.map((cls) => (
                           <div key={cls.id} className="text-sm text-gray-600 p-2 bg-white rounded border">
                             <p className="font-medium">{cls.subject}</p>

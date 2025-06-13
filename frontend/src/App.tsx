@@ -36,7 +36,7 @@ const Testimonial: React.FC<TestimonialProps> = ({ name, role, content, rating }
   <div className="bg-white bg-opacity-95 backdrop-blur-lg p-6 rounded-2xl shadow-lg">
     <div className="flex items-center mb-4">
       {[...Array(rating)].map((_, i) => (
-        <Star key={i} className="text-yellow-400 fill-current" size={16} />
+        <Star key={i} className="text-indigo-500 fill-current" size={16} />
       ))}
     </div>
     <p className="text-gray-700 mb-4 italic">"{content}"</p>
@@ -49,10 +49,10 @@ const Testimonial: React.FC<TestimonialProps> = ({ name, role, content, rating }
 
 // Loading Component
 const LoadingScreen: React.FC = () => (
-  <div className="min-h-screen bg-blue-50 flex items-center justify-center">
+  <div className="min-h-screen bg-indigo-50 flex items-center justify-center">
     <div className="bg-white p-8 rounded-2xl shadow-lg">
       <div className="flex items-center space-x-3">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-indigo-200 border-t-indigo-600"></div>
         <span className="text-lg font-medium text-gray-700">Loading...</span>
       </div>
     </div>
@@ -123,18 +123,17 @@ const AppContent: React.FC = () => {
 
   // Landing page for non-authenticated users
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-white-100 to-indigo-200">
       <Navigation />
       
       <main className="max-w-6xl mx-auto px-4 py-16">
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-800 mb-6">
-            Welcome to Our Tuition Centre
+            Ignite Brilliance with EduSpark Tuition
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
-            Comprehensive learning management system designed for modern education.
-            Join thousands of students across multiple branches in their learning journey.
+            At EduSpark Tuition, we believe every student has the potential to shine. Our mission is to empower learners through high-quality, engaging, and results-driven tutoring.
           </p>
           
           {/* CTA Buttons */}
@@ -144,12 +143,12 @@ const AppContent: React.FC = () => {
                 // This would trigger the registration modal from Navigation
                 document.querySelector<HTMLButtonElement>('[data-register-btn]')?.click();
               }}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-blue-700 transition-all duration-200 transform hover:-translate-y-1 shadow-lg"
+              className="flex items-center space-x-2 bg-indigo-500 text-white px-8 py-4 rounded-full font-semibold hover:bg-indigo-600 transition-all duration-200 transform hover:-translate-y-1 shadow-lg"
             >
               <UserPlus size={20} />
               <span>Get Started Today</span>
             </button>
-            <button className="text-gray-600 border-2 border-gray-300 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 hover:border-gray-400 transition-all duration-200">
+            <button className="text-gray-600 border-2 border-gray-300 px-8 py-4 rounded-full font-semibold hover:bg-indigo-50 hover:border-gray-400 transition-all duration-200">
               Learn More
             </button>
           </div>
@@ -161,55 +160,55 @@ const AppContent: React.FC = () => {
             icon={<BookOpen />}
             title="Multiple Branches"
             description="Access classes across all our branch locations with flexible scheduling and easy enrollment."
-            color="text-blue-600"
+            color="text-indigo-500"
           />
           
           <FeatureCard
             icon={<User />}
             title="Expert Teachers"
             description="Learn from qualified instructors with specialized subject expertise and proven track records."
-            color="text-green-600"
+            color="text-indigo-500"
           />
           
           <FeatureCard
             icon={<BarChart3 />}
             title="Progress Tracking"
             description="Monitor student progress with detailed analytics, payment tracking, and enrollment history."
-            color="text-purple-600"
+            color="text-indigo-500"
           />
         </div>
 
         {/* Benefits Section */}
-        <div className="bg-white bg-opacity-95 backdrop-blur-lg rounded-2xl p-8 mb-16">
+        <div className="bg-white backdrop-blur-lg rounded-2xl p-8 mb-16">
           <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Why Choose Us?</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
-                <CheckCircle className="text-green-600" size={24} />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-4">
+                <CheckCircle className="text-indigo-500" size={24} />
               </div>
               <h3 className="font-semibold text-gray-800 mb-2">Flexible Scheduling</h3>
               <p className="text-sm text-gray-600">Classes available across multiple time slots and branches</p>
             </div>
             
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
-                <Users className="text-blue-600" size={24} />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-4">
+                <Users className="text-indigo-500" size={24} />
               </div>
               <h3 className="font-semibold text-gray-800 mb-2">Small Class Sizes</h3>
               <p className="text-sm text-gray-600">Personalized attention with limited enrollment per class</p>
             </div>
             
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mb-4">
-                <Calendar className="text-purple-600" size={24} />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-4">
+                <Calendar className="text-indigo-500" size={24} />
               </div>
               <h3 className="font-semibold text-gray-800 mb-2">Easy Management</h3>
               <p className="text-sm text-gray-600">Simple enrollment, cancellation, and payment tracking</p>
             </div>
             
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full mb-4">
-                <CreditCard className="text-orange-600" size={24} />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-4">
+                <CreditCard className="text-indigo-500" size={24} />
               </div>
               <h3 className="font-semibold text-gray-800 mb-2">Transparent Pricing</h3>
               <p className="text-sm text-gray-600">Clear payment history and multiple payment options</p>
@@ -229,7 +228,7 @@ const AppContent: React.FC = () => {
             />
             <Testimonial
               name="David Chen"
-              role="Parent"
+              role="Parent of 3 students"
               content="Excellent teachers and flexible scheduling. My daughter's grades have improved significantly since joining."
               rating={5}
             />
@@ -252,7 +251,7 @@ const AppContent: React.FC = () => {
             onClick={() => {
               document.querySelector<HTMLButtonElement>('[data-register-btn]')?.click();
             }}
-            className="bg-blue-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-blue-700 transition-all duration-200 transform hover:-translate-y-1 shadow-lg"
+            className="bg-indigo-500 text-white px-8 py-4 rounded-full font-semibold hover:bg-indigo-600 transition-all duration-200 transform hover:-translate-y-1 shadow-lg"
           >
             Create Your Account
           </button>

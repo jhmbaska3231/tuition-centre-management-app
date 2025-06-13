@@ -169,7 +169,7 @@ const ProfileManagement: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading profile...</span>
         </div>
       </div>
@@ -181,7 +181,7 @@ const ProfileManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <User className="text-blue-600" size={32} />
+          <User className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Profile Settings</h1>
             <p className="text-gray-600">Manage your account information</p>
@@ -193,15 +193,15 @@ const ProfileManagement: React.FC = () => {
         {/* Profile Card */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-8">
           {/* Profile Header */}
-          <div className="bg-blue-600 p-6">
+          <div className="bg-indigo-500 p-6">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <User className="text-white" size={24} />
+                {/* Insert profile photo here */}
               </div>
               <div className="text-white">
                 <h2 className="text-2xl font-bold">{user.first_name} {user.last_name}</h2>
-                <p className="text-blue-100">{getRoleDisplayName(user.role)} Account</p>
-                <p className="text-blue-100 text-sm mt-1">
+                <p className="text-indigo-100">{getRoleDisplayName(user.role)} Account</p>
+                <p className="text-indigo-100 text-sm mt-1">
                   Member since {formatMemberSince(user.created_at)}
                 </p>
               </div>
@@ -224,7 +224,7 @@ const ProfileManagement: React.FC = () => {
                     className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                       fieldErrors.firstName 
                         ? 'border-red-300 focus:border-red-500' 
-                        : 'border-gray-200 focus:border-blue-500'
+                        : 'border-gray-200 focus:border-indigo-500'
                     }`}
                     placeholder="Enter your first name"
                     required
@@ -244,7 +244,7 @@ const ProfileManagement: React.FC = () => {
                     className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                       fieldErrors.lastName 
                         ? 'border-red-300 focus:border-red-500' 
-                        : 'border-gray-200 focus:border-blue-500'
+                        : 'border-gray-200 focus:border-indigo-500'
                     }`}
                     placeholder="Enter your last name"
                     required
@@ -289,7 +289,7 @@ const ProfileManagement: React.FC = () => {
                     className={`w-full pl-12 p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                       fieldErrors.phone 
                         ? 'border-red-300 focus:border-red-500' 
-                        : 'border-gray-200 focus:border-blue-500'
+                        : 'border-gray-200 focus:border-indigo-500'
                     }`}
                     placeholder="91234567"
                   />
@@ -318,7 +318,7 @@ const ProfileManagement: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading || !hasChanges || Object.values(fieldErrors).some(error => error !== '')}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center space-x-2 bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   {loading ? (
                     <>
@@ -372,7 +372,7 @@ const ProfileManagement: React.FC = () => {
                 Delete your account and all associated data permanently. This action cannot be undone.
               </p>
               <p className="text-sm text-gray-600">
-                This will delete all your students, enrollments, and payment history.
+                This will delete all your children's profile, enrollments, and payment history.
               </p>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -404,7 +404,7 @@ const ProfileManagement: React.FC = () => {
 
       {/* Delete Confirmation Modal (Only for Parents) */}
       {showDeleteConfirm && canDeleteAccount && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <button
               onClick={() => {
@@ -417,11 +417,7 @@ const ProfileManagement: React.FC = () => {
               <X size={24} />
             </button>
             
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-              
+            <div className="text-center mb-6">              
               <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Parent Account</h3>
               <p className="text-gray-600 mb-4">
                 This action will permanently delete your parent account and all associated data.

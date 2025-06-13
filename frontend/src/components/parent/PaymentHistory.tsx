@@ -100,7 +100,7 @@ const PaymentHistory: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading payment history...</span>
         </div>
       </div>
@@ -112,7 +112,7 @@ const PaymentHistory: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <CreditCard className="text-blue-600" size={32} />
+          <CreditCard className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Payment History</h1>
             <p className="text-gray-600">Track payments for all your children</p>
@@ -137,7 +137,7 @@ const PaymentHistory: React.FC = () => {
       <div className="grid md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
           <div className="flex items-center space-x-3 mb-2">
-            <CheckCircle className="text-green-600" size={24} />
+            <CheckCircle className="text-gray-600" size={24} />
             <h3 className="text-lg font-semibold text-gray-800">Total Paid</h3>
           </div>
           <p className="text-2xl font-bold text-green-600">{formatAmount(totalPaid)}</p>
@@ -146,7 +146,7 @@ const PaymentHistory: React.FC = () => {
 
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
           <div className="flex items-center space-x-3 mb-2">
-            <XCircle className="text-red-600" size={24} />
+            <XCircle className="text-gray-600" size={24} />
             <h3 className="text-lg font-semibold text-gray-800">Outstanding</h3>
           </div>
           <p className="text-2xl font-bold text-red-600">{formatAmount(totalOutstanding)}</p>
@@ -155,7 +155,7 @@ const PaymentHistory: React.FC = () => {
 
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
           <div className="flex items-center space-x-3 mb-2">
-            <Calendar className="text-blue-600" size={24} />
+            <Calendar className="text-gray-600" size={24} />
             <h3 className="text-lg font-semibold text-gray-800">This Month</h3>
           </div>
           <p className="text-2xl font-bold text-blue-600">{currentMonthPayments.length}</p>
@@ -176,7 +176,7 @@ const PaymentHistory: React.FC = () => {
         <div className="space-y-8">
           {Object.entries(paymentsByStudent).map(([studentName, studentPayments]) => (
             <div key={studentName} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="bg-blue-600 p-4">
+              <div className="bg-indigo-500 p-4">
                 <h3 className="text-xl font-bold text-white flex items-center space-x-2">
                   <DollarSign size={20} />
                   <span>{studentName}</span>
