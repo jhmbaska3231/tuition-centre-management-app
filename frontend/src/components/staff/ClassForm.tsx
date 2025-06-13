@@ -321,7 +321,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   const maxDate = getMaxDate();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
         <button
           onClick={handleClose}
@@ -356,7 +356,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.subject 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 placeholder="e.g., Mathematics, English, Science"
                 required
@@ -376,7 +376,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.level 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 required
               >
@@ -412,7 +412,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors"
               placeholder="Brief description of the class content and objectives"
               rows={3}
             />
@@ -430,7 +430,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className={`${
                   fieldErrors.startDate 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 placeholder="DD/MM/YYYY"
                 min={minDate}
@@ -455,7 +455,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.startTime 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 required
               >
@@ -484,7 +484,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.durationMinutes 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 required
               >
@@ -516,7 +516,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.capacity 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 placeholder="Maximum number of students"
                 required
@@ -548,7 +548,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.branchId 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-blue-500'
+                    : 'border-gray-200 focus:border-indigo-500'
                 }`}
                 required
               >
@@ -574,7 +574,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
           {/* Info Box */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 text-sm">
-              <span className="font-medium">Note:</span> Level/Grade is required for all classes. Use "Mixed Levels" for classes or activities that accept students of different grades.
+              <span className="font-medium">Note:</span> Grade/Level is required for all classes. Use "Mixed Levels" for classes or activities that accept students of different grades.
               {isEdit ? ' Only future classes can be modified.' : ' Classes can be scheduled from today up to 1 month in advance, and must be at least 1 hour from now.'}
             </p>
           </div>
@@ -591,7 +591,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
             <button
               type="submit"
               disabled={isLoading || Object.values(fieldErrors).some(error => error !== '')}
-              className="flex-1 bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="flex-1 bg-indigo-500 text-white p-3 rounded-lg font-semibold hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">

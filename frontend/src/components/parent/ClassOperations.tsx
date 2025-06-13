@@ -851,7 +851,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
 
       {/* Enrollment Modal */}
       {showEnrollModal && selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <button
               onClick={() => setShowEnrollModal(false)}
@@ -939,11 +939,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Confirm Cancellation</h3>
             
-            <div className="mb-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <X className="text-red-600" size={24} />
-              </div>
-              
+            <div className="mb-6 text-center">              
               <p className="text-gray-700 mb-2">
                 Are you sure you want to cancel this enrollment?
               </p>

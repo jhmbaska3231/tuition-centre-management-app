@@ -409,7 +409,7 @@ const AttendanceTracking: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading classes...</span>
         </div>
       </div>
@@ -421,7 +421,7 @@ const AttendanceTracking: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <UserCheck className="text-blue-600" size={32} />
+          <UserCheck className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Attendance Tracking</h1>
             <p className="text-gray-600">Track attendance for your classes</p>
@@ -434,7 +434,7 @@ const AttendanceTracking: React.FC = () => {
             onClick={() => setShowSummary(false)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               !showSummary 
-                ? 'bg-blue-600 text-white' 
+                ? 'bg-indigo-500 text-white' 
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -444,7 +444,7 @@ const AttendanceTracking: React.FC = () => {
             onClick={() => setShowSummary(true)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               showSummary 
-                ? 'bg-blue-600 text-white' 
+                ? 'bg-indigo-500 text-white' 
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -527,7 +527,7 @@ const AttendanceTracking: React.FC = () => {
                     <div key={cls.class_id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <BookOpen className="text-blue-600" size={24} />
+                          <BookOpen className="text-indigo-500" size={24} />
                           <div>
                             <h3 className="text-xl font-bold text-gray-800">
                               {cls.subject} {cls.level && `(${cls.level})`}
@@ -562,7 +562,7 @@ const AttendanceTracking: React.FC = () => {
                             setSelectedClass(cls);
                             setShowSummary(false);
                           }}
-                          className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
+                          className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-sm font-medium"
                         >
                           View Details
                         </button>
@@ -676,13 +676,13 @@ const AttendanceTracking: React.FC = () => {
           {/* Students and Attendance */}
           {selectedClass && (
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="bg-blue-600 p-6">
+              <div className="bg-indigo-500 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xl font-bold text-white">
                       Enrolled Students ({students.length})
                     </h3>
-                    <p className="text-blue-100">
+                    <p className="text-white">
                       Attendance for {new Date(selectedClass.start_time).toLocaleDateString('en-SG', {
                         weekday: 'long',
                         day: '2-digit',
@@ -696,7 +696,7 @@ const AttendanceTracking: React.FC = () => {
                     <button
                       onClick={handleSaveAttendance}
                       disabled={saving}
-                      className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                      className="flex items-center space-x-2 bg-white text-indigo-500 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 disabled:opacity-50 transition-colors"
                     >
                       {saving ? (
                         <>
@@ -718,7 +718,7 @@ const AttendanceTracking: React.FC = () => {
                 {studentsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="flex items-center space-x-3">
-                      <Loader2 className="animate-spin text-blue-600" size={20} />
+                      <Loader2 className="animate-spin text-indigo-600" size={20} />
                       <span className="text-gray-700">Loading students...</span>
                     </div>
                   </div>

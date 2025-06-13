@@ -177,7 +177,7 @@ const ClassManagement: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader2 className="animate-spin text-blue-600" size={24} />
+          <Loader2 className="animate-spin text-indigo-600" size={24} />
           <span className="text-lg text-gray-700">Loading classes...</span>
         </div>
       </div>
@@ -189,7 +189,7 @@ const ClassManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
-          <BookOpen className="text-blue-600" size={32} />
+          <BookOpen className="text-indigo-500" size={32} />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Class Management</h1>
             <p className="text-gray-600">Create and manage your classes</p>
@@ -199,7 +199,7 @@ const ClassManagement: React.FC = () => {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
           >
             <Filter size={20} />
             <span>Filters</span>
@@ -211,7 +211,7 @@ const ClassManagement: React.FC = () => {
               onClick={() => setShowMyClassesOnly(!showMyClassesOnly)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-all ${
                 !showMyClassesOnly 
-                  ? 'bg-blue-600 text-white shadow-sm' 
+                  ? 'bg-indigo-600 text-white shadow-sm' 
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
@@ -224,7 +224,7 @@ const ClassManagement: React.FC = () => {
           
           <button
             onClick={handleCreateClass}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-md text-lg font-semibold"
+            className="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-md text-lg font-semibold"
           >
             <Plus size={20} />
             <span>Create Class</span>
@@ -243,7 +243,7 @@ const ClassManagement: React.FC = () => {
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">All Subjects</option>
                 {getUniqueSubjects().map((subject) => (
@@ -261,7 +261,7 @@ const ClassManagement: React.FC = () => {
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">All Branches</option>
                 {branches.map((branch) => (
@@ -380,18 +380,11 @@ const ClassManagement: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
             <button
               onClick={handleCreateClass}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
+              className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl transition-all duration-200 text-lg font-semibold"
             >
-              Create Your First Class
+              Create New Class
             </button>
-            {showMyClassesOnly && (
-              <button
-                onClick={() => setShowMyClassesOnly(false)}
-                className="text-blue-600 hover:text-blue-700 px-4 py-2 rounded-lg transition-colors"
-              >
-                View All Classes
-              </button>
-            )}
+            {showMyClassesOnly}
           </div>
         </div>
       ) : (
@@ -536,15 +529,11 @@ const ClassManagement: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md relative shadow-2xl">
             <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Confirm Deletion</h3>
             
-            <div className="mb-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="text-red-600" size={24} />
-              </div>
-              
+            <div className="mb-6 text-center">              
               <p className="text-gray-700 mb-2">
                 Are you sure you want to delete this class?
               </p>
