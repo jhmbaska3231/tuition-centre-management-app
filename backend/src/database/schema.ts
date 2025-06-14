@@ -17,6 +17,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
       DROP TABLE IF EXISTS "Payment" CASCADE;
       DROP TABLE IF EXISTS "Enrollment" CASCADE;
       DROP TABLE IF EXISTS "Class" CASCADE;
+      DROP TABLE IF EXISTS "Classroom" CASCADE;
       DROP TABLE IF EXISTS "Student" CASCADE;
       DROP TABLE IF EXISTS "Branch" CASCADE;
       DROP TABLE IF EXISTS "User" CASCADE;
@@ -58,6 +59,24 @@ export const createDatabaseSchema = async (pool: Pool) => {
     await pool.query(createBranchesTable);
     console.log('Branches table created');
 
+    // Create Classrooms table
+    const createClassroomsTable = `
+      CREATE TABLE "Classroom" (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        room_name TEXT NOT NULL,
+        description TEXT,
+        room_capacity INTEGER NOT NULL CHECK (room_capacity > 0),
+        branch_id UUID REFERENCES "Branch"(id) ON DELETE CASCADE,
+        active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        
+        CONSTRAINT unique_room_per_branch UNIQUE(branch_id, room_name)
+      )
+    `;
+    await pool.query(createClassroomsTable);
+    console.log('Classrooms table created');
+
     // Create Students table
     const createStudentsTable = `
       CREATE TABLE "Student" (
@@ -84,6 +103,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
         description TEXT,
         level TEXT,
         tutor_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
+        classroom_id UUID REFERENCES "Classroom"(id) ON DELETE SET NULL,
         start_time TIMESTAMP NOT NULL,
         end_time TIMESTAMP GENERATED ALWAYS AS (start_time + INTERVAL '1 minute' * duration_minutes) STORED,
         duration_minutes INTEGER NOT NULL,
@@ -162,12 +182,16 @@ export const createDatabaseSchema = async (pool: Pool) => {
       'CREATE INDEX idx_user_role ON "User"(role)',
       'CREATE INDEX idx_user_active ON "User"(active)',
       'CREATE INDEX idx_branch_active ON "Branch"(active)',
+      'CREATE INDEX idx_classroom_branch ON "Classroom"(branch_id)',
+      'CREATE INDEX idx_classroom_active ON "Classroom"(active)',
+      'CREATE INDEX idx_classroom_name ON "Classroom"(room_name)',
       'CREATE INDEX idx_student_parent ON "Student"(parent_id)',
       'CREATE INDEX idx_student_branch ON "Student"(home_branch_id)',
       'CREATE INDEX idx_student_active ON "Student"(active)',
       'CREATE INDEX idx_student_names ON "Student"(first_name, last_name)',
       'CREATE INDEX idx_class_start_time ON "Class"(start_time)',
       'CREATE INDEX idx_class_branch ON "Class"(branch_id)',
+      'CREATE INDEX idx_class_classroom ON "Class"(classroom_id)',
       'CREATE INDEX idx_class_tutor ON "Class"(tutor_id)',
       'CREATE INDEX idx_class_active ON "Class"(active)',
       'CREATE INDEX idx_enrollment_student ON "Enrollment"(student_id)',
@@ -289,6 +313,42 @@ export const seedDatabase = async (pool: Pool) => {
 
     console.log('Branches created');
 
+    // Create classrooms for each branch
+    const classroomsData = [
+      // Main Branch classrooms
+      ['Room A1', 'Large classroom with projector and whiteboard', 30, branch1.rows[0].id],
+      ['Room A2', 'Medium classroom suitable for small groups', 20, branch1.rows[0].id],
+      ['Room A3', 'Small tutorial room with round table setup', 12, branch1.rows[0].id],
+      ['Computer Lab', 'IT lab with 25 workstations', 25, branch1.rows[0].id],
+      
+      // North Branch classrooms
+      ['Room B1', 'Main classroom with interactive whiteboard', 28, branch2.rows[0].id],
+      ['Room B2', 'Art studio with creative workspace', 15, branch2.rows[0].id],
+      ['Music Room', 'Soundproof room with piano and instruments', 12, branch2.rows[0].id],
+      
+      // East Branch classrooms
+      ['Room C1', 'Large lecture hall style classroom', 35, branch3.rows[0].id],
+      ['Room C2', 'Standard classroom with moveable desks', 24, branch3.rows[0].id],
+      ['Science Lab', 'Equipped laboratory for practical lessons', 16, branch3.rows[0].id],
+      
+      // West Branch classrooms
+      ['Room D1', 'Flexible learning space', 22, branch4.rows[0].id],
+      ['Room D2', 'Traditional classroom setup', 18, branch4.rows[0].id],
+      ['Library Room', 'Quiet study environment', 14, branch4.rows[0].id]
+    ];
+
+    const classroomResults = [];
+    for (const [roomName, description, roomCapacity, branchId] of classroomsData) {
+      const result = await pool.query(`
+        INSERT INTO "Classroom" (room_name, description, room_capacity, branch_id)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+      `, [roomName, description, roomCapacity, branchId]);
+      classroomResults.push(result);
+    }
+
+    console.log('Classrooms created');
+
     // Create students
     const student1 = await pool.query(`
       INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
@@ -338,60 +398,85 @@ export const seedDatabase = async (pool: Pool) => {
       RETURNING id
     `, ['Ethan', 'Wong', 'Primary 3', '2014-06-09', parentUser2.rows[0].id, branch2.rows[0].id]);
 
+    // Additional students for testing
+    const student9 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Lily', 'Koh', 'Kindergarten 2', '2016-04-14', parentUser3.rows[0].id, branch2.rows[0].id]);
+
+    const student10 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Marcus', 'Lim', 'Primary 2', '2015-09-03', parentUser3.rows[0].id, branch3.rows[0].id]);
+
+    const student11 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Chloe', 'Tan', 'Primary 6', '2011-12-11', parentUser4.rows[0].id, branch3.rows[0].id]);
+
+    const student12 = await pool.query(`
+      INSERT INTO "Student" (first_name, last_name, grade, date_of_birth, parent_id, home_branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['Ryan', 'Chen', 'Secondary 4', '2007-07-25', parentUser4.rows[0].id, branch4.rows[0].id]);
+
     console.log('Students created');
 
-    // Create classes with varied scheduling and levels matching student grades
+    // Create classes with varied scheduling and levels matching student grades - Updated with classroom assignments
     const classesData = [
-      // Kindergarten classes
-      ['English', 'Early English language skills for young learners', 'Kindergarten 2', staffUser3.rows[0].id, 1, 45, 8, branch2.rows[0].id],
-      ['Art', 'Creative arts and crafts for kindergarten', 'Kindergarten 2', staffUser1.rows[0].id, 2, 60, 10, branch2.rows[0].id],
+      // Classes with classroom assignments
+      ['English', 'Early English language skills for young learners', 'Kindergarten 2', staffUser3.rows[0].id, 1, 45, 8, branch2.rows[0].id, classroomResults[5].rows[0].id], // Music Room
+      ['Art', 'Creative arts and crafts for kindergarten', 'Kindergarten 2', staffUser1.rows[0].id, 2, 60, 10, branch2.rows[0].id, classroomResults[5].rows[0].id], // Art studio
       
       // Primary 1-2 classes
-      ['Mathematics', 'Basic counting and arithmetic', 'Primary 1', staffUser2.rows[0].id, 3, 60, 12, branch4.rows[0].id],
-      ['English', 'Phonics and basic reading skills', 'Primary 1', staffUser3.rows[0].id, 4, 60, 12, branch4.rows[0].id],
-      ['Mathematics', 'Addition and subtraction fundamentals', 'Primary 2', staffUser1.rows[0].id, 5, 60, 15, branch3.rows[0].id],
-      ['Chinese', 'Basic Mandarin for Primary 2', 'Primary 2', staffUser2.rows[0].id, 6, 60, 15, branch3.rows[0].id],
+      ['Mathematics', 'Basic counting and arithmetic', 'Primary 1', staffUser2.rows[0].id, 3, 60, 12, branch4.rows[0].id, classroomResults[10].rows[0].id], // Room D1
+      ['English', 'Phonics and basic reading skills', 'Primary 1', staffUser3.rows[0].id, 4, 60, 12, branch4.rows[0].id, classroomResults[11].rows[0].id], // Room D2
+      ['Mathematics', 'Addition and subtraction fundamentals', 'Primary 2', staffUser1.rows[0].id, 5, 60, 15, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2
+      ['Chinese', 'Basic Mandarin for Primary 2', 'Primary 2', staffUser2.rows[0].id, 6, 60, 15, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2
       
       // Primary 5-6 classes
-      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 7, 90, 20, branch1.rows[0].id],
-      ['English', 'Primary English composition', 'Primary 5', staffUser1.rows[0].id, 8, 90, 18, branch1.rows[0].id],
-      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 9, 75, 20, branch1.rows[0].id],
-      ['Mathematics', 'PSLE preparation mathematics', 'Primary 6', staffUser2.rows[0].id, 10, 120, 16, branch3.rows[0].id],
-      ['English', 'PSLE English preparation', 'Primary 6', staffUser3.rows[0].id, 11, 120, 16, branch3.rows[0].id],
+      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 7, 90, 20, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
+      ['English', 'Primary English composition', 'Primary 5', staffUser1.rows[0].id, 8, 90, 18, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
+      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 9, 75, 20, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
+      ['Mathematics', 'PSLE preparation mathematics', 'Primary 6', staffUser2.rows[0].id, 10, 120, 16, branch3.rows[0].id, classroomResults[9].rows[0].id], // Science Lab
+      ['English', 'PSLE English preparation', 'Primary 6', staffUser3.rows[0].id, 11, 120, 16, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2
       
       // Secondary 1 classes
-      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 12, 90, 18, branch1.rows[0].id],
-      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 13, 90, 18, branch1.rows[0].id],
-      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 14, 90, 16, branch1.rows[0].id],
+      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 12, 90, 18, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
+      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 13, 90, 18, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
+      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 14, 90, 16, branch1.rows[0].id, classroomResults[2].rows[0].id], // Room A3
       
       // Secondary 3 classes
-      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 15, 120, 15, branch2.rows[0].id],
-      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 16, 90, 15, branch2.rows[0].id],
-      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser3.rows[0].id, 17, 120, 12, branch2.rows[0].id],
+      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 15, 120, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Room B2
+      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 16, 90, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Room B2
+      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser3.rows[0].id, 17, 120, 12, branch2.rows[0].id, classroomResults[2].rows[0].id], // Room A3
       
       // Secondary 4 classes (O-Level preparation)
-      ['Mathematics', 'O-Level Mathematics preparation', 'Secondary 4', staffUser1.rows[0].id, 18, 120, 14, branch4.rows[0].id],
-      ['English', 'O-Level English preparation', 'Secondary 4', staffUser2.rows[0].id, 19, 120, 14, branch4.rows[0].id],
-      ['Science', 'O-Level combined science', 'Secondary 4', staffUser3.rows[0].id, 20, 150, 12, branch4.rows[0].id],
+      ['Mathematics', 'O-Level Mathematics preparation', 'Secondary 4', staffUser1.rows[0].id, 18, 120, 14, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room
+      ['English', 'O-Level English preparation', 'Secondary 4', staffUser2.rows[0].id, 19, 120, 14, branch4.rows[0].id, classroomResults[11].rows[0].id], // Room D2
+      ['Science', 'O-Level combined science', 'Secondary 4', staffUser3.rows[0].id, 20, 150, 12, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room
       
       // Mixed level and general classes (no level specified - available to all)
-      ['Computer Programming', 'Basic coding skills for all ages', null, staffUser1.rows[0].id, 21, 90, 20, branch1.rows[0].id],
-      ['Art', 'Creative expression and techniques', null, staffUser2.rows[0].id, 22, 90, 25, branch2.rows[0].id],
-      ['Music', 'Music appreciation and basic instruments', null, staffUser3.rows[0].id, 23, 75, 15, branch3.rows[0].id],
-      ['Chess', 'Strategic thinking through chess', null, staffUser1.rows[0].id, 24, 60, 12, branch4.rows[0].id],
+      ['Computer Programming', 'Basic coding skills for all ages', null, staffUser1.rows[0].id, 21, 90, 20, branch1.rows[0].id, classroomResults[3].rows[0].id], // Computer Lab
+      ['Art', 'Creative expression and techniques', null, staffUser2.rows[0].id, 22, 90, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Art studio
+      ['Music', 'Music appreciation and basic instruments', null, staffUser3.rows[0].id, 23, 75, 12, branch2.rows[0].id, classroomResults[6].rows[0].id], // Music Room
+      ['Chess', 'Strategic thinking through chess', null, staffUser1.rows[0].id, 24, 60, 12, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room
     ];
 
     for (let i = 0; i < classesData.length; i++) {
-      const [subject, description, level, tutorId, daysFromNow, duration, capacity, branchId] = classesData[i];
+      const [subject, description, level, tutorId, daysFromNow, duration, capacity, branchId, classroomId] = classesData[i];
       
       const classDate = new Date();
       classDate.setDate(classDate.getDate() + (daysFromNow as number));
       classDate.setHours(10 + (i % 8), 0, 0, 0); // Vary start times between 10 AM and 5 PM
       
       await pool.query(`
-        INSERT INTO "Class" (subject, description, level, tutor_id, start_time, duration_minutes, capacity, branch_id, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [subject, description, level, tutorId, classDate, duration, capacity, branchId, tutorId]);
+        INSERT INTO "Class" (subject, description, level, tutor_id, classroom_id, start_time, duration_minutes, capacity, branch_id, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [subject, description, level, tutorId, classroomId, classDate, duration, capacity, branchId, tutorId]);
     }
 
     console.log('Classes created');
@@ -472,49 +557,56 @@ export const seedDatabase = async (pool: Pool) => {
       SELECT s.id, c.id, s.parent_id, 'enrolled'
       FROM "Student" s
       CROSS JOIN "Class" c
-      WHERE s.first_name = 'Amy' AND c.subject = 'Art' AND c.level IS NULL
+      WHERE s.first_name = 'Sarah' AND c.subject = 'Art' AND c.level IS NULL
       LIMIT 1
     `);
 
-    console.log('Sample enrollments created for cascade testing');
+    console.log('Enrollments created');
 
-    // Create payment records for the diverse student base
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const lastMonth = new Date();
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-    const lastMonthString = lastMonth.toISOString().slice(0, 7);
-
+    // Create some payment records for testing
     const paymentData = [
-      // Jay Toh's children (John - Secondary 1, Sarah - Primary 5)
-      [student1.rows[0].id, currentMonth, 150.00, true, new Date(), 'card'],
-      [student1.rows[0].id, lastMonthString, 150.00, true, lastMonth, 'bank_transfer'],
-      [student2.rows[0].id, currentMonth, 120.00, false, null, null],
-      [student2.rows[0].id, lastMonthString, 120.00, true, lastMonth, 'cash'],
-      
-      // Alice Lim's children (Emma - Secondary 3, Lily - Kindergarten 2)
-      [student3.rows[0].id, currentMonth, 180.00, true, new Date(), 'online'],
-      [student4.rows[0].id, currentMonth, 80.00, true, new Date(), 'card'],
-      [student4.rows[0].id, lastMonthString, 80.00, false, null, null],
-      
-      // David Wong's children (Marcus - Primary 2, Chloe - Primary 6)
-      [student5.rows[0].id, currentMonth, 100.00, true, new Date(), 'bank_transfer'],
-      [student6.rows[0].id, currentMonth, 140.00, false, null, null],
-      [student6.rows[0].id, lastMonthString, 140.00, true, lastMonth, 'online'],
-      
-      // Susan Chen's children (Ryan - Secondary 4, Amy - Primary 1)
-      [student7.rows[0].id, currentMonth, 200.00, true, new Date(), 'card'],
-      [student8.rows[0].id, currentMonth, 90.00, false, null, null],
+      [student1.rows[0].id, '2024-01', 150.00, true, new Date('2024-01-05'), 'bank_transfer'],
+      [student1.rows[0].id, '2024-02', 150.00, true, new Date('2024-02-05'), 'bank_transfer'],
+      [student1.rows[0].id, '2024-03', 150.00, false, null, null],
+      [student2.rows[0].id, '2024-01', 120.00, true, new Date('2024-01-05'), 'cash'],
+      [student2.rows[0].id, '2024-02', 120.00, true, new Date('2024-02-05'), 'cash'],
+      [student2.rows[0].id, '2024-03', 120.00, false, null, null],
+      [student3.rows[0].id, '2024-01', 180.00, true, new Date('2024-01-10'), 'online'],
+      [student3.rows[0].id, '2024-02', 180.00, false, null, null],
+      [student4.rows[0].id, '2024-01', 100.00, true, new Date('2024-01-15'), 'card'],
+      [student4.rows[0].id, '2024-02', 100.00, true, new Date('2024-02-15'), 'card']
     ];
 
-    for (const [studentId, month, amount, paid, paymentDate, method] of paymentData) {
+    for (const [studentId, month, amount, paid, paymentDate, paymentMethod] of paymentData) {
       await pool.query(`
-        INSERT INTO "Payment" (student_id, month, amount, paid, payment_date, payment_method)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [studentId, month, amount, paid, paymentDate, method]);
+        INSERT INTO "Payment" (student_id, month, amount, paid, payment_date, payment_method, processed_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [studentId, month, amount, paid, paymentDate, paymentMethod, adminUser.rows[0].id]);
     }
 
     console.log('Payment records created');
-    console.log('Database seeding completed!');
+
+    // Create some attendance records for testing
+    const enrollmentResults = await pool.query(`
+      SELECT e.id, e.student_id, e.class_id, c.start_time
+      FROM "Enrollment" e
+      JOIN "Class" c ON e.class_id = c.id
+      WHERE e.status = 'enrolled'
+      ORDER BY c.start_time
+    `);
+
+    for (const enrollment of enrollmentResults.rows) {
+      const classDate = new Date(enrollment.start_time);
+      classDate.setHours(0, 0, 0, 0); // Start of day for attendance date
+      
+      await pool.query(`
+        INSERT INTO "Attendance" (student_id, class_id, enrollment_id, date, status, marked_by)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [enrollment.student_id, enrollment.class_id, enrollment.id, classDate, 'present', adminUser.rows[0].id]);
+    }
+
+    console.log('Attendance records created');
+    console.log('Database seeding completed successfully!');
 
   } catch (error) {
     console.error('Database seeding failed:', error);

@@ -9,6 +9,7 @@ import { createDatabaseSchema, seedDatabase } from './database/schema';
 // Import routes
 import authRoutes from './routes/auth';
 import branchRoutes from './routes/branches';
+import classroomRoutes from './routes/classrooms';
 import classRoutes from './routes/classes';
 import enrollmentRoutes from './routes/enrollments';
 import paymentRoutes from './routes/payments';
@@ -50,6 +51,7 @@ async function initDatabase() {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/classrooms', classroomRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/payments', paymentRoutes);
@@ -90,24 +92,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Start server
+// Initialize database and start server
 initDatabase().then(() => {
   app.listen(PORT, () => {
-    console.log(`   Server running on port ${PORT}`);
-    console.log(`   API URL: http://localhost:${PORT}`);
-    console.log(`   Database: ${process.env.DB_NAME}`);
-    console.log(`   Node Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log('');
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Health check available at http://localhost:${PORT}/api/health`);
   });
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  await pool.end();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  await pool.end();
-  process.exit(0);
 });

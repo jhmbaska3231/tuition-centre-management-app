@@ -115,27 +115,91 @@ export interface Payment {
   created_at: string;
 }
 
+// Classroom related types
+export interface Classroom {
+  id: string;
+  room_name: string;
+  description?: string;
+  room_capacity: number;
+  branch_id: string;
+  branch_name?: string;
+  active: boolean;
+  active_classes_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateClassroomRequest {
+  room_name: string;
+  description?: string;
+  room_capacity: number;
+  branch_id: string;
+}
+
+export interface UpdateClassroomRequest {
+  room_name?: string;
+  description?: string;
+  room_capacity?: number;
+  active?: boolean;
+}
+
+export interface ClassroomDeletionImpact {
+  classroom: {
+    room_name: string;
+    description?: string;
+    room_capacity: number;
+    branch_name: string;
+  };
+  impact: {
+    totalClasses: number;
+    futureClasses: number;
+    pastClasses: number;
+    enrollmentsAffected: number;
+    attendanceRecordsAffected: number;
+    warning?: string;
+  };
+}
+
+export interface ClassroomAvailability {
+  classroom: {
+    room_name: string;
+    room_capacity: number;
+    branch_id: string;
+  };
+  occupied_slots: Array<{
+    id: string;
+    subject: string;
+    start_time: string;
+    end_time: string;
+    capacity: number;
+    tutor_name?: string;
+  }>;
+}
+
 export interface Class {
   id: string;
   subject: string;
   description?: string;
   level?: string;
+  tutor_id?: string;
+  tutor_first_name?: string;
+  tutor_last_name?: string;
+  classroom_id?: string;
+  classroom_name?: string;
   start_time: string;
   end_time?: string;
   duration_minutes: number;
   capacity: number;
-  active: boolean;
-  created_at: string;
-  updated_at?: string;
   branch_id?: string;
-  branch_name: string;
-  branch_address: string;
-  tutor_id?: string;
-  tutor_first_name?: string;
-  tutor_last_name?: string;
+  branch_name?: string;
+  branch_address?: string;
+  created_by?: string;
+  active: boolean;
   enrolled_count: number;
   can_edit?: boolean;
   can_delete?: boolean;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface Enrollment {
@@ -163,11 +227,12 @@ export interface CreateEnrollmentRequest {
 export interface CreateClassRequest {
   subject: string;
   description?: string;
-  level?: string;
+  level: string;
   startTime: string;
   durationMinutes: number;
   capacity: number;
   branchId: string;
+  classroomId?: string; // Optional classroom assignment
 }
 
 export interface UpdateClassRequest {
@@ -178,6 +243,7 @@ export interface UpdateClassRequest {
   durationMinutes?: number;
   capacity?: number;
   branchId?: string;
+  classroomId?: string; // Optional classroom assignment
 }
 
 // Branch-related types

@@ -1,15 +1,20 @@
 // frontend/src/components/admin/BranchManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Plus, Edit2, Trash2, Loader2, CheckCircle, XCircle, Phone, Calendar, Users, BookOpen, UserX } from 'lucide-react';
+import { X, MapPin, Plus, Edit2, Trash2, Loader2, CheckCircle, XCircle, Phone, Calendar, Users, BookOpen, UserX, Building2 } from 'lucide-react';
 import type { Branch, BranchDeletionImpact } from '../../types';
 import BranchService from '../../services/branch';
 import BranchForm from './BranchForm';
+import ClassroomManagement from './ClassroomManagement';
 
 const BranchManagement: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Classroom navigation
+  const [currentView, setCurrentView] = useState<'branches' | 'classrooms'>('branches');
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   
   // Modal states
   const [showBranchForm, setShowBranchForm] = useState(false);
@@ -46,6 +51,17 @@ const BranchManagement: React.FC = () => {
   const handleEditBranch = (branch: Branch) => {
     setEditingBranch(branch);
     setShowBranchForm(true);
+  };
+
+  // Classroom navigation
+  const handleManageClassrooms = (branch: Branch) => {
+    setSelectedBranch(branch);
+    setCurrentView('classrooms');
+  };
+
+  const handleBackToBranches = () => {
+    setCurrentView('branches');
+    setSelectedBranch(null);
   };
 
   const handleClose = () => {
@@ -102,6 +118,16 @@ const BranchManagement: React.FC = () => {
       minute: '2-digit'
     });
   };
+
+  // Condition to show classroom management
+  if (currentView === 'classrooms' && selectedBranch) {
+    return (
+      <ClassroomManagement 
+        branch={selectedBranch} 
+        onBack={handleBackToBranches}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -232,7 +258,7 @@ const BranchManagement: React.FC = () => {
                   <button
                     onClick={() => handleDeleteBranch(branch)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete Branch (Permanent)"
+                    title="Delete Branch"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -252,6 +278,17 @@ const BranchManagement: React.FC = () => {
                     <span className="text-sm text-gray-600">{branch.phone}</span>
                   </div>
                 )}
+              </div>
+
+              {/* Classroom management */}
+              <div className="mb-4">
+                <button
+                  onClick={() => handleManageClassrooms(branch)}
+                  className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center space-x-2"
+                >
+                  <Building2 size={16} />
+                  <span>Manage Classrooms</span>
+                </button>
               </div>
 
               {/* Footer */}

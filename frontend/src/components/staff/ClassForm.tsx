@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import type { Class, Branch, CreateClassRequest, UpdateClassRequest } from '../../types';
+import type { Class, Branch, Classroom, CreateClassRequest, UpdateClassRequest, ClassroomAvailability } from '../../types';
 import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
+import ClassroomService from '../../services/classroom';
 import DateInput from '../common/DateInput';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -26,8 +27,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     durationMinutes: 60,
     capacity: 10,
     branchId: '',
+    classroomId: '',
   });
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [classroomAvailability, setClassroomAvailability] = useState<ClassroomAvailability | null>(null);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({
     subject: '',
@@ -40,6 +44,8 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const isEdit = !!classData;
 
@@ -49,6 +55,25 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       loadBranches();
     }
   }, [isOpen]);
+
+  // Load classrooms when branch changes
+  useEffect(() => {
+    if (formData.branchId) {
+      loadClassrooms(formData.branchId);
+    } else {
+      setClassrooms([]);
+      setFormData(prev => ({ ...prev, classroomId: '' }));
+    }
+  }, [formData.branchId]);
+
+  // Check classroom availability when classroom, date, or time changes
+  useEffect(() => {
+    if (formData.classroomId && formData.startDate && formData.startTime) {
+      checkClassroomAvailability();
+    } else {
+      setClassroomAvailability(null);
+    }
+  }, [formData.classroomId, formData.startDate, formData.startTime, formData.durationMinutes]);
 
   // Populate form when editing
   useEffect(() => {
@@ -67,6 +92,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         durationMinutes: classData.duration_minutes,
         capacity: classData.capacity,
         branchId: classData.branch_id || '',
+        classroomId: classData.classroom_id || '',
       });
     } else {
       // Reset form for new class with default time
@@ -79,6 +105,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         durationMinutes: 60,
         capacity: 10,
         branchId: '',
+        classroomId: '',
       });
     }
     setError('');
@@ -91,6 +118,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       capacity: '',
       branchId: '',
     });
+    setClassroomAvailability(null); // Reset availability
   }, [classData, isOpen, branches]);
 
   const loadBranches = async () => {
@@ -103,6 +131,39 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       setError('Failed to load branches');
     } finally {
       setLoadingBranches(false);
+    }
+  };
+
+  // Load classrooms
+  const loadClassrooms = async (branchId: string) => {
+    setLoadingClassrooms(true);
+    try {
+      const classroomList = await ClassroomService.getClassroomsByBranch(branchId);
+      setClassrooms(classroomList);
+    } catch (err) {
+      console.error('Failed to load classrooms:', err);
+      setError('Failed to load classrooms');
+    } finally {
+      setLoadingClassrooms(false);
+    }
+  };
+
+  // Check classroom availability
+  const checkClassroomAvailability = async () => {
+    if (!formData.classroomId || !formData.startDate) return;
+
+    setCheckingAvailability(true);
+    try {
+      const availability = await ClassroomService.getClassroomAvailability(
+        formData.classroomId, 
+        formData.startDate,
+        isEdit ? classData?.id : undefined
+      );
+      setClassroomAvailability(availability);
+    } catch (err) {
+      console.error('Failed to check availability:', err);
+    } finally {
+      setCheckingAvailability(false);
     }
   };
 
@@ -186,6 +247,12 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         else if (isEdit && classData && cap < classData.enrolled_count) {
           error = `Capacity cannot be less than current enrollment (${classData.enrolled_count} students)`;
         }
+        else if (formData.classroomId && classroomAvailability) {
+          // Check room capacity
+          if (value > classroomAvailability.classroom.room_capacity) {
+            error = `Capacity cannot exceed room limit of ${classroomAvailability.classroom.room_capacity}`;
+          }
+        }
         break;
       case 'branchId':
         if (!value) {
@@ -210,6 +277,10 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       setTimeout(() => validateField('startTime', formData.startTime), 0);
     } else if (field === 'startTime' && formData.startDate) {
       setTimeout(() => validateField('startTime', value), 0);
+      // Reset classroom when branch changes
+    } if (field === 'branchId') {
+      setFormData(prev => ({ ...prev, classroomId: '' }));
+      setClassroomAvailability(null);
     }
   };
 
@@ -225,11 +296,32 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     return subjectValid && levelValid && startDateValid && startTimeValid && durationValid && capacityValid && branchValid;
   };
 
+  // Check for time conflicts
+  const hasTimeConflict = (): boolean => {
+    if (!classroomAvailability || !formData.startTime || !formData.durationMinutes) return false;
+
+    const startTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
+    const endTime = new Date(startTime.getTime() + formData.durationMinutes * 60000);
+
+    return classroomAvailability.occupied_slots.some(slot => {
+      const slotStart = new Date(slot.start_time);
+      const slotEnd = new Date(slot.end_time);
+      
+      return (startTime < slotEnd && endTime > slotStart);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
       setError('Please correct the errors above');
+      return;
+    }
+
+    // Check for time conflicts
+    if (hasTimeConflict()) {
+      setError('This time slot conflicts with an existing class in the selected classroom');
       return;
     }
 
@@ -248,6 +340,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         durationMinutes: formData.durationMinutes,
         capacity: formData.capacity,
         branchId: formData.branchId,
+        classroomId: formData.classroomId || undefined,
       };
 
       if (isEdit && classData) {
@@ -276,6 +369,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       durationMinutes: 60,
       capacity: 10,
       branchId: '',
+      classroomId: '',
     });
     setError('');
     setFieldErrors({
@@ -287,6 +381,8 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       capacity: '',
       branchId: '',
     });
+    setClassroomAvailability(null); // Reset availability
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -418,6 +514,68 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
             />
           </div>
 
+          {/* Branch Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Branch *
+            </label>
+            {loadingBranches ? (
+              <div className="p-3 border-2 border-gray-200 rounded-lg">
+                <span className="text-gray-500">Loading branches...</span>
+              </div>
+            ) : (
+              <select
+                value={formData.branchId}
+                onChange={(e) => handleInputChange('branchId', e.target.value)}
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                  fieldErrors.branchId 
+                    ? 'border-red-300 focus:border-red-500' 
+                    : 'border-gray-200 focus:border-indigo-500'
+                }`}
+                required
+              >
+                <option value="">Select Branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {fieldErrors.branchId && (
+              <p className="text-red-600 text-sm mt-1">{fieldErrors.branchId}</p>
+            )}
+          </div>
+
+          {/* Classroom Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Classroom
+            </label>
+            {loadingClassrooms ? (
+              <div className="p-3 border-2 border-gray-200 rounded-lg bg-gray-50">
+                <span className="text-gray-500">Loading classrooms...</span>
+              </div>
+            ) : (
+              <select
+                value={formData.classroomId}
+                onChange={(e) => handleInputChange('classroomId', e.target.value)}
+                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors"
+                disabled={!formData.branchId}
+              >
+                <option value="">No specific classroom</option>
+                {classrooms.map(classroom => (
+                  <option key={classroom.id} value={classroom.id}>
+                    {classroom.room_name} (Capacity: {classroom.room_capacity})
+                  </option>
+                ))}
+              </select>
+            )}
+            {formData.branchId && classrooms.length === 0 && !loadingClassrooms && (
+              <p className="text-gray-500 text-xs mt-1">No classrooms available for this branch</p>
+            )}
+          </div>
+
           {/* Date and Time Row */}
           <div className="grid md:grid-cols-2 gap-4">
             <div>
@@ -529,40 +687,12 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                   Current enrollment: {classData.enrolled_count} students (minimum capacity)
                 </p>
               )}
+              {classroomAvailability && (
+                <p className="text-gray-500 text-xs mt-1">
+                  Room limit: {classroomAvailability.classroom.room_capacity} students
+                </p>
+              )}
             </div>
-          </div>
-
-          {/* Branch Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Branch *
-            </label>
-            {loadingBranches ? (
-              <div className="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50">
-                <span className="text-gray-500">Loading branches...</span>
-              </div>
-            ) : (
-              <select
-                value={formData.branchId}
-                onChange={(e) => handleInputChange('branchId', e.target.value)}
-                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                  fieldErrors.branchId 
-                    ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-indigo-500'
-                }`}
-                required
-              >
-                <option value="">Select Branch</option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {fieldErrors.branchId && (
-              <p className="text-red-600 text-sm mt-1">{fieldErrors.branchId}</p>
-            )}
           </div>
           
           {error && (

@@ -170,12 +170,12 @@ export const validateStudent = (req: Request, res: Response, next: NextFunction)
   next();
 };
 
-// Class creation validation with REQUIRED level
+// Class creation validation with REQUIRED level and optional classroom
 export const validateClass = (req: Request, res: Response, next: NextFunction): void => {
-  const { subject, startTime, durationMinutes, capacity, branchId, level } = req.body;
+  const { subject, startTime, durationMinutes, capacity, branchId, level, classroomId } = req.body;
   
   if (!subject || !startTime || !durationMinutes || !capacity || !branchId || !level) {
-    res.status(400).json({ error: 'All fields including level are required' });
+    res.status(400).json({ error: 'All fields including level are required (subject, startTime, durationMinutes, capacity, branchId, level)' });
     return;
   }
   
@@ -194,13 +194,19 @@ export const validateClass = (req: Request, res: Response, next: NextFunction): 
     return;
   }
   
-  if (isNaN(capacity) || capacity < 1 || capacity > 50) {
-    res.status(400).json({ error: 'Capacity must be between 1 and 50 students' });
+  if (isNaN(capacity) || capacity < 1 || capacity > 200) {
+    res.status(400).json({ error: 'Capacity must be between 1 and 200 students' });
     return;
   }
   
   if (!isValidUUID(branchId)) {
     res.status(400).json({ error: 'Invalid branch ID' });
+    return;
+  }
+  
+  // Validate classroom ID if provided (optional field)
+  if (classroomId && !isValidUUID(classroomId)) {
+    res.status(400).json({ error: 'Invalid classroom ID format' });
     return;
   }
   
