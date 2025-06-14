@@ -21,7 +21,6 @@ const AttendanceTracking: React.FC = () => {
   // Summary view states
   const [showSummary, setShowSummary] = useState(false);
   const [summaryDate, setSummaryDate] = useState(new Date().toISOString().split('T')[0]);
-  const [todayClasses, setTodayClasses] = useState<StaffClass[]>([]);
   const [attendanceSummaries, setAttendanceSummaries] = useState<Record<string, AttendanceSummary>>({});
 
   // Attendance state for each student
@@ -69,13 +68,6 @@ const AttendanceTracking: React.FC = () => {
       } else if (sortedClasses.length > 0 && !selectedClass) {
         setSelectedClass(sortedClasses[0]);
       }
-      
-      // Filter today's classes for summary
-      const todaysClasses = sortedClasses.filter(cls => {
-        const classDate = new Date(cls.start_time).toISOString().split('T')[0];
-        return classDate === today;
-      });
-      setTodayClasses(todaysClasses);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load classes');
@@ -720,6 +712,13 @@ const AttendanceTracking: React.FC = () => {
                     <div className="flex items-center space-x-3">
                       <Loader2 className="animate-spin text-indigo-600" size={20} />
                       <span className="text-gray-700">Loading students...</span>
+                    </div>
+                  </div>
+                ) : attendanceLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center space-x-3">
+                      <Loader2 className="animate-spin text-indigo-600" size={20} />
+                      <span className="text-gray-700">Loading attendance records...</span>
                     </div>
                   </div>
                 ) : students.length === 0 ? (
