@@ -7,7 +7,6 @@ import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
 import ClassroomService from '../../services/classroom';
 import DateInput from '../common/DateInput';
-import { useAuth } from '../../hooks/useAuth';
 
 interface ClassFormProps {
   isOpen: boolean;
@@ -17,7 +16,6 @@ interface ClassFormProps {
 }
 
 const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuccess }) => {
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     subject: '',
     description: '',
@@ -46,12 +44,16 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [loadingClassrooms, setLoadingClassrooms] = useState(false);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [classroomToSet, setClassroomToSet] = useState<string>('');
+  const [classroomsLoaded, setClassroomsLoaded] = useState(false);
 
   const isEdit = !!classData;
 
   // Load branches on component mount
   useEffect(() => {
     if (isOpen) {
+      setClassroomToSet('');
+      setClassroomsLoaded(false);
       loadBranches();
     }
   }, [isOpen]);
@@ -62,9 +64,27 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       loadClassrooms(formData.branchId);
     } else {
       setClassrooms([]);
+      setClassroomsLoaded(false);
       setFormData(prev => ({ ...prev, classroomId: '' }));
     }
   }, [formData.branchId]);
+
+  // Set classroom after both conditions are met: classrooms loaded and have a classroom to set
+  useEffect(() => {
+    if (classroomsLoaded && classroomToSet && classrooms.length > 0) {
+      const foundClassroom = classrooms.find(cr => cr.id === classroomToSet);
+      
+      if (foundClassroom) {
+        setFormData(prev => ({ 
+          ...prev, 
+          classroomId: classroomToSet 
+        }));
+      }
+      
+      // Clear the pending classroom regardless
+      setClassroomToSet('');
+    }
+  }, [classroomsLoaded, classroomToSet, classrooms]);
 
   // Check classroom availability when classroom, date, or time changes
   useEffect(() => {
@@ -83,31 +103,39 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       const localDate = startDateTime.toISOString().split('T')[0]; // YYYY-MM-DD format
       const localTime = startDateTime.toTimeString().slice(0, 5); // HH:MM format
 
-      setFormData({
-        subject: classData.subject,
-        description: classData.description || '',
-        level: classData.level || '',
-        startDate: localDate,
-        startTime: localTime,
-        durationMinutes: classData.duration_minutes,
-        capacity: classData.capacity,
-        branchId: classData.branch_id || '',
-        classroomId: classData.classroom_id || '',
-      });
-    } else {
-      // Reset form for new class with default time
-      setFormData({
-        subject: '',
-        description: '',
-        level: '',
-        startDate: '',
-        startTime: '10:00', // Default to 10:00 AM
-        durationMinutes: 60,
-        capacity: 10,
-        branchId: '',
-        classroomId: '',
-      });
+      const newFormData = {
+      subject: classData.subject,
+      description: classData.description || '',
+      level: classData.level || '',
+      startDate: localDate,
+      startTime: localTime,
+      durationMinutes: classData.duration_minutes,
+      capacity: classData.capacity,
+      branchId: classData.branch_id || '',
+      classroomId: '', // Will be set after classrooms load
+    };
+
+    setFormData(newFormData);
+    
+    // Store classroom to set after classrooms are loaded
+    if (classData.classroom_id) {
+      setClassroomToSet(classData.classroom_id);
     }
+  } else {
+    setFormData({
+      subject: '',
+      description: '',
+      level: '',
+      startDate: '',
+      startTime: '10:00',
+      durationMinutes: 60,
+      capacity: 10,
+      branchId: '',
+      classroomId: '',
+    });
+    setClassroomToSet('');
+  }
+
     setError('');
     setFieldErrors({
       subject: '',
@@ -134,15 +162,19 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     }
   };
 
-  // Load classrooms
+  // Updated loadClassrooms function
   const loadClassrooms = async (branchId: string) => {
     setLoadingClassrooms(true);
+    setClassroomsLoaded(false);
+    
     try {
       const classroomList = await ClassroomService.getClassroomsByBranch(branchId);
       setClassrooms(classroomList);
+      setClassroomsLoaded(true);
     } catch (err) {
       console.error('Failed to load classrooms:', err);
       setError('Failed to load classrooms');
+      setClassroomsLoaded(false);
     } finally {
       setLoadingClassrooms(false);
     }
@@ -387,13 +419,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
 
   if (!isOpen) return null;
 
-  const getTutorName = () => {
-    if (user) {
-      return `${user.first_name} ${user.last_name}`;
-    }
-    return 'Current User';
-  };
-
   // Generate time options (every 30 minutes from 8:00 to 20:00)
   const generateTimeOptions = () => {
     const options = [];
@@ -430,13 +455,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
           {isEdit ? 'Edit Class' : 'Create New Class'}
         </h2>
-
-        {/* Tutor Info */}
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <span className="font-medium">Tutor:</span> {getTutorName()}
-          </p>
-        </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Subject and Level Row */}
@@ -552,9 +570,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Classroom
             </label>
-            {loadingClassrooms ? (
+            {loadingClassrooms || checkingAvailability ? (
               <div className="p-3 border-2 border-gray-200 rounded-lg bg-gray-50">
-                <span className="text-gray-500">Loading classrooms...</span>
+                <span className="text-gray-500">
+                  {loadingClassrooms ? 'Loading classrooms...' : 'Checking availability...'}
+                </span>
               </div>
             ) : (
               <select

@@ -92,12 +92,14 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
     let query = `
       SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
              c.active, c.created_at, c.updated_at,
-             c.end_time, c.tutor_id, c.branch_id,
+             c.end_time, c.tutor_id, c.branch_id, c.classroom_id,
              b.name as branch_name, b.address as branch_address,
+             cr.room_name as classroom_name,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
              COALESCE(enrolled_count.count, 0) as enrolled_count
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
+      LEFT JOIN "Classroom" cr ON c.classroom_id = cr.id
       LEFT JOIN "User" u ON c.tutor_id = u.id
       LEFT JOIN (
         SELECT 
@@ -124,58 +126,54 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
       query += ` AND c.start_time > NOW()`;
       
       // Get parent's children's grades for filtering (separate query with its own parameters)
-      const childrenGrades = await pool.query(`
-        SELECT DISTINCT grade 
-        FROM "Student" 
-        WHERE parent_id = $1 AND active = TRUE AND grade IS NOT NULL
-      `, [userId]);
+      const childrenGrades = await pool.query(
+        'SELECT DISTINCT grade FROM "Student" WHERE parent_id = $1 AND active = TRUE',
+        [userId]
+      );
       
+      // Only show classes that match children's grades or are Mixed Levels
       if (childrenGrades.rows.length > 0) {
         const grades = childrenGrades.rows.map(row => row.grade);
-        // Show classes that either have "Mixed Levels" specified OR match one of the children's grades
+        // Create individual placeholders: $1, $2, $3, etc
         const placeholders = grades.map((_, i) => `$${paramIndex + i}`).join(', ');
         query += ` AND (c.level = 'Mixed Levels' OR c.level IN (${placeholders}))`;
-        queryParams.push(...grades);
-        paramIndex += grades.length;
+        queryParams.push(...grades);  // Spreads individual grades
+        paramIndex += grades.length;  // Increments by number of grades
       }
-    } else {
-      // For admin, show future classes only
-      query += ` AND c.start_time > NOW()`;
     }
 
-    // Filter by branch if specified
+    // Add branch filter if specified
     if (branchId) {
       query += ` AND c.branch_id = $${paramIndex}`;
-      queryParams.push(branchId);
+      queryParams.push(branchId as string);
       paramIndex++;
     }
 
-    // Filter by date range if specified
+    // Add date range filters if specified
     if (startDate) {
-      query += ` AND c.start_time >= $${paramIndex}`;
-      queryParams.push(startDate);
+      query += ` AND DATE(c.start_time) >= $${paramIndex}`;
+      queryParams.push(startDate as string);
       paramIndex++;
     }
 
     if (endDate) {
-      query += ` AND c.start_time <= $${paramIndex}`;
-      queryParams.push(endDate);
+      query += ` AND DATE(c.start_time) <= $${paramIndex}`;
+      queryParams.push(endDate as string);
       paramIndex++;
     }
 
-    query += ` ORDER BY c.start_time ASC`;
+    query += ' ORDER BY c.start_time';
 
     const result = await pool.query(query, queryParams);
-    
-    // Add permission flags for frontend
-    const classesWithPermissions = result.rows.map(classItem => ({
-      ...classItem,
-      enrolled_count: parseInt(classItem.enrolled_count) || 0, // Ensure it's a number
-      can_edit: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId),
-      can_delete: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId)
+
+    const classes = result.rows.map(row => ({
+      ...row,
+      enrolled_count: parseInt(row.enrolled_count) || 0,
+      can_edit: userRole === 'admin' || (userRole === 'staff' && row.tutor_id === userId),
+      can_delete: userRole === 'admin' || (userRole === 'staff' && row.tutor_id === userId)
     }));
 
-    res.json(classesWithPermissions);
+    res.json(classes);
 
   } catch (error) {
     console.error('Get classes error:', error);
@@ -192,12 +190,14 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
 
     const result = await pool.query(`
       SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
-             c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id,
+             c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id, c.classroom_id,
              b.name as branch_name, b.address as branch_address,
+             cr.room_name as classroom_name,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name,
              COALESCE(enrolled_count.count, 0) as enrolled_count
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
+      LEFT JOIN "Classroom" cr ON c.classroom_id = cr.id
       LEFT JOIN "User" u ON c.tutor_id = u.id
       LEFT JOIN (
         SELECT 
@@ -217,11 +217,11 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     const classItem = result.rows[0];
-    
+
     // Add permission flags
     const classWithPermissions = {
       ...classItem,
-      enrolled_count: parseInt(classItem.enrolled_count) || 0, // Ensure it's a number
+      enrolled_count: parseInt(classItem.enrolled_count) || 0,
       can_edit: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId),
       can_delete: userRole === 'admin' || (userRole === 'staff' && classItem.tutor_id === userId)
     };
@@ -238,21 +238,57 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
 router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateClass, async (req: AuthRequest, res) => {
   try {
     const { subject, description, level, startTime, durationMinutes, capacity, branchId, classroomId } = req.body;
+    const userRole = req.user!.role;
     const userId = req.user!.userId;
 
-    // Ensure level is provided (validation middleware should catch this, but double-check)
+    // Validate required fields
+    if (!subject || subject.trim().length === 0) {
+      res.status(400).json({ error: 'Subject is required' });
+      return;
+    }
+
     if (!level || level.trim().length === 0) {
-      res.status(400).json({ error: 'Level/Grade is required for all classes' });
+      res.status(400).json({ error: 'Level/Grade is required' });
+      return;
+    }
+
+    if (!startTime) {
+      res.status(400).json({ error: 'Start time is required' });
+      return;
+    }
+
+    if (!durationMinutes || durationMinutes < 15) {
+      res.status(400).json({ error: 'Duration must be at least 15 minutes' });
+      return;
+    }
+
+    if (!capacity || capacity < 1) {
+      res.status(400).json({ error: 'Capacity must be at least 1' });
+      return;
+    }
+
+    if (!branchId) {
+      res.status(400).json({ error: 'Branch is required' });
+      return;
+    }
+
+    // Validate branch exists and is active
+    const branchCheck = await pool.query(
+      'SELECT id FROM "Branch" WHERE id = $1 AND active = TRUE',
+      [branchId]
+    );
+
+    if (branchCheck.rows.length === 0) {
+      res.status(404).json({ error: 'Branch not found or inactive' });
       return;
     }
 
     // Validate classroom if provided
     if (classroomId) {
       const classroomCheck = await pool.query(`
-        SELECT c.room_capacity, c.active, b.id as branch_id
-        FROM "Classroom" c
-        JOIN "Branch" b ON c.branch_id = b.id
-        WHERE c.id = $1 AND c.active = TRUE
+        SELECT cr.id, cr.room_capacity, cr.branch_id
+        FROM "Classroom" cr
+        WHERE cr.id = $1 AND cr.active = TRUE
       `, [classroomId]);
 
       if (classroomCheck.rows.length === 0) {
@@ -262,17 +298,15 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
 
       const classroom = classroomCheck.rows[0];
 
-      // Ensure classroom belongs to the same branch
+      // Check if classroom belongs to the selected branch
       if (classroom.branch_id !== branchId) {
-        res.status(400).json({ error: 'Classroom must belong to the selected branch' });
+        res.status(400).json({ error: 'Selected classroom does not belong to the selected branch' });
         return;
       }
 
-      // Ensure class capacity doesn't exceed room capacity
+      // Check if class capacity exceeds classroom capacity
       if (capacity > classroom.room_capacity) {
-        res.status(400).json({ 
-          error: `Class capacity (${capacity}) cannot exceed room capacity (${classroom.room_capacity})` 
-        });
+        res.status(400).json({ error: `Class capacity (${capacity}) cannot exceed classroom capacity (${classroom.room_capacity})` });
         return;
       }
 
@@ -280,12 +314,11 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
       const conflictCheck = await pool.query(`
         SELECT c.id, c.subject, c.start_time, c.end_time
         FROM "Class" c
-        WHERE c.classroom_id = $1 
+        WHERE c.classroom_id = $1
           AND c.active = TRUE
-          AND DATE(c.start_time) = DATE($2)
-          AND (
-            ($2 < c.end_time AND ($2 + INTERVAL '1 minute' * $3) > c.start_time)
-          )
+          AND DATE(c.start_time) = DATE($2::timestamp)
+          AND c.start_time < ($2::timestamp + INTERVAL '1 minute' * $3)
+          AND (c.start_time + INTERVAL '1 minute' * c.duration_minutes) > $2::timestamp
       `, [classroomId, startTime, durationMinutes]);
 
       if (conflictCheck.rows.length > 0) {
@@ -321,7 +354,9 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
     const [branchResult, tutorResult, classroomResult] = await Promise.all([
       pool.query('SELECT name as branch_name, address as branch_address FROM "Branch" WHERE id = $1', [branchId]),
       pool.query('SELECT first_name as tutor_first_name, last_name as tutor_last_name FROM "User" WHERE id = $1', [userId]),
-      classroomId ? pool.query('SELECT room_name as classroom_name FROM "Classroom" WHERE id = $1', [classroomId]) : Promise.resolve({ rows: [{}] })
+      classroomId ? 
+        pool.query('SELECT room_name as classroom_name FROM "Classroom" WHERE id = $1', [classroomId]) : 
+        Promise.resolve({ rows: [{}] })
     ]);
 
     const classWithDetails = {
@@ -384,10 +419,9 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
     // Validate classroom if being updated
     if (classroomId !== undefined && classroomId !== null) {
       const classroomCheck = await pool.query(`
-        SELECT c.room_capacity, c.active, b.id as branch_id
-        FROM "Classroom" c
-        JOIN "Branch" b ON c.branch_id = b.id
-        WHERE c.id = $1 AND c.active = TRUE
+        SELECT cr.id, cr.room_capacity, cr.branch_id
+        FROM "Classroom" cr
+        WHERE cr.id = $1 AND cr.active = TRUE
       `, [classroomId]);
 
       if (classroomCheck.rows.length === 0) {
@@ -396,26 +430,24 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
       }
 
       const classroom = classroomCheck.rows[0];
-
-      // Ensure classroom belongs to the correct branch
       const targetBranchId = branchId || classItem.branch_id;
+
+      // Check if classroom belongs to the target branch
       if (classroom.branch_id !== targetBranchId) {
-        res.status(400).json({ error: 'Classroom must belong to the selected branch' });
+        res.status(400).json({ error: 'Selected classroom does not belong to the selected branch' });
         return;
       }
 
-      // Ensure class capacity doesn't exceed room capacity
+      // Check if class capacity exceeds classroom capacity
       const targetCapacity = capacity || classItem.capacity;
       if (targetCapacity > classroom.room_capacity) {
-        res.status(400).json({ 
-          error: `Class capacity (${targetCapacity}) cannot exceed room capacity (${classroom.room_capacity})` 
-        });
+        res.status(400).json({ error: `Class capacity (${targetCapacity}) cannot exceed classroom capacity (${classroom.room_capacity})` });
         return;
       }
 
       // Check for classroom time conflicts
-      const targetStartTime = startTime || classItem.start_time;
-      const targetDuration = durationMinutes || classItem.duration_minutes;
+      const newStartTime = startTime || classItem.start_time;
+      const newDuration = durationMinutes || classItem.duration_minutes;
       
       const conflictCheck = await pool.query(`
         SELECT c.id, c.subject, c.start_time, c.end_time
@@ -423,11 +455,10 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
         WHERE c.classroom_id = $1 
           AND c.active = TRUE
           AND c.id != $4
-          AND DATE(c.start_time) = DATE($2)
-          AND (
-            ($2 < c.end_time AND ($2 + INTERVAL '1 minute' * $3) > c.start_time)
-          )
-      `, [classroomId, targetStartTime, targetDuration, id]);
+          AND DATE(c.start_time) = DATE($2::timestamp)
+          AND c.start_time < ($2::timestamp + INTERVAL '1 minute' * $3)
+          AND (c.start_time + INTERVAL '1 minute' * c.duration_minutes) > $2::timestamp
+      `, [classroomId, newStartTime, newDuration, id]);
 
       if (conflictCheck.rows.length > 0) {
         const conflict = conflictCheck.rows[0];
@@ -485,30 +516,6 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
     res.status(500).json({ error: 'Failed to update class' });
   }
 });
-
-// Updated query to include classroom information in class fetching
-const getClassesQuery = `
-  SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, 
-         c.active, c.created_at, c.updated_at, c.end_time, c.tutor_id, c.branch_id, c.classroom_id,
-         b.name as branch_name, b.address as branch_address,
-         cr.room_name as classroom_name,
-         u.first_name as tutor_first_name, u.last_name as tutor_last_name,
-         COALESCE(enrolled_count.count, 0) as enrolled_count
-  FROM "Class" c
-  LEFT JOIN "Branch" b ON c.branch_id = b.id
-  LEFT JOIN "Classroom" cr ON c.classroom_id = cr.id
-  LEFT JOIN "User" u ON c.tutor_id = u.id
-  LEFT JOIN (
-    SELECT 
-      e.class_id,
-      COUNT(e.id) as count
-    FROM "Enrollment" e
-    INNER JOIN "Student" s ON e.student_id = s.id AND s.active = TRUE
-    WHERE e.status = 'enrolled'
-    GROUP BY e.class_id
-  ) enrolled_count ON c.id = enrolled_count.class_id
-  WHERE c.active = TRUE
-`;
 
 // Delete a class (staff can only delete their own, admin can delete any)
 router.delete('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (req: AuthRequest, res) => {

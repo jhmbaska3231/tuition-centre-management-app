@@ -4,7 +4,7 @@ export interface User {
   id: string;
   email: string;
   password: string;
-  role: 'parent' | 'staff';
+  role: 'parent' | 'staff' | 'admin';
   first_name: string;
   last_name: string;
   phone?: string;
@@ -14,7 +14,8 @@ export interface User {
 
 export interface Student {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   grade: string;
   date_of_birth?: Date;
   parent_id?: string;
@@ -31,13 +32,29 @@ export interface Branch {
   phone?: string;
   active: boolean;
   created_at: Date;
+  updated_at: Date;
+}
+
+export interface Classroom {
+  id: string;
+  room_name: string;
+  description?: string;
+  room_capacity: number;
+  branch_id: string;
+  active: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface Class {
   id: string;
   subject: string;
+  description?: string;
+  level?: string;
   tutor_id?: string;
+  classroom_id?: string;
   start_time: Date;
+  end_time?: Date;
   duration_minutes: number;
   capacity: number;
   branch_id?: string;
