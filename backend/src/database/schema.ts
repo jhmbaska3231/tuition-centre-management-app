@@ -103,7 +103,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
         description TEXT,
         level TEXT,
         tutor_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
-        classroom_id UUID REFERENCES "Classroom"(id) ON DELETE SET NULL,
+        classroom_id UUID NOT NULL REFERENCES "Classroom"(id) ON DELETE CASCADE,
         start_time TIMESTAMP NOT NULL,
         end_time TIMESTAMP GENERATED ALWAYS AS (start_time + INTERVAL '1 minute' * duration_minutes) STORED,
         duration_minutes INTEGER NOT NULL,
@@ -276,13 +276,13 @@ export const seedDatabase = async (pool: Pool) => {
       INSERT INTO "User" (email, password, role, first_name, last_name, phone)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, ['david.wong@gmail.com', hashedPassword, 'parent', 'David', 'Wong', '93456789']);
+    `, ['david.wong@gmail.com', hashedPassword, 'parent', 'David', 'Wong', '85432110']);
 
     const parentUser4 = await pool.query(`
       INSERT INTO "User" (email, password, role, first_name, last_name, phone)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, ['susan.chen@gmail.com', hashedPassword, 'parent', 'Susan', 'Chen', '94567890']);
+    `, ['jenny.chen@gmail.com', hashedPassword, 'parent', 'Jenny', 'Chen', '87654321']);
 
     console.log('Parent users created');
 
@@ -291,48 +291,48 @@ export const seedDatabase = async (pool: Pool) => {
       INSERT INTO "Branch" (name, address, phone)
       VALUES ($1, $2, $3)
       RETURNING id
-    `, ['Main Branch', 'Block 123, Tampines Street 45, #05-67, Singapore 520123', '61234567']);
+    `, ['Tampines Branch', '123 Tampines Street 11, #02-45, Singapore 529594', '67123456']);
 
     const branch2 = await pool.query(`
       INSERT INTO "Branch" (name, address, phone)
       VALUES ($1, $2, $3)
       RETURNING id
-    `, ['North Branch', '789 Orchard Road, #12-34, Lucky Plaza, Singapore 238863', '63457890']);
+    `, ['Jurong East Branch', '456 Jurong East Avenue 1, #03-21, Singapore 609123', '67234567']);
 
     const branch3 = await pool.query(`
       INSERT INTO "Branch" (name, address, phone)
       VALUES ($1, $2, $3)
       RETURNING id
-    `, ['East Branch', '21 Jurong East Avenue 1, #03-09, Singapore 609732', '62223344']);
+    `, ['Bishan Branch', '789 Bishan Street 23, #01-12, Singapore 570789', '67345678']);
 
     const branch4 = await pool.query(`
       INSERT INTO "Branch" (name, address, phone)
       VALUES ($1, $2, $3)
       RETURNING id
-    `, ['West Branch', '456 Bedok North Street 3, #10-88, Singapore 460456', '65557788']);
+    `, ['Woodlands Branch', '321 Woodlands Drive 14, #04-33, Singapore 730321', '67456789']);
 
     console.log('Branches created');
 
-    // Create classrooms for each branch
+    // Create classrooms with appropriate capacities for different class types
     const classroomsData = [
-      // Main Branch classrooms
-      ['Room A1', 'Large classroom with projector and whiteboard', 30, branch1.rows[0].id],
-      ['Room A2', 'Medium classroom suitable for small groups', 20, branch1.rows[0].id],
-      ['Room A3', 'Small tutorial room with round table setup', 12, branch1.rows[0].id],
-      ['Computer Lab', 'IT lab with 25 workstations', 25, branch1.rows[0].id],
+      // Tampines Branch classrooms
+      ['Room A1', 'Standard classroom with whiteboard', 25, branch1.rows[0].id],
+      ['Room A2', 'Medium classroom with projector', 20, branch1.rows[0].id],
+      ['Room A3', 'Small group classroom', 15, branch1.rows[0].id],
+      ['Computer Lab', 'Computer lab with 20 workstations', 20, branch1.rows[0].id],
       
-      // North Branch classrooms
-      ['Room B1', 'Main classroom with interactive whiteboard', 28, branch2.rows[0].id],
-      ['Room B2', 'Art studio with creative workspace', 15, branch2.rows[0].id],
-      ['Music Room', 'Soundproof room with piano and instruments', 12, branch2.rows[0].id],
+      // Jurong East Branch classrooms
+      ['Room B1', 'Large classroom with multimedia setup', 30, branch2.rows[0].id],
+      ['Art Studio', 'Creative space with art supplies', 15, branch2.rows[0].id],
+      ['Music Room', 'Soundproof room with instruments', 12, branch2.rows[0].id],
       
-      // East Branch classrooms
-      ['Room C1', 'Large lecture hall style classroom', 35, branch3.rows[0].id],
-      ['Room C2', 'Standard classroom with moveable desks', 24, branch3.rows[0].id],
-      ['Science Lab', 'Equipped laboratory for practical lessons', 16, branch3.rows[0].id],
+      // Bishan Branch classrooms
+      ['Room C1', 'Standard teaching room', 22, branch3.rows[0].id],
+      ['Room C2', 'Interactive classroom with smart board', 18, branch3.rows[0].id],
+      ['Science Lab', 'Laboratory with equipment for experiments', 16, branch3.rows[0].id],
       
-      // West Branch classrooms
-      ['Room D1', 'Flexible learning space', 22, branch4.rows[0].id],
+      // Woodlands Branch classrooms
+      ['Room D1', 'Flexible learning space', 24, branch4.rows[0].id],
       ['Room D2', 'Traditional classroom setup', 18, branch4.rows[0].id],
       ['Library Room', 'Quiet study environment', 14, branch4.rows[0].id]
     ];
@@ -425,45 +425,45 @@ export const seedDatabase = async (pool: Pool) => {
 
     console.log('Students created');
 
-    // Create classes with varied scheduling and levels matching student grades - Updated with classroom assignments
+    // Create classes with classroom assignments - Updated with capacity validation
     const classesData = [
-      // Classes with classroom assignments
-      ['English', 'Early English language skills for young learners', 'Kindergarten 2', staffUser3.rows[0].id, 1, 45, 8, branch2.rows[0].id, classroomResults[5].rows[0].id], // Music Room
-      ['Art', 'Creative arts and crafts for kindergarten', 'Kindergarten 2', staffUser1.rows[0].id, 2, 60, 10, branch2.rows[0].id, classroomResults[5].rows[0].id], // Art studio
+      // Kindergarten classes with appropriate capacity
+      ['English', 'Early English language skills for young learners', 'Kindergarten 2', staffUser3.rows[0].id, 1, 45, 8, branch2.rows[0].id, classroomResults[5].rows[0].id], // Art Studio (15 capacity)
+      ['Art', 'Creative arts and crafts for kindergarten', 'Kindergarten 2', staffUser1.rows[0].id, 2, 60, 10, branch2.rows[0].id, classroomResults[6].rows[0].id], // Music Room (12 capacity)
       
       // Primary 1-2 classes
-      ['Mathematics', 'Basic counting and arithmetic', 'Primary 1', staffUser2.rows[0].id, 3, 60, 12, branch4.rows[0].id, classroomResults[10].rows[0].id], // Room D1
-      ['English', 'Phonics and basic reading skills', 'Primary 1', staffUser3.rows[0].id, 4, 60, 12, branch4.rows[0].id, classroomResults[11].rows[0].id], // Room D2
-      ['Mathematics', 'Addition and subtraction fundamentals', 'Primary 2', staffUser1.rows[0].id, 5, 60, 15, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2
-      ['Chinese', 'Basic Mandarin for Primary 2', 'Primary 2', staffUser2.rows[0].id, 6, 60, 15, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2
+      ['Mathematics', 'Basic counting and arithmetic', 'Primary 1', staffUser2.rows[0].id, 3, 60, 12, branch4.rows[0].id, classroomResults[10].rows[0].id], // Room D1 (24 capacity)
+      ['English', 'Phonics and basic reading skills', 'Primary 1', staffUser3.rows[0].id, 4, 60, 12, branch4.rows[0].id, classroomResults[11].rows[0].id], // Room D2 (18 capacity)
+      ['Mathematics', 'Addition and subtraction fundamentals', 'Primary 2', staffUser1.rows[0].id, 5, 60, 15, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2 (18 capacity)
+      ['Chinese', 'Basic Mandarin for Primary 2', 'Primary 2', staffUser2.rows[0].id, 6, 60, 15, branch3.rows[0].id, classroomResults[7].rows[0].id], // Room C1 (22 capacity)
       
       // Primary 5-6 classes
-      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 7, 90, 20, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
-      ['English', 'Primary English composition', 'Primary 5', staffUser1.rows[0].id, 8, 90, 18, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
-      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 9, 75, 20, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
-      ['Mathematics', 'PSLE preparation mathematics', 'Primary 6', staffUser2.rows[0].id, 10, 120, 16, branch3.rows[0].id, classroomResults[9].rows[0].id], // Science Lab
-      ['English', 'PSLE English preparation', 'Primary 6', staffUser3.rows[0].id, 11, 120, 16, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2
+      ['Mathematics', 'Primary mathematics fundamentals', 'Primary 5', staffUser3.rows[0].id, 7, 90, 20, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2 (20 capacity)
+      ['English', 'Primary English composition', 'Primary 5', staffUser1.rows[0].id, 8, 90, 18, branch1.rows[0].id, classroomResults[0].rows[0].id], // Room A1 (25 capacity)
+      ['Science', 'Primary science exploration', 'Primary 5', staffUser2.rows[0].id, 9, 75, 20, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2 (20 capacity)
+      ['Mathematics', 'PSLE preparation mathematics', 'Primary 6', staffUser2.rows[0].id, 10, 120, 16, branch3.rows[0].id, classroomResults[9].rows[0].id], // Science Lab (16 capacity)
+      ['English', 'PSLE English preparation', 'Primary 6', staffUser3.rows[0].id, 11, 120, 16, branch3.rows[0].id, classroomResults[8].rows[0].id], // Room C2 (18 capacity)
       
       // Secondary 1 classes
-      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 12, 90, 18, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
-      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 13, 90, 18, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2
-      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 14, 90, 16, branch1.rows[0].id, classroomResults[2].rows[0].id], // Room A3
+      ['Mathematics', 'Basic algebra and geometry for Secondary 1', 'Secondary 1', staffUser1.rows[0].id, 12, 90, 18, branch1.rows[0].id, classroomResults[1].rows[0].id], // Room A2 (20 capacity)
+      ['English', 'English composition and comprehension', 'Secondary 1', staffUser2.rows[0].id, 13, 90, 18, branch1.rows[0].id, classroomResults[0].rows[0].id], // Room A1 (25 capacity)
+      ['Science', 'General science concepts', 'Secondary 1', staffUser3.rows[0].id, 14, 90, 15, branch1.rows[0].id, classroomResults[2].rows[0].id], // Room A3 (15 capacity)
       
       // Secondary 3 classes
-      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 15, 120, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Room B2
-      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 16, 90, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Room B2
-      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser3.rows[0].id, 17, 120, 12, branch2.rows[0].id, classroomResults[2].rows[0].id], // Room A3
+      ['Mathematics', 'Advanced mathematics for Secondary 3', 'Secondary 3', staffUser2.rows[0].id, 15, 120, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Art Studio (15 capacity)
+      ['English', 'Advanced English literature', 'Secondary 3', staffUser1.rows[0].id, 16, 90, 15, branch2.rows[0].id, classroomResults[2].rows[0].id], // Room A3 (15 capacity)
+      ['Science', 'Physics and chemistry fundamentals', 'Secondary 3', staffUser3.rows[0].id, 17, 120, 12, branch2.rows[0].id, classroomResults[6].rows[0].id], // Music Room (12 capacity)
       
       // Secondary 4 classes (O-Level preparation)
-      ['Mathematics', 'O-Level Mathematics preparation', 'Secondary 4', staffUser1.rows[0].id, 18, 120, 14, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room
-      ['English', 'O-Level English preparation', 'Secondary 4', staffUser2.rows[0].id, 19, 120, 14, branch4.rows[0].id, classroomResults[11].rows[0].id], // Room D2
-      ['Science', 'O-Level combined science', 'Secondary 4', staffUser3.rows[0].id, 20, 150, 12, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room
+      ['Mathematics', 'O-Level Mathematics preparation', 'Secondary 4', staffUser1.rows[0].id, 18, 120, 14, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room (14 capacity)
+      ['English', 'O-Level English preparation', 'Secondary 4', staffUser2.rows[0].id, 19, 120, 14, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room (14 capacity)
+      ['Science', 'O-Level combined science', 'Secondary 4', staffUser3.rows[0].id, 20, 150, 12, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room (14 capacity)
       
       // Mixed level and general classes (no level specified - available to all)
-      ['Computer Programming', 'Basic coding skills for all ages', null, staffUser1.rows[0].id, 21, 90, 20, branch1.rows[0].id, classroomResults[3].rows[0].id], // Computer Lab
-      ['Art', 'Creative expression and techniques', null, staffUser2.rows[0].id, 22, 90, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Art studio
-      ['Music', 'Music appreciation and basic instruments', null, staffUser3.rows[0].id, 23, 75, 12, branch2.rows[0].id, classroomResults[6].rows[0].id], // Music Room
-      ['Chess', 'Strategic thinking through chess', null, staffUser1.rows[0].id, 24, 60, 12, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room
+      ['Computer Programming', 'Basic coding skills for all ages', null, staffUser1.rows[0].id, 21, 90, 20, branch1.rows[0].id, classroomResults[3].rows[0].id], // Computer Lab (20 capacity)
+      ['Art', 'Creative expression and techniques', null, staffUser2.rows[0].id, 22, 90, 15, branch2.rows[0].id, classroomResults[5].rows[0].id], // Art studio (15 capacity)
+      ['Music', 'Music appreciation and basic instruments', null, staffUser3.rows[0].id, 23, 75, 12, branch2.rows[0].id, classroomResults[6].rows[0].id], // Music Room (12 capacity)
+      ['Chess', 'Strategic thinking through chess', null, staffUser1.rows[0].id, 24, 60, 12, branch4.rows[0].id, classroomResults[12].rows[0].id], // Library Room (14 capacity)
     ];
 
     for (let i = 0; i < classesData.length; i++) {
