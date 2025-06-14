@@ -240,8 +240,8 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         break;
       case 'capacity':
         const cap = parseInt(value);
-        if (isNaN(cap) || cap < 1 || cap > 50) {
-          error = 'Capacity must be between 1 and 50 students';
+        if (isNaN(cap) || cap < 1) {
+          error = 'Capacity must be at least 1 student';
         }
         // Validation for edit mode to ensure capacity is not less than current enrollment
         else if (isEdit && classData && cap < classData.enrolled_count) {
@@ -669,7 +669,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 type="number"
                 value={formData.capacity}
                 min={isEdit && classData ? classData.enrolled_count : 1}
-                max="50"
+                max={classroomAvailability ? classroomAvailability.classroom.room_capacity : undefined}
                 onChange={(e) => handleInputChange('capacity', parseInt(e.target.value))}
                 className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
                   fieldErrors.capacity 

@@ -114,6 +114,85 @@ export const validateProfileUpdate = (req: Request, res: Response, next: NextFun
   next();
 };
 
+// Branch creation validation
+export const validateBranch = (req: Request, res: Response, next: NextFunction): void => {
+  const { name, address, phone } = req.body;
+  
+  if (!name || !address) {
+    res.status(400).json({ error: 'Name and address are required' });
+    return;
+  }
+  
+  if (name.trim().length < 2) {
+    res.status(400).json({ error: 'Branch name must be at least 2 characters' });
+    return;
+  }
+  
+  if (address.trim().length < 5) {
+    res.status(400).json({ error: 'Address must be at least 5 characters' });
+    return;
+  }
+
+  // Optional phone validation
+  if (phone && !isValidPhone(phone)) {
+    res.status(400).json({ error: 'Phone number must be exactly 8 digits if provided' });
+    return;
+  }
+  
+  next();
+};
+
+// Class creation validation with REQUIRED classroom
+export const validateClass = (req: Request, res: Response, next: NextFunction): void => {
+  const { subject, startTime, durationMinutes, capacity, branchId, level, classroomId } = req.body;
+  
+  // Classroom is now mandatory - updated validation
+  if (!subject || !startTime || !durationMinutes || !capacity || !branchId || !level || !classroomId) {
+    res.status(400).json({ error: 'All fields are required (subject, startTime, durationMinutes, capacity, branchId, level, classroomId)' });
+    return;
+  }
+  
+  if (subject.trim().length < 2) {
+    res.status(400).json({ error: 'Subject must be at least 2 characters' });
+    return;
+  }
+  
+  if (!level || level.trim().length < 1) {
+    res.status(400).json({ error: 'Level/Grade is required' });
+    return;
+  }
+  
+  if (isNaN(durationMinutes) || durationMinutes < 30 || durationMinutes > 300) {
+    res.status(400).json({ error: 'Duration must be between 30 and 300 minutes' });
+    return;
+  }
+  
+  if (isNaN(capacity) || capacity < 1 || capacity > 200) {
+    res.status(400).json({ error: 'Capacity must be between 1 and 200 students' });
+    return;
+  }
+  
+  if (!isValidUUID(branchId)) {
+    res.status(400).json({ error: 'Invalid branch ID' });
+    return;
+  }
+  
+  // Classroom ID is required
+  if (!isValidUUID(classroomId)) {
+    res.status(400).json({ error: 'Invalid classroom ID format' });
+    return;
+  }
+  
+  // Validate start time is in the future
+  const classStartTime = new Date(startTime);
+  if (classStartTime <= new Date()) {
+    res.status(400).json({ error: 'Class start time must be in the future' });
+    return;
+  }
+  
+  next();
+};
+
 // Student creation validation middleware
 export const validateStudent = (req: Request, res: Response, next: NextFunction): void => {
   const { firstName, lastName, grade, dateOfBirth, homeBranchId } = req.body;
@@ -164,56 +243,6 @@ export const validateStudent = (req: Request, res: Response, next: NextFunction)
   // Validate home branch ID if provided
   if (homeBranchId && !isValidUUID(homeBranchId)) {
     res.status(400).json({ error: 'Invalid home branch ID format' });
-    return;
-  }
-  
-  next();
-};
-
-// Class creation validation with REQUIRED level and optional classroom
-export const validateClass = (req: Request, res: Response, next: NextFunction): void => {
-  const { subject, startTime, durationMinutes, capacity, branchId, level, classroomId } = req.body;
-  
-  if (!subject || !startTime || !durationMinutes || !capacity || !branchId || !level) {
-    res.status(400).json({ error: 'All fields including level are required (subject, startTime, durationMinutes, capacity, branchId, level)' });
-    return;
-  }
-  
-  if (subject.trim().length < 2) {
-    res.status(400).json({ error: 'Subject must be at least 2 characters' });
-    return;
-  }
-  
-  if (!level || level.trim().length < 1) {
-    res.status(400).json({ error: 'Level/Grade is required' });
-    return;
-  }
-  
-  if (isNaN(durationMinutes) || durationMinutes < 30 || durationMinutes > 300) {
-    res.status(400).json({ error: 'Duration must be between 30 and 300 minutes' });
-    return;
-  }
-  
-  if (isNaN(capacity) || capacity < 1 || capacity > 200) {
-    res.status(400).json({ error: 'Capacity must be between 1 and 200 students' });
-    return;
-  }
-  
-  if (!isValidUUID(branchId)) {
-    res.status(400).json({ error: 'Invalid branch ID' });
-    return;
-  }
-  
-  // Validate classroom ID if provided (optional field)
-  if (classroomId && !isValidUUID(classroomId)) {
-    res.status(400).json({ error: 'Invalid classroom ID format' });
-    return;
-  }
-  
-  // Validate start time is in the future
-  const classStartTime = new Date(startTime);
-  if (classStartTime <= new Date()) {
-    res.status(400).json({ error: 'Class start time must be in the future' });
     return;
   }
   
