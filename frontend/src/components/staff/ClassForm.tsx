@@ -53,8 +53,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   // Load branches on component mount
   useEffect(() => {
     if (isOpen) {
+      // Reset all classroom-related state when modal opens to prevent stale state issues
       setClassroomToSet('');
       setClassroomsLoaded(false);
+      setClassrooms([]); // Clear classrooms to force reload even if branch is the same
+      setClassroomAvailability(null);
       loadBranches();
     }
   }, [isOpen]);
@@ -69,6 +72,13 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       setFormData(prev => ({ ...prev, classroomId: '' }));
     }
   }, [formData.branchId]);
+
+  // Reload classrooms when modal opens and we have a branchId (handles same-branch scenario)
+  useEffect(() => {
+    if (isOpen && formData.branchId && classrooms.length === 0) {
+      loadClassrooms(formData.branchId);
+    }
+  }, [isOpen, formData.branchId, classrooms.length]);
 
   // Set classroom after both conditions are met: classrooms loaded and have a classroom to set
   useEffect(() => {
@@ -86,6 +96,19 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       setClassroomToSet('');
     }
   }, [classroomsLoaded, classroomToSet, classrooms]);
+
+  // Alternative approach: Set classroom directly when we have both classroom ID and loaded classrooms
+  useEffect(() => {
+    if (classData?.classroom_id && classrooms.length > 0 && !formData.classroomId) {
+      const foundClassroom = classrooms.find(cr => cr.id === classData.classroom_id);
+      if (foundClassroom) {
+        setFormData(prev => ({ 
+          ...prev, 
+          classroomId: classData.classroom_id! 
+        }));
+      }
+    }
+  }, [classData, classrooms, formData.classroomId]);
 
   // Check classroom availability when classroom, date, or time changes
   useEffect(() => {
