@@ -142,11 +142,10 @@ export const validateBranch = (req: Request, res: Response, next: NextFunction):
   next();
 };
 
-// Class creation validation with REQUIRED classroom
+// Class creation validation
 export const validateClass = (req: Request, res: Response, next: NextFunction): void => {
   const { subject, startTime, durationMinutes, capacity, branchId, level, classroomId } = req.body;
   
-  // Classroom is now mandatory - updated validation
   if (!subject || !startTime || !durationMinutes || !capacity || !branchId || !level || !classroomId) {
     res.status(400).json({ error: 'All fields are required (subject, startTime, durationMinutes, capacity, branchId, level, classroomId)' });
     return;
