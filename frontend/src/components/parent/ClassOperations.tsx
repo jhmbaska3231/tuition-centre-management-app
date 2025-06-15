@@ -779,7 +779,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 {selectedChild !== 'all' && shouldShowChildFilter() 
                   ? `Showing enrollments for ${students.find(s => s.id === selectedChild)?.first_name} ${students.find(s => s.id === selectedChild)?.last_name}`
                   : selectedSubject || selectedBranch || startDate || endDate
-                    ? 'Filtered enrollments'
+                    ? 'Showing all upcoming enrollments'
                     : 'All enrollments for your students'
                 }
               </span>

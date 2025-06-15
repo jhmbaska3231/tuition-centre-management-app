@@ -568,7 +568,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
           {/* Classroom Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Classroom
+              Classroom *
             </label>
             {loadingClassrooms || checkingAvailability ? (
               <div className="p-3 border-2 border-gray-200 rounded-lg bg-gray-50">
@@ -583,7 +583,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
                 className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors"
                 disabled={!formData.branchId}
               >
-                <option value="">No specific classroom</option>
+                <option value="">Please select a branch first</option>
                 {classrooms.map(classroom => (
                   <option key={classroom.id} value={classroom.id}>
                     {classroom.room_name} (Capacity: {classroom.room_capacity})
