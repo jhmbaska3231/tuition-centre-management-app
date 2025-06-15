@@ -327,7 +327,8 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
 
   // Filter enrollments by subject, branch, date range, and selected child
   const getFilteredEnrollments = () => {
-    let filtered = enrollments;
+    // Show only active enrollments
+    let filtered = enrollments.filter(enrollment => enrollment.status === 'enrolled');
     
     // Filter by selected child first
     if (selectedChild !== 'all') {
