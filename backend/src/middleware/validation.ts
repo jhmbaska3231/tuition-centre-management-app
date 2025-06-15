@@ -166,8 +166,9 @@ export const validateClass = (req: Request, res: Response, next: NextFunction): 
     return;
   }
   
-  if (isNaN(capacity) || capacity < 1 || capacity > 200) {
-    res.status(400).json({ error: 'Capacity must be between 1 and 200 students' });
+  // Classroom capacity validation is done in the route handler where classroom data is available
+  if (isNaN(capacity) || capacity < 1) {
+    res.status(400).json({ error: 'Capacity must be at least 1 student' });
     return;
   }
   

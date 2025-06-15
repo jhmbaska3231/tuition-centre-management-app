@@ -391,11 +391,22 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
     const userRole = req.user!.role;
     const userId = req.user!.userId;
 
-    // Check if class exists and is in the future
-    const classCheck = await pool.query(
-      'SELECT id, start_time, tutor_id, branch_id, classroom_id FROM "Class" WHERE id = $1 AND active = TRUE AND start_time > NOW()',
-      [id]
-    );
+    // Check if class exists and is in the future, and get current enrollment count
+    const classCheck = await pool.query(`
+      SELECT c.id, c.start_time, c.tutor_id, c.branch_id, c.classroom_id, c.capacity,
+             COALESCE(enrolled_count.count, 0) as enrolled_count
+      FROM "Class" c
+      LEFT JOIN (
+        SELECT 
+          e.class_id,
+          COUNT(e.id) as count
+        FROM "Enrollment" e
+        INNER JOIN "Student" s ON e.student_id = s.id AND s.active = TRUE
+        WHERE e.status = 'enrolled'
+        GROUP BY e.class_id
+      ) enrolled_count ON c.id = enrolled_count.class_id
+      WHERE c.id = $1 AND c.active = TRUE AND c.start_time > NOW()
+    `, [id]);
 
     if (classCheck.rows.length === 0) {
       res.status(404).json({ error: 'Class not found or cannot be modified (past class)' });
@@ -403,6 +414,7 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
     }
 
     const classItem = classCheck.rows[0];
+    const currentEnrollment = parseInt(classItem.enrolled_count) || 0;
 
     // Check permissions: staff can only edit their own classes
     if (userRole === 'staff' && classItem.tutor_id !== userId) {
@@ -412,8 +424,24 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
 
     // Validate required fields for updates
     if (level !== undefined && (!level || level.trim().length === 0)) {
-      res.status(400).json({ error: 'Level/Grade is required and cannot be empty' });
+      res.status(400).json({ error: 'Grade/Level is required and cannot be empty' });
       return;
+    }
+
+    // Validate capacity if being updated - check against current enrollment
+    if (capacity !== undefined) {
+      if (capacity < 1) {
+        res.status(400).json({ error: 'Capacity must be at least 1 student' });
+        return;
+      }
+      
+      // Check if new capacity is less than current enrollment
+      if (capacity < currentEnrollment) {
+        res.status(400).json({ 
+          error: `Capacity cannot be less than current enrollment (${currentEnrollment} students)` 
+        });
+        return;
+      }
     }
 
     // Validate classroom if being updated
