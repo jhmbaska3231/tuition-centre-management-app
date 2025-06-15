@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/profile', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, role, first_name, last_name, phone FROM "User" WHERE id = $1',
+      'SELECT id, email, role, first_name, last_name, phone, created_at, updated_at FROM "User" WHERE id = $1',
       [req.user!.userId]
     );
 
@@ -27,7 +27,9 @@ router.get('/profile', authenticateToken, async (req: AuthRequest, res) => {
       role: user.role,
       first_name: user.first_name,
       last_name: user.last_name,
-      phone: user.phone
+      phone: user.phone,
+      created_at: user.created_at,
+      updated_at: user.updated_at
     });
   } catch (error) {
     console.error('Profile fetch error:', error);
@@ -47,7 +49,7 @@ router.put('/profile', authenticateToken, validateProfileUpdate, async (req: Aut
           phone = COALESCE($3, phone),
           updated_at = NOW()
       WHERE id = $4
-      RETURNING id, email, role, first_name, last_name, phone
+      RETURNING id, email, role, first_name, last_name, phone, created_at, updated_at
     `, [firstName, lastName, phone, req.user!.userId]);
 
     const user = result.rows[0];
@@ -59,7 +61,9 @@ router.put('/profile', authenticateToken, validateProfileUpdate, async (req: Aut
         role: user.role,
         first_name: user.first_name,
         last_name: user.last_name,
-        phone: user.phone
+        phone: user.phone,
+        created_at: user.created_at,
+        updated_at: user.updated_at
       }
     });
   } catch (error) {
@@ -91,69 +95,64 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
     
     const user = userResult.rows[0];
     
-    // Get detailed count of related data for logging (before deletion)
-    const studentCount = await client.query(
-      'SELECT COUNT(*) as count FROM "Student" WHERE parent_id = $1',
-      [userId]
-    );
+    // Only allow parents to delete their own accounts
+    if (user.role !== 'parent') {
+      await client.query('ROLLBACK');
+      res.status(403).json({ error: 'Only parent accounts can be self-deleted' });
+      return;
+    }
     
-    const enrollmentCount = await client.query(
-      `SELECT COUNT(*) as count FROM "Enrollment" e 
-       JOIN "Student" s ON e.student_id = s.id 
-       WHERE s.parent_id = $1`,
-      [userId]
-    );
+    // Get count of affected records for confirmation
+    const [studentsResult, enrollmentsResult, paymentsResult] = await Promise.all([
+      client.query('SELECT COUNT(*) as count FROM "Student" WHERE parent_id = $1 AND active = TRUE', [userId]),
+      client.query(`
+        SELECT COUNT(DISTINCT e.id) as count 
+        FROM "Enrollment" e 
+        JOIN "Student" s ON e.student_id = s.id 
+        WHERE s.parent_id = $1 AND s.active = TRUE AND e.status = 'enrolled'
+      `, [userId]),
+      client.query(`
+        SELECT COUNT(*) as count 
+        FROM "Payment" p 
+        JOIN "Student" s ON p.student_id = s.id 
+        WHERE s.parent_id = $1 AND s.active = TRUE
+      `, [userId])
+    ]);
     
-    const paymentCount = await client.query(
-      `SELECT COUNT(*) as count FROM "Payment" p 
-       JOIN "Student" s ON p.student_id = s.id 
-       WHERE s.parent_id = $1`,
-      [userId]
-    );
-
-    const attendanceCount = await client.query(
-      `SELECT COUNT(*) as count FROM "Attendance" a 
-       JOIN "Student" s ON a.student_id = s.id 
-       WHERE s.parent_id = $1`,
-      [userId]
-    );
-
-    // Get specific enrollment details for verification
-    const enrollmentDetails = await client.query(
-      `SELECT c.subject, c.start_time, CONCAT(s.first_name, ' ', s.last_name) as student_name
-       FROM "Enrollment" e 
-       JOIN "Student" s ON e.student_id = s.id 
-       JOIN "Class" c ON e.class_id = c.id
-       WHERE s.parent_id = $1 AND e.status = 'enrolled'`,
-      [userId]
-    );
+    const studentsCount = parseInt(studentsResult.rows[0].count);
+    const enrollmentsCount = parseInt(enrollmentsResult.rows[0].count);
+    const paymentsCount = parseInt(paymentsResult.rows[0].count);
     
-    // Delete user - with CASCADE enabled in schema, this will automatically delete:
-    // 1. Students (because parent_id references User(id) ON DELETE CASCADE)
-    // 2. Enrollments (because student_id references Student(id) ON DELETE CASCADE)
-    // 3. Payments (because student_id references Student(id) ON DELETE CASCADE)
-    // 4. Attendance (because student_id references Student(id) ON DELETE CASCADE)
-    const deletionResult = await client.query(
-      'DELETE FROM "User" WHERE id = $1 RETURNING email',
-      [userId]
-    );
+    // Cancel all active enrollments for this parent's students
+    await client.query(`
+      UPDATE "Enrollment" 
+      SET status = 'cancelled', cancelled_at = NOW()
+      WHERE student_id IN (
+        SELECT id FROM "Student" WHERE parent_id = $1 AND active = TRUE
+      ) AND status = 'enrolled'
+    `, [userId]);
+    
+    // Soft delete all students
+    await client.query('UPDATE "Student" SET active = FALSE WHERE parent_id = $1', [userId]);
+    
+    // Soft delete user account
+    await client.query('UPDATE "User" SET active = FALSE WHERE id = $1', [userId]);
     
     await client.query('COMMIT');
     
     res.json({
-      message: 'Account successfully deleted. All your data has been permanently removed.',
+      message: `Account for ${user.first_name} ${user.last_name} has been deleted successfully`,
       deletedData: {
-        students: parseInt(studentCount.rows[0].count),
-        enrollments: parseInt(enrollmentCount.rows[0].count),
-        payments: parseInt(paymentCount.rows[0].count),
-        attendance: parseInt(attendanceCount.rows[0].count)
+        students: studentsCount,
+        enrollments: enrollmentsCount,
+        payments: paymentsCount
       }
     });
     
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Account deletion error:', error);
-    res.status(500).json({ error: 'Failed to delete account. Please try again or contact support.' });
+    res.status(500).json({ error: 'Failed to delete account' });
   } finally {
     client.release();
   }

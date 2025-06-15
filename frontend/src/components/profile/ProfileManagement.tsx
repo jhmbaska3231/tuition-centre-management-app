@@ -147,6 +147,7 @@ const ProfileManagement: React.FC = () => {
     if (!dateString) return 'Unknown';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-SG', {
+      day: 'numeric',
       month: 'long',
       year: 'numeric'
     });

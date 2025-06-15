@@ -36,7 +36,7 @@ router.post('/register', validateParentRegistration, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO "User" (email, password, role, first_name, last_name, phone) 
        VALUES ($1, $2, $3, $4, $5, $6) 
-       RETURNING id, email, role, first_name, last_name, phone`,
+       RETURNING id, email, role, first_name, last_name, phone, created_at, updated_at`,
       [trimmedEmail, hashedPassword, 'parent', firstName.trim(), lastName.trim(), phone?.trim() || null]
     );
 
@@ -66,7 +66,9 @@ router.post('/register', validateParentRegistration, async (req, res) => {
         role: user.role,
         first_name: user.first_name,
         last_name: user.last_name,
-        phone: user.phone
+        phone: user.phone,
+        created_at: user.created_at,
+        updated_at: user.updated_at
       }
     });
 
@@ -86,7 +88,7 @@ router.post('/login', validateLogin, async (req, res) => {
 
     // Find user
     const result = await pool.query(
-      'SELECT id, email, password, role, first_name, last_name, phone FROM "User" WHERE email = $1 AND active = TRUE',
+      'SELECT id, email, password, role, first_name, last_name, phone, created_at, updated_at FROM "User" WHERE email = $1 AND active = TRUE',
       [trimmedEmail]
     );
 
@@ -128,7 +130,9 @@ router.post('/login', validateLogin, async (req, res) => {
         role: user.role,
         first_name: user.first_name,
         last_name: user.last_name,
-        phone: user.phone
+        phone: user.phone,
+        created_at: user.created_at,
+        updated_at: user.updated_at
       }
     });
 
@@ -159,7 +163,7 @@ router.get('/me', async (req: AuthRequest, res) => {
     const decoded: any = jwt.verify(token, jwtSecret);
     
     const result = await pool.query(
-      'SELECT id, email, role, first_name, last_name, phone FROM "User" WHERE id = $1',
+      'SELECT id, email, role, first_name, last_name, phone, created_at, updated_at FROM "User" WHERE id = $1',
       [decoded.userId]
     );
 
@@ -177,7 +181,9 @@ router.get('/me', async (req: AuthRequest, res) => {
         role: user.role,
         first_name: user.first_name,
         last_name: user.last_name,
-        phone: user.phone
+        phone: user.phone,
+        created_at: user.created_at,
+        updated_at: user.updated_at
       }
     });
 

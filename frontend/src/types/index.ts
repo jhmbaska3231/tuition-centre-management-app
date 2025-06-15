@@ -8,8 +8,8 @@ export interface User {
   email: string;
   phone?: string;
   role: 'parent' | 'staff' | 'admin';
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Represents a student entity with academic and contact information
