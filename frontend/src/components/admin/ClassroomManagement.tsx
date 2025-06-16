@@ -185,7 +185,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
             <MapPin className="text-gray-600" size={24} />
             <h3 className="text-lg font-semibold text-gray-800">Active Classes</h3>
           </div>
-          <p className="text-2xl font-bold text-purple-600">
+          <p className="text-2xl font-bold text-orange-600">
             {classrooms.reduce((sum, room) => sum + (room.active_classes_count || 0), 0)}
           </p>
           <p className="text-sm text-gray-500 mt-1">Currently scheduled</p>
@@ -252,9 +252,9 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
                   </div>
                 )}
                 
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center mb-6 text-sm">
                   <span className="text-gray-600">Active Classes:</span>
-                  <span className="font-semibold text-purple-600">{classroom.active_classes_count || 0}</span>
+                  <span className="text-gray-600 ml-1">{classroom.active_classes_count || 0}</span>
                 </div>
               </div>
 
