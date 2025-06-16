@@ -1,7 +1,7 @@
 // frontend/src/components/admin/ClassroomForm.tsx
 
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, MapPin } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { Classroom, CreateClassroomRequest, UpdateClassroomRequest } from '../../types';
 import ClassroomService from '../../services/classroom';
 
@@ -28,6 +28,10 @@ const ClassroomForm: React.FC<ClassroomFormProps> = ({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({
+    room_name: '',
+    room_capacity: '',
+  });
 
   const isEditing = !!classroom;
 
@@ -39,11 +43,67 @@ const ClassroomForm: React.FC<ClassroomFormProps> = ({
         room_capacity: classroom.room_capacity,
         active: classroom.active,
       });
+    } else {
+      // Reset form for new classroom
+      setFormData({
+        room_name: '',
+        description: '',
+        room_capacity: 20,
+        active: true,
+      });
     }
+    setError('');
+    setFieldErrors({
+      room_name: '',
+      room_capacity: '',
+    });
   }, [classroom]);
+
+  const validateField = (field: string, value: any): boolean => {
+    let error = '';
+    
+    switch (field) {
+      case 'room_name':
+        if (!value || value.trim().length < 2) {
+          error = 'Room name must be at least 2 characters long';
+        }
+        break;
+      case 'room_capacity':
+        if (!value || value < 1 || value > 50) {
+          error = 'Capacity must be between 1 and 50';
+        }
+        break;
+    }
+    
+    setFieldErrors(prev => ({ ...prev, [field]: error }));
+    return error === '';
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setError('');
+    
+    // Real-time validation
+    if (field === 'room_name' || field === 'room_capacity') {
+      validateField(field, value);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const nameValid = validateField('room_name', formData.room_name);
+    const capacityValid = validateField('room_capacity', formData.room_capacity);
+    
+    return nameValid && capacityValid;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      setError('Please correct the errors above');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -68,162 +128,163 @@ const ClassroomForm: React.FC<ClassroomFormProps> = ({
       
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: checked }));
-    } else if (name === 'room_capacity') {
-      setFormData(prev => ({ ...prev, [name]: parseInt(value) || 1 }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+  const handleClose = () => {
+    onCancel();
+    setFormData({
+      room_name: '',
+      description: '',
+      room_capacity: 20,
+      active: true,
+    });
+    setError('');
+    setFieldErrors({
+      room_name: '',
+      room_capacity: '',
+    });
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white rounded-t-2xl border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <MapPin className="text-indigo-500" size={24} />
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  {isEditing ? 'Edit Classroom' : 'Create New Classroom'}
-                </h2>
-                <p className="text-sm text-gray-600">For {branchName}</p>
-              </div>
-            </div>
-            <button
-              onClick={onCancel}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-            >
-              <X size={20} />
-            </button>
+    <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-8 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          type="button"
+        >
+          <X size={24} />
+        </button>
+        
+        <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
+          {isEditing ? 'Edit Classroom' : 'Add New Classroom'}
+        </h2>
+
+        <div className="mb-6 text-center">
+          <div className="text-gray-600">
+            <span className="text-sm font-medium">{branchName}</span>
           </div>
         </div>
-
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Room Name */}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Room Name Field */}
           <div>
-            <label htmlFor="room_name" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Room Name *
             </label>
             <input
               type="text"
-              id="room_name"
-              name="room_name"
               value={formData.room_name}
-              onChange={handleChange}
+              onChange={(e) => handleInputChange('room_name', e.target.value)}
+              className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                fieldErrors.room_name 
+                  ? 'border-red-300 focus:border-red-500' 
+                  : 'border-gray-200 focus:border-indigo-500'
+              }`}
+              placeholder="e.g. Room A1, Classroom 101, Conference Room"
               required
-              placeholder="e.g., Room A1, Computer Lab, Music Room"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Must be unique within this branch
-            </p>
+            {fieldErrors.room_name && (
+              <p className="text-red-600 text-sm mt-1">{fieldErrors.room_name}</p>
+            )}
           </div>
 
-          {/* Description */}
+          {/* Description Field */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Description
             </label>
             <textarea
-              id="description"
-              name="description"
               value={formData.description}
-              onChange={handleChange}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors"
+              placeholder="Optional description of the classroom (e.g. whiteboard, projector, air-conditioned)"
               rows={3}
-              placeholder="Optional description of the classroom facilities and features"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors resize-none"
             />
           </div>
 
-          {/* Room Capacity */}
+          {/* Room Capacity Field */}
           <div>
-            <label htmlFor="room_capacity" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Room Capacity *
             </label>
             <input
               type="number"
-              id="room_capacity"
-              name="room_capacity"
-              value={formData.room_capacity}
-              onChange={handleChange}
               min="1"
-              max="200"
+              max="100"
+              value={formData.room_capacity}
+              onChange={(e) => handleInputChange('room_capacity', parseInt(e.target.value) || 0)}
+              className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                fieldErrors.room_capacity 
+                  ? 'border-red-300 focus:border-red-500' 
+                  : 'border-gray-200 focus:border-indigo-500'
+              }`}
+              placeholder="20"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Maximum number of students for fire safety (1-200)
+            {fieldErrors.room_capacity && (
+              <p className="text-red-600 text-sm mt-1">{fieldErrors.room_capacity}</p>
+            )}
+            <p className="text-sm text-gray-500 mt-1">
+              Maximum number of students that can be accommodated in this classroom. 
+              Teachers cannot create classes that exceed this capacity when selecting this classroom.
             </p>
           </div>
 
           {/* Active Status (only for editing) */}
           {isEditing && (
-            <div>
+            <div className="bg-gray-50 p-4 rounded-lg">
               <label className="flex items-center space-x-3">
                 <input
                   type="checkbox"
-                  name="active"
                   checked={formData.active}
-                  onChange={handleChange}
+                  onChange={(e) => handleInputChange('active', e.target.checked)}
                   className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
-                  Active Classroom
+                  Classroom is Active (Operational)
                 </span>
               </label>
-              <p className="text-xs text-gray-500 mt-1">
-                Inactive classrooms cannot be assigned to new classes
-              </p>
+              <div className="mt-2 text-sm text-gray-600">
+                <p className="mb-1">
+                  <span className="font-medium">Active:</span> Classroom is available for class scheduling.
+                </p>
+                <p>
+                  <span className="font-medium">Inactive:</span> Classroom is temporarily unavailable (e.g. under maintenance) but data is preserved.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Fire Safety Warning */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-yellow-800 mb-1">Fire Safety Notice</h4>
-            <p className="text-xs text-yellow-700">
-              The room capacity sets the maximum limit for class sizes. Teachers cannot create classes 
-              that exceed this capacity when selecting this classroom.
-            </p>
-          </div>
+          {/* Error Message */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
 
           {/* Buttons */}
-          <div className="flex space-x-3 pt-4">
+          <div className="flex space-x-3">
             <button
               type="button"
-              onClick={onCancel}
-              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={handleClose}
+              disabled={loading}
+              className="flex-1 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !formData.room_name.trim() || formData.room_capacity < 1}
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-indigo-500 text-white p-3 rounded-lg font-semibold hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
-                  <Loader2 className="animate-spin mr-2" size={16} />
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                   {isEditing ? 'Updating...' : 'Creating...'}
                 </div>
               ) : (

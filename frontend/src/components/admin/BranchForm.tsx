@@ -248,12 +248,12 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, branch, onSucc
               </label>
               <div className="mt-2 text-sm text-gray-600">
                 <p className="mb-1">
-                  <span className="font-medium">Active:</span> Branch is operational and available for class creation and student enrollment.
+                  <span className="font-medium">Active:</span> Branch is available for class creation and student enrollment.
                 </p>
                 <p>
                   <span className="font-medium">Inactive:</span> Branch is temporarily closed (e.g. for renovation) but data is preserved.
                 </p>
-                <p className="mt-2 text-orange-600 font-medium">
+                <p className="mt-2 text-orange-600">
                   Note: To permanently close a branch and remove all data, use the "Delete Branch" button instead.
                 </p>
               </div>

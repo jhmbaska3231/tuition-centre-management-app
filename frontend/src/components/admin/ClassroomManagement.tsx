@@ -1,7 +1,7 @@
 // frontend/src/components/admin/ClassroomManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2, Users, MapPin, ChevronLeft, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Users, MapPin, BookCopy, ChevronLeft, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { Classroom, Branch, ClassroomDeletionImpact } from '../../types';
 import ClassroomService from '../../services/classroom';
 import ClassroomForm from './ClassroomForm';
@@ -122,13 +122,15 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
         <div className="flex items-center space-x-4">
           <button
             onClick={onBack}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-4 flex items-center space-x-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title="Back to Branch Management"
           >
             <ChevronLeft size={24} />
+            <span>Back to Branches</span>
           </button>
+          <div className="h-8 w-px bg-gray-300"></div>
           <div className="flex items-center space-x-3">
-            <MapPin className="text-indigo-500" size={32} />
+            <BookCopy className="text-indigo-500" size={32} />
             <div>
               <h1 className="text-3xl font-bold text-gray-800">Classroom Management</h1>
               <p className="text-gray-600">Managing classrooms for <span className="font-semibold">{branch.name}</span></p>
@@ -289,7 +291,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center space-x-3 mb-4">
