@@ -12,6 +12,10 @@ import DateInput from '../common/DateInput';
 // First opening: Modal opens → clears classrooms → form populates → branch changes → classrooms reload
 // Second opening: Modal opens → clears classrooms → form populates with same branch → new effect detects we have branchId but no classrooms → classrooms reload
 
+// Create mode: Modal opens → explicitly reset formData to fresh copy of INITIAL_FORM_DATA → clears any visual state in DateInput
+// Edit mode: Modal opens → populate formData with class data → DateInput shows the correct date
+// Mode switching: Each time modal opens, it explicitly sets the form state based on the mode
+
 interface ClassFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -384,30 +388,33 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     checkClassroomAvailability();
   }, [checkClassroomAvailability]);
 
-  // Populate form when editing
+  // Populate form when editing OR reset for create mode
   useEffect(() => {
-    if (classData) {
-      const startDateTime = new Date(classData.start_time);
-      const localDate = startDateTime.toISOString().split('T')[0];
-      const localTime = startDateTime.toTimeString().slice(0, 5);
-
-      setFormData({
-        subject: classData.subject,
-        description: classData.description || '',
-        level: classData.level || '',
-        startDate: localDate,
-        startTime: localTime,
-        durationMinutes: classData.duration_minutes,
-        capacity: classData.capacity,
-        branchId: classData.branch_id || '',
-        classroomId: '', // Will be set by auto-populate effect
-      });
-    } else if (isOpen) {
-      setFormData(INITIAL_FORM_DATA);
-    }
-
     if (isOpen) {
-      setFieldErrors(INITIAL_FIELD_ERRORS);
+      if (classData) {
+        // Edit mode: populate with existing class data
+        const startDateTime = new Date(classData.start_time);
+        const localDate = startDateTime.toISOString().split('T')[0];
+        const localTime = startDateTime.toTimeString().slice(0, 5);
+
+        setFormData({
+          subject: classData.subject,
+          description: classData.description || '',
+          level: classData.level || '',
+          startDate: localDate,
+          startTime: localTime,
+          durationMinutes: classData.duration_minutes,
+          capacity: classData.capacity,
+          branchId: classData.branch_id || '',
+          classroomId: '', // Will be set by auto-populate effect
+        });
+      } else {
+        // Create mode: explicitly reset to initial state
+        setFormData({ ...INITIAL_FORM_DATA });
+      }
+
+      // Always reset errors and availability when modal opens
+      setFieldErrors({ ...INITIAL_FIELD_ERRORS });
       setError('');
       setClassroomAvailability(null);
     }
