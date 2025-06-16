@@ -4,7 +4,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../index';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest, authenticateToken } from '../middleware/auth';
 import { validateParentRegistration, validateLogin } from '../middleware/validation';
 
 const router = express.Router();
@@ -143,32 +143,18 @@ router.post('/login', validateLogin, async (req, res) => {
 });
 
 // Get current user profile
-router.get('/me', async (req: AuthRequest, res) => {
+router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-      res.status(401).json({ error: 'Access token required' });
-      return;
-    }
-
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('JWT_SECRET not configured');
-      res.status(500).json({ error: 'Server configuration error' });
-      return;
-    }
-
-    const decoded: any = jwt.verify(token, jwtSecret);
-    
+    // The authenticateToken middleware has already verified the token
+    // and populated req.user with { userId, email, role }
+    // Now fetch fresh user data from database for security
     const result = await pool.query(
-      'SELECT id, email, role, first_name, last_name, phone, created_at, updated_at FROM "User" WHERE id = $1',
-      [decoded.userId]
+      'SELECT id, email, role, first_name, last_name, phone, created_at, updated_at FROM "User" WHERE id = $1 AND active = TRUE',
+      [req.user!.userId]
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found or account has been deactivated' });
       return;
     }
 
@@ -189,11 +175,7 @@ router.get('/me', async (req: AuthRequest, res) => {
 
   } catch (error) {
     console.error('Profile fetch error:', error);
-    if (error instanceof jwt.JsonWebTokenError) {
-      res.status(401).json({ error: 'Invalid token' });
-    } else {
-      res.status(500).json({ error: 'Failed to fetch profile' });
-    }
+    res.status(500).json({ error: 'Failed to fetch profile' });
   }
 });
 
