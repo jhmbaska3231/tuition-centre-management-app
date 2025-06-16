@@ -727,7 +727,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                     
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <MapPin size={16} />
-                      <span>{classItem.branch_name}</span>
+                      <span>{classItem.branch_name} ({classItem.classroom_name})</span>
                     </div>
                     
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -877,6 +877,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
               <div className="text-sm text-gray-600 space-y-1">
                 <p>{formatDateTime(selectedClass.start_time)}</p>
                 <p>{selectedClass.branch_name}</p>
+                <p>{selectedClass.classroom_name}</p>
                 <p>{formatDuration(selectedClass.duration_minutes)}</p>
                 {selectedClass.tutor_first_name && (
                   <p>Tutor: {selectedClass.tutor_first_name} {selectedClass.tutor_last_name}</p>
