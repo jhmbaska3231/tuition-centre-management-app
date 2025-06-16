@@ -333,6 +333,7 @@ export interface StaffDeletionImpact {
       start_time: string;
       duration_minutes: number;
       branch_name: string;
+      classroom_name?: string;
       enrolled_count: number;
     }>;
     warning?: string;
@@ -415,6 +416,7 @@ export interface UnassignedClass {
   capacity: number;
   branch_name: string;
   branch_address: string;
+  classroom_name?: string;
   enrolled_count: number;
 }
 

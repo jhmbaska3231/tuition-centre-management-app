@@ -312,7 +312,7 @@ const StaffManagement: React.FC = () => {
                         {deletionImpact.impact.affectedClasses.map((cls) => (
                           <div key={cls.id} className="text-sm text-gray-600 p-2 bg-white rounded border">
                             <p className="font-medium">{cls.subject}</p>
-                            <p>{formatDateTime(cls.start_time)} • {cls.branch_name}</p>
+                            <p>{formatDateTime(cls.start_time)} • {cls.branch_name} ({cls.classroom_name})</p>
                             <p>{cls.enrolled_count} students enrolled</p>
                           </div>
                         ))}

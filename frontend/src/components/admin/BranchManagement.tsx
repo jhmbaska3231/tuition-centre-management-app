@@ -284,7 +284,7 @@ const BranchManagement: React.FC = () => {
               <div className="mb-4">
                 <button
                   onClick={() => handleManageClassrooms(branch)}
-                  className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center space-x-2"
+                  className="w-full hover:bg-gray-100 text-gray-600 px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center space-x-2"
                 >
                   <Building2 size={16} />
                   <span>Manage Classrooms</span>

@@ -267,7 +267,7 @@ const ClassReassignment: React.FC = () => {
                           <div className="space-y-2">
                             <div className="flex items-center space-x-2">
                               <MapPin size={16} />
-                              <span>{classItem.branch_name}</span>
+                              <span>{classItem.branch_name} ({classItem.classroom_name})</span>
                             </div>
                             
                             <div className="flex items-center space-x-2">
@@ -327,6 +327,7 @@ const ClassReassignment: React.FC = () => {
               <div className="text-sm text-gray-600 space-y-1">
                 <p>{formatDateTime(selectedClass.start_time)}</p>
                 <p>{selectedClass.branch_name}</p>
+                <p>{selectedClass.classroom_name}</p>
                 <p>{formatDuration(selectedClass.duration_minutes)}</p>
                 <p>{selectedClass.enrolled_count}/{selectedClass.capacity} students enrolled</p>
               </div>

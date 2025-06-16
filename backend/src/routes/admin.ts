@@ -156,12 +156,14 @@ router.get('/staff/:id/deletion-impact', authenticateToken, requireRole('admin')
     const classesResult = await pool.query(`
       SELECT c.id, c.subject, c.start_time, c.duration_minutes, 
              b.name as branch_name,
+             cr.room_name as classroom_name,
              COUNT(e.id) as enrolled_count
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
+      LEFT JOIN "Classroom" cr ON c.classroom_id = cr.id
       LEFT JOIN "Enrollment" e ON c.id = e.class_id AND e.status = 'enrolled'
       WHERE c.tutor_id = $1 AND c.active = TRUE
-      GROUP BY c.id, c.subject, c.start_time, c.duration_minutes, b.name
+      GROUP BY c.id, c.subject, c.start_time, c.duration_minutes, b.name, cr.room_name
       ORDER BY c.start_time
     `, [id]);
 
@@ -251,12 +253,14 @@ router.get('/classes/unassigned', authenticateToken, requireRole('admin'), async
     const result = await pool.query(`
       SELECT c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity,
              b.name as branch_name, b.address as branch_address,
+             cr.room_name as classroom_name,
              COUNT(e.id) as enrolled_count
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
+      LEFT JOIN "Classroom" cr ON c.classroom_id = cr.id
       LEFT JOIN "Enrollment" e ON c.id = e.class_id AND e.status = 'enrolled'
       WHERE c.tutor_id IS NULL AND c.active = TRUE
-      GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, b.name, b.address
+      GROUP BY c.id, c.subject, c.description, c.level, c.start_time, c.duration_minutes, c.capacity, b.name, b.address, cr.room_name
       ORDER BY c.start_time
     `);
 
