@@ -1,7 +1,7 @@
 // frontend/src/components/admin/ClassroomManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2, Users, MapPin, BookCopy, ChevronLeft, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Users, MapPin, BookCopy, Calendar, ChevronLeft, X, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { Classroom, Branch, ClassroomDeletionImpact } from '../../types';
 import ClassroomService from '../../services/classroom';
 import ClassroomForm from './ClassroomForm';
@@ -52,6 +52,11 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
     setEditingClassroom(classroom);
     setShowClassroomForm(true);
   };
+
+  const handleClose = () => {
+    setShowDeleteConfirm(null);
+    setDeletionImpact(null);
+  }
 
   const handleDeleteClassroom = async (classroom: Classroom) => {
     setShowDeleteConfirm(classroom);
@@ -292,80 +297,115 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <AlertTriangle className="text-red-500" size={24} />
-                <h3 className="text-xl font-bold text-gray-800">Delete Classroom</h3>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-3xl relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={handleClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              type="button"
+            >
+              <X size={24} />
+            </button>
+
+            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Confirm Classroom Deletion</h3>
+            
+            <div className="mb-6 text-center">              
+              <p className="text-gray-700 mb-2 font-medium">
+                Are you sure you want to delete this classroom?
+              </p>
+              
+              <div className="bg-gray-50 p-4 rounded-lg text-left mb-4">
+                <p className="font-semibold text-gray-800">{showDeleteConfirm.room_name}</p>
+                <p className="text-sm text-gray-600">Capacity: {showDeleteConfirm.room_capacity} students</p>
+                {showDeleteConfirm.description && (
+                  <p className="text-sm text-gray-600">Description: {showDeleteConfirm.description}</p>
+                )}
               </div>
 
+              {/* Enhanced Impact Analysis */}
               {loadingImpact ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="animate-spin text-indigo-600" size={24} />
-                  <span className="ml-2 text-gray-600">Checking impact...</span>
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="animate-spin text-indigo-600 mr-2" size={20} />
+                  <span className="text-gray-600">Checking deletion impact...</span>
                 </div>
               ) : deletionImpact ? (
-                <div className="space-y-4">
-                  <p className="text-gray-700">
-                    Are you sure you want to delete classroom "{deletionImpact.classroom.room_name}"?
-                  </p>
-
+                <div className="text-left">
                   {deletionImpact.impact.warning && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <p className="text-red-800 font-medium mb-2">Impact Warning:</p>
-                      <p className="text-red-700 text-sm">{deletionImpact.impact.warning}</p>
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                      <p className="text-yellow-800 text-sm font-medium mb-2">Impact Warning</p>
+                      <p className="text-yellow-700 text-sm">{deletionImpact.impact.warning}</p>
                     </div>
                   )}
 
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                    <h4 className="font-medium text-gray-800">Deletion Impact:</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Total Classes:</span>
-                        <span className="ml-2 font-semibold">{deletionImpact.impact.totalClasses}</span>
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <p className="font-medium text-gray-800 mb-3">Deletion Impact:</p>
+                  
+                  {/* Impact Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                    <div className="text-center p-3 bg-white rounded border">
+                      <div className="flex items-center justify-center mb-1">
+                        <BookCopy className="text-gray-600" size={16} />
                       </div>
-                      <div>
-                        <span className="text-gray-600">Future Classes:</span>
-                        <span className="ml-2 font-semibold">{deletionImpact.impact.futureClasses}</span>
+                      <div className="text-lg font-bold text-gray-800">
+                        {deletionImpact.impact.totalClasses}
                       </div>
-                      <div>
-                        <span className="text-gray-600">Enrollments:</span>
-                        <span className="ml-2 font-semibold">{deletionImpact.impact.enrollmentsAffected}</span>
+                      <div className="text-xs text-gray-600">Total Classes</div>
+                      {deletionImpact.impact.futureClasses > 0 && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          ({deletionImpact.impact.futureClasses} future)
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-center p-3 bg-white rounded border">
+                      <div className="flex items-center justify-center mb-1">
+                        <Users className="text-gray-600" size={16} />
                       </div>
-                      <div>
-                        <span className="text-gray-600">Attendance:</span>
-                        <span className="ml-2 font-semibold">{deletionImpact.impact.attendanceRecordsAffected}</span>
+                      <div className="text-lg font-bold text-gray-800">
+                        {deletionImpact.impact.enrollmentsAffected}
                       </div>
+                      <div className="text-xs text-gray-600">Enrollments Lost</div>
+                    </div>
+                    
+                    <div className="text-center p-3 bg-white rounded border">
+                      <div className="flex items-center justify-center mb-1">
+                        <Calendar className="text-gray-600" size={16} />
+                      </div>
+                      <div className="text-lg font-bold text-gray-800">
+                        {deletionImpact.impact.attendanceRecordsAffected}
+                      </div>
+                      <div className="text-xs text-gray-600">Attendance Lost</div>
                     </div>
                   </div>
-
-                  <div className="flex space-x-3 pt-4">
-                    <button
-                      onClick={() => {
-                        setShowDeleteConfirm(null);
-                        setDeletionImpact(null);
-                      }}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={confirmDeleteClassroom}
-                      disabled={deleting}
-                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {deleting ? (
-                        <div className="flex items-center justify-center">
-                          <Loader2 className="animate-spin mr-2" size={16} />
-                          Deleting...
-                        </div>
-                      ) : (
-                        'Delete Classroom'
-                      )}
-                    </button>
-                  </div>
+                </div>
                 </div>
               ) : null}
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(null);
+                  setDeletionImpact(null);
+                }}
+                disabled={deleting || loadingImpact}
+                className="flex-1 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteClassroom}
+                disabled={deleting || loadingImpact || !deletionImpact}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {deleting ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="animate-spin mr-2" size={16} />
+                    Permanently Deleting...
+                  </div>
+                ) : (
+                  'Delete Classroom'
+                )}
+              </button>
             </div>
           </div>
         </div>

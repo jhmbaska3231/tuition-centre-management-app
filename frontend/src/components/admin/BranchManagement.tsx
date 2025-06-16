@@ -1,7 +1,7 @@
 // frontend/src/components/admin/BranchManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Plus, Edit2, Trash2, Loader2, CheckCircle, XCircle, Phone, Calendar, Users, BookOpen, UserX, Building2 } from 'lucide-react';
+import { X, MapPin, Plus, Edit2, Trash2, Loader2, CheckCircle, XCircle, Phone, Calendar, Users, BookOpen, UserX, BookCopy } from 'lucide-react';
 import type { Branch, BranchDeletionImpact } from '../../types';
 import BranchService from '../../services/branch';
 import BranchForm from './BranchForm';
@@ -286,7 +286,7 @@ const BranchManagement: React.FC = () => {
                   onClick={() => handleManageClassrooms(branch)}
                   className="w-full hover:bg-gray-100 text-gray-600 px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center space-x-2"
                 >
-                  <Building2 size={16} />
+                  <BookCopy size={16} />
                   <span>Manage Classrooms</span>
                 </button>
               </div>
@@ -348,7 +348,7 @@ const BranchManagement: React.FC = () => {
               {loadingImpact ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="animate-spin text-indigo-600 mr-2" size={20} />
-                  <span className="text-gray-600">Analyzing deletion impact...</span>
+                  <span className="text-gray-600">Checking deletion impact...</span>
                 </div>
               ) : deletionImpact ? (
                 <div className="text-left">
@@ -360,7 +360,7 @@ const BranchManagement: React.FC = () => {
                   )}
 
                   <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                  <p className="font-medium text-gray-800 mb-3">Permanent Deletion Impact:</p>
+                  <p className="font-medium text-gray-800 mb-3">Deletion Impact:</p>
                   
                   {/* Impact Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
