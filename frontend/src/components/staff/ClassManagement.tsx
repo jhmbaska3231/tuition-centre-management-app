@@ -465,10 +465,10 @@ const ClassManagement: React.FC = () => {
                     </span>
                   </div>
                   
-                  {/* Branch */}
+                  {/* Branch and classroom */}
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <MapPin size={16} />
-                    <span>{classItem.branch_name}</span>
+                    <span>{classItem.branch_name} ({classItem.classroom_name})</span>
                   </div>
                   
                   {/* Enrollment Count */}
@@ -545,6 +545,7 @@ const ClassManagement: React.FC = () => {
                 )}
                 <p className="text-sm text-gray-600">Date: {formatDateTime(showDeleteConfirm.start_time)}</p>
                 <p className="text-sm text-gray-600">Branch: {showDeleteConfirm.branch_name}</p>
+                <p className="text-sm text-gray-600">Classroom: {showDeleteConfirm.classroom_name}</p>
                 <p className="text-sm text-gray-600">Enrolled: {showDeleteConfirm.enrolled_count}/{showDeleteConfirm.capacity}</p>
               </div>
               

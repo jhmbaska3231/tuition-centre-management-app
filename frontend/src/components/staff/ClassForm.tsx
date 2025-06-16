@@ -56,6 +56,18 @@ interface ConflictInfo {
   tutor_name?: string;
 }
 
+// Interface for teacher's schedule class
+interface TeacherScheduleClass {
+  id: string;
+  subject: string;
+  level?: string;
+  start_time: string;
+  end_time?: string;
+  duration_minutes: number;
+  branch_id?: string;
+  branch_name?: string;
+}
+
 const INITIAL_FORM_DATA: FormData = {
   subject: '',
   description: '',
@@ -126,6 +138,118 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     
     return `This time slot conflicts with ${conflictCount} existing ${conflictWord} in the selected classroom:\n\n${conflictDetails}`;
   }, [formatTime]);
+
+  // Helper function to format teacher schedule conflicts
+  const formatTeacherConflictMessage = useCallback((conflicts: { direct: TeacherScheduleClass[], travel: TeacherScheduleClass[] }): string => {
+    let message = '';
+    
+    if (conflicts.direct.length > 0) {
+      const conflictDetails = conflicts.direct.map(conflict => {
+        const startTime = formatTime(conflict.start_time);
+        const endTime = conflict.end_time ? formatTime(conflict.end_time) : formatTime(new Date(new Date(conflict.start_time).getTime() + conflict.duration_minutes * 60000).toISOString());
+        const levelText = conflict.level ? ` (${conflict.level})` : '';
+        const branchText = conflict.branch_name ? ` at ${conflict.branch_name}` : '';
+        
+        return `• "${conflict.subject}"${levelText} from ${startTime} to ${endTime}${branchText}`;
+      }).join('\n');
+
+      const conflictCount = conflicts.direct.length;
+      const conflictWord = conflictCount === 1 ? 'class' : 'classes';
+      
+      message += `You already have ${conflictCount} ${conflictWord} scheduled at the same time:\n\n${conflictDetails}`;
+    }
+    
+    if (conflicts.travel.length > 0) {
+      if (message) message += '\n\n';
+      
+      const travelDetails = conflicts.travel.map(conflict => {
+        const startTime = formatTime(conflict.start_time);
+        const endTime = conflict.end_time ? formatTime(conflict.end_time) : formatTime(new Date(new Date(conflict.start_time).getTime() + conflict.duration_minutes * 60000).toISOString());
+        const levelText = conflict.level ? ` (${conflict.level})` : '';
+        const branchText = conflict.branch_name ? ` at ${conflict.branch_name}` : '';
+        
+        return `• "${conflict.subject}"${levelText} from ${startTime} to ${endTime}${branchText}`;
+      }).join('\n');
+
+      const conflictCount = conflicts.travel.length;
+      const conflictWord = conflictCount === 1 ? 'class' : 'classes';
+      
+      message += `You have ${conflictCount} ${conflictWord} at different branch(es) that require at least 1 hour buffer time:\n\n${travelDetails}`;
+    }
+    
+    return message;
+  }, [formatTime]);
+
+  // Function to load and check teacher's schedule conflicts
+  const checkTeacherScheduleConflicts = useCallback(async (): Promise<{ direct: TeacherScheduleClass[], travel: TeacherScheduleClass[] }> => {
+    if (!formData.startDate || !formData.startTime || !formData.durationMinutes) {
+      return { direct: [], travel: [] };
+    }
+
+    try {
+      // Get teacher's classes for the selected date
+      const teacherClasses = await ClassService.getAllClasses({
+        startDate: formData.startDate,
+        endDate: formData.startDate
+      });
+      
+      // Convert to TeacherScheduleClass format and calculate end_time if missing
+      const teacherSchedule: TeacherScheduleClass[] = teacherClasses.map(cls => ({
+        id: cls.id,
+        subject: cls.subject,
+        level: cls.level,
+        start_time: cls.start_time,
+        end_time: cls.end_time || new Date(new Date(cls.start_time).getTime() + cls.duration_minutes * 60000).toISOString(),
+        duration_minutes: cls.duration_minutes,
+        branch_id: cls.branch_id,
+        branch_name: cls.branch_name
+      }));
+
+      const newClassStart = new Date(`${formData.startDate}T${formData.startTime}:00`);
+      const newClassEnd = new Date(newClassStart.getTime() + formData.durationMinutes * 60000);
+      const currentClassId = isEdit ? classData?.id : null;
+
+      const directConflicts: TeacherScheduleClass[] = [];
+      const travelConflicts: TeacherScheduleClass[] = [];
+
+      for (const existingClass of teacherSchedule) {
+        // Skip the class being edited
+        if (currentClassId && existingClass.id === currentClassId) continue;
+
+        const existingStart = new Date(existingClass.start_time);
+        const existingEnd = new Date(existingClass.end_time!);
+
+        // Check for direct time overlap
+        const hasDirectOverlap = (newClassStart < existingEnd && newClassEnd > existingStart);
+        
+        if (hasDirectOverlap) {
+          directConflicts.push(existingClass);
+          continue; // Don't check travel time if there's direct conflict
+        }
+
+        // Check for travel time conflicts (only if different branches)
+        if (formData.branchId !== existingClass.branch_id) {
+          const oneHourBefore = new Date(newClassStart.getTime() - 60 * 60 * 1000); // 1 hour before new class
+          const oneHourAfter = new Date(newClassEnd.getTime() + 60 * 60 * 1000); // 1 hour after new class
+
+          // Check if existing class ends too close to new class start (need 1 hour to travel)
+          const existingEndsTooClose = existingEnd > oneHourBefore && existingEnd <= newClassStart;
+          
+          // Check if existing class starts too close to new class end (need 1 hour to travel)
+          const existingStartsTooClose = existingStart >= newClassEnd && existingStart < oneHourAfter;
+
+          if (existingEndsTooClose || existingStartsTooClose) {
+            travelConflicts.push(existingClass);
+          }
+        }
+      }
+
+      return { direct: directConflicts, travel: travelConflicts };
+    } catch (err) {
+      console.error('Failed to check teacher schedule:', err);
+      return { direct: [], travel: [] };
+    }
+  }, [formData.startDate, formData.startTime, formData.durationMinutes, formData.branchId, isEdit, classData?.id]);
 
   // Memoized values
   const timeOptions = useMemo(() => {
@@ -347,10 +471,17 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       return;
     }
 
-    // Check for time conflicts and show detailed information
-    const conflicts = getTimeConflicts();
-    if (conflicts.length > 0) {
-      setError(formatConflictMessage(conflicts));
+    // Check for classroom time conflicts and show detailed information
+    const classroomConflicts = getTimeConflicts();
+    if (classroomConflicts.length > 0) {
+      setError(formatConflictMessage(classroomConflicts));
+      return;
+    }
+
+    // Check for teacher schedule conflicts
+    const teacherConflicts = await checkTeacherScheduleConflicts();
+    if (teacherConflicts.direct.length > 0 || teacherConflicts.travel.length > 0) {
+      setError(formatTeacherConflictMessage(teacherConflicts));
       return;
     }
 
@@ -384,7 +515,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     } finally {
       setIsLoading(false);
     }
-  }, [validateForm, getTimeConflicts, formatConflictMessage, combineDateTime, formData, isEdit, classData, onSuccess]);
+  }, [validateForm, getTimeConflicts, formatConflictMessage, checkTeacherScheduleConflicts, formatTeacherConflictMessage, combineDateTime, formData, isEdit, classData, onSuccess]);
 
   const handleClose = useCallback(() => {
     resetForm();
