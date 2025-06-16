@@ -1,6 +1,6 @@
 // frontend/src/components/staff/ClassForm.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X } from 'lucide-react';
 import type { Class, Branch, Classroom, CreateClassRequest, UpdateClassRequest, ClassroomAvailability } from '../../types';
 import ClassService from '../../services/class';
@@ -8,173 +8,115 @@ import BranchService from '../../services/branch';
 import ClassroomService from '../../services/classroom';
 import DateInput from '../common/DateInput';
 
+// Crucial card logic flow
+// First opening: Modal opens → clears classrooms → form populates → branch changes → classrooms reload
+// Second opening: Modal opens → clears classrooms → form populates with same branch → new effect detects we have branchId but no classrooms → classrooms reload
+
 interface ClassFormProps {
   isOpen: boolean;
   onClose: () => void;
-  classData?: Class | null; // null for create, Class for edit
+  classData?: Class | null;
   onSuccess: () => void;
 }
 
+interface FormData {
+  subject: string;
+  description: string;
+  level: string;
+  startDate: string;
+  startTime: string;
+  durationMinutes: number;
+  capacity: number;
+  branchId: string;
+  classroomId: string;
+}
+
+interface FieldErrors {
+  subject: string;
+  level: string;
+  startDate: string;
+  startTime: string;
+  durationMinutes: string;
+  capacity: string;
+  branchId: string;
+  classroomId: string;
+}
+
+const INITIAL_FORM_DATA: FormData = {
+  subject: '',
+  description: '',
+  level: '',
+  startDate: '',
+  startTime: '10:00',
+  durationMinutes: 60,
+  capacity: 10,
+  branchId: '',
+  classroomId: '',
+};
+
+const INITIAL_FIELD_ERRORS: FieldErrors = {
+  subject: '',
+  level: '',
+  startDate: '',
+  startTime: '',
+  durationMinutes: '',
+  capacity: '',
+  branchId: '',
+  classroomId: '',
+};
+
 const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuccess }) => {
-  const [formData, setFormData] = useState({
-    subject: '',
-    description: '',
-    level: '',
-    startDate: '',
-    startTime: '',
-    durationMinutes: 60,
-    capacity: 10,
-    branchId: '',
-    classroomId: '',
-  });
+  // Form state
+  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>(INITIAL_FIELD_ERRORS);
+  const [error, setError] = useState('');
+
+  // Data state
   const [branches, setBranches] = useState<Branch[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [classroomAvailability, setClassroomAvailability] = useState<ClassroomAvailability | null>(null);
-  const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({
-    subject: '',
-    level: '',
-    startDate: '',
-    startTime: '',
-    durationMinutes: '',
-    capacity: '',
-    branchId: '',
-    classroomId: '',
-  });
+
+  // Loading state
   const [isLoading, setIsLoading] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [loadingClassrooms, setLoadingClassrooms] = useState(false);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
-  const [classroomToSet, setClassroomToSet] = useState<string>('');
-  const [classroomsLoaded, setClassroomsLoaded] = useState(false);
 
   const isEdit = !!classData;
 
-  // Load branches on component mount
-  useEffect(() => {
-    if (isOpen) {
-      // Reset all classroom-related state when modal opens to prevent stale state issues
-      setClassroomToSet('');
-      setClassroomsLoaded(false);
-      setClassrooms([]); // Clear classrooms to force reload even if branch is the same
-      setClassroomAvailability(null);
-      loadBranches();
-    }
-  }, [isOpen]);
-
-  // Load classrooms when branch changes
-  useEffect(() => {
-    if (formData.branchId) {
-      loadClassrooms(formData.branchId);
-    } else {
-      setClassrooms([]);
-      setClassroomsLoaded(false);
-      setFormData(prev => ({ ...prev, classroomId: '' }));
-    }
-  }, [formData.branchId]);
-
-  // Reload classrooms when modal opens and we have a branchId (handles same-branch scenario)
-  useEffect(() => {
-    if (isOpen && formData.branchId && classrooms.length === 0) {
-      loadClassrooms(formData.branchId);
-    }
-  }, [isOpen, formData.branchId, classrooms.length]);
-
-  // Set classroom after both conditions are met: classrooms loaded and have a classroom to set
-  useEffect(() => {
-    if (classroomsLoaded && classroomToSet && classrooms.length > 0) {
-      const foundClassroom = classrooms.find(cr => cr.id === classroomToSet);
-      
-      if (foundClassroom) {
-        setFormData(prev => ({ 
-          ...prev, 
-          classroomId: classroomToSet 
-        }));
-      }
-      
-      // Clear the pending classroom regardless
-      setClassroomToSet('');
-    }
-  }, [classroomsLoaded, classroomToSet, classrooms]);
-
-  // Alternative approach: Set classroom directly when we have both classroom ID and loaded classrooms
-  useEffect(() => {
-    if (classData?.classroom_id && classrooms.length > 0 && !formData.classroomId) {
-      const foundClassroom = classrooms.find(cr => cr.id === classData.classroom_id);
-      if (foundClassroom) {
-        setFormData(prev => ({ 
-          ...prev, 
-          classroomId: classData.classroom_id! 
-        }));
+  // Memoized values
+  const timeOptions = useMemo(() => {
+    const options = [];
+    for (let hour = 8; hour <= 20; hour++) {
+      for (let minute of [0, 30]) {
+        if (hour === 20 && minute === 30) break;
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const displayTime = new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-SG', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+        options.push({ value: timeString, label: displayTime });
       }
     }
-  }, [classData, classrooms, formData.classroomId]);
+    return options;
+  }, []);
 
-  // Check classroom availability when classroom, date, or time changes
-  useEffect(() => {
-    if (formData.classroomId && formData.startDate && formData.startTime) {
-      checkClassroomAvailability();
-    } else {
-      setClassroomAvailability(null);
-    }
-  }, [formData.classroomId, formData.startDate, formData.startTime, formData.durationMinutes]);
-
-  // Populate form when editing
-  useEffect(() => {
-    if (classData) {
-      // Split the start_time into date and time components
-      const startDateTime = new Date(classData.start_time);
-      const localDate = startDateTime.toISOString().split('T')[0]; // YYYY-MM-DD format
-      const localTime = startDateTime.toTimeString().slice(0, 5); // HH:MM format
-
-      const newFormData = {
-      subject: classData.subject,
-      description: classData.description || '',
-      level: classData.level || '',
-      startDate: localDate,
-      startTime: localTime,
-      durationMinutes: classData.duration_minutes,
-      capacity: classData.capacity,
-      branchId: classData.branch_id || '',
-      classroomId: '', // Will be set after classrooms load
-    };
-
-    setFormData(newFormData);
+  const { minDate, maxDate } = useMemo(() => {
+    const today = new Date();
+    const oneMonthLater = new Date();
+    oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
     
-    // Store classroom to set after classrooms are loaded
-    if (classData.classroom_id) {
-      setClassroomToSet(classData.classroom_id);
-    }
-  } else {
-    setFormData({
-      subject: '',
-      description: '',
-      level: '',
-      startDate: '',
-      startTime: '10:00',
-      durationMinutes: 60,
-      capacity: 10,
-      branchId: '',
-      classroomId: '',
-    });
-    setClassroomToSet('');
-  }
+    return {
+      minDate: today.toISOString().split('T')[0],
+      maxDate: oneMonthLater.toISOString().split('T')[0],
+    };
+  }, []);
 
-    setError('');
-    setFieldErrors({
-      subject: '',
-      level: '',
-      startDate: '',
-      startTime: '',
-      durationMinutes: '',
-      capacity: '',
-      branchId: '',
-      classroomId: '',
-    });
-    setClassroomAvailability(null); // Reset availability
-  }, [classData, isOpen, branches]);
-
-  const loadBranches = async () => {
+  // Optimized data loading functions
+  const loadBranches = useCallback(async () => {
+    if (branches.length > 0) return; // Avoid reloading if already loaded
+    
     setLoadingBranches(true);
     try {
       const branchList = await BranchService.getAllBranches();
@@ -185,28 +127,22 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     } finally {
       setLoadingBranches(false);
     }
-  };
+  }, [branches.length]);
 
-  // Updated loadClassrooms function
-  const loadClassrooms = async (branchId: string) => {
+  const loadClassrooms = useCallback(async (branchId: string) => {
     setLoadingClassrooms(true);
-    setClassroomsLoaded(false);
-    
     try {
       const classroomList = await ClassroomService.getClassroomsByBranch(branchId);
       setClassrooms(classroomList);
-      setClassroomsLoaded(true);
     } catch (err) {
       console.error('Failed to load classrooms:', err);
       setError('Failed to load classrooms');
-      setClassroomsLoaded(false);
     } finally {
       setLoadingClassrooms(false);
     }
-  };
+  }, []);
 
-  // Check classroom availability
-  const checkClassroomAvailability = async () => {
+  const checkClassroomAvailability = useCallback(async () => {
     if (!formData.classroomId || !formData.startDate) return;
 
     setCheckingAvailability(true);
@@ -222,27 +158,23 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     } finally {
       setCheckingAvailability(false);
     }
-  };
+  }, [formData.classroomId, formData.startDate, isEdit, classData?.id]);
 
-  // Combine date and time into datetime string for validation and submission
-  const combineDateTime = (date: string, time: string): string => {
+  // Utility functions
+  const combineDateTime = useCallback((date: string, time: string): string => {
     if (!date || !time) return '';
-    return `${date}T${time}:00`; // Creates YYYY-MM-DDTHH:MM:SS format
-  };
+    return `${date}T${time}:00`;
+  }, []);
 
-  // Get minimum date (today)
-  const getMinDate = (): string => {
-    return new Date().toISOString().split('T')[0];
-  };
+  const resetForm = useCallback(() => {
+    setFormData(INITIAL_FORM_DATA);
+    setFieldErrors(INITIAL_FIELD_ERRORS);
+    setError('');
+    setClassroomAvailability(null);
+  }, []);
 
-  // Get maximum date (1 month from today)
-  const getMaxDate = (): string => {
-    const oneMonthFromNow = new Date();
-    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-    return oneMonthFromNow.toISOString().split('T')[0];
-  };
-
-  const validateField = (field: string, value: any): boolean => {
+  // Form validation
+  const validateField = useCallback((field: keyof FormData, value: any): boolean => {
     let error = '';
     
     switch (field) {
@@ -262,11 +194,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         } else {
           const selectedDate = new Date(value);
           const today = new Date();
-          today.setHours(0, 0, 0, 0); // Reset time to start of day
+          today.setHours(0, 0, 0, 0);
           
           const oneMonthFromNow = new Date();
           oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-          oneMonthFromNow.setHours(23, 59, 59, 999); // End of day
+          oneMonthFromNow.setHours(23, 59, 59, 999);
           
           if (selectedDate < today) {
             error = 'Class date cannot be in the past';
@@ -279,7 +211,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         if (!value) {
           error = 'Start time is required';
         } else if (formData.startDate) {
-          // Check if the combined datetime is at least 1 hour from now
           const combinedDateTime = new Date(combineDateTime(formData.startDate, value));
           const oneHourFromNow = new Date();
           oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
@@ -299,13 +230,9 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
         const cap = parseInt(value);
         if (isNaN(cap) || cap < 1) {
           error = 'Capacity must be at least 1 student';
-        }
-        // Validation for edit mode to ensure capacity is not less than current enrollment
-        else if (isEdit && classData && cap < classData.enrolled_count) {
+        } else if (isEdit && classData && cap < classData.enrolled_count) {
           error = `Capacity cannot be less than current enrollment (${classData.enrolled_count} students)`;
-        }
-        else if (formData.classroomId && classroomAvailability) {
-          // Check room capacity
+        } else if (formData.classroomId && classroomAvailability) {
           if (value > classroomAvailability.classroom.room_capacity) {
             error = `Capacity cannot exceed room limit of ${classroomAvailability.classroom.room_capacity}`;
           }
@@ -325,42 +252,37 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     
     setFieldErrors(prev => ({ ...prev, [field]: error }));
     return error === '';
-  };
+  }, [formData.startDate, formData.classroomId, classroomAvailability, isEdit, classData, combineDateTime]);
 
-  const handleInputChange = (field: string, value: any) => {
+  // Event handlers
+  const handleInputChange = useCallback((field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
     
     // Real-time validation
     validateField(field, value);
     
-    // If date or time changes, revalidate the other field to check combined datetime
+    // Handle special cases
     if (field === 'startDate' && formData.startTime) {
       setTimeout(() => validateField('startTime', formData.startTime), 0);
     } else if (field === 'startTime' && formData.startDate) {
       setTimeout(() => validateField('startTime', value), 0);
-      // Reset classroom when branch changes
-    } if (field === 'branchId') {
+    } else if (field === 'branchId') {
       setFormData(prev => ({ ...prev, classroomId: '' }));
       setClassroomAvailability(null);
     }
-  };
+  }, [formData.startTime, formData.startDate, validateField]);
 
-  const validateForm = (): boolean => {
-    const subjectValid = validateField('subject', formData.subject);
-    const levelValid = validateField('level', formData.level);
-    const startDateValid = validateField('startDate', formData.startDate);
-    const startTimeValid = validateField('startTime', formData.startTime);
-    const durationValid = validateField('durationMinutes', formData.durationMinutes);
-    const capacityValid = validateField('capacity', formData.capacity);
-    const branchValid = validateField('branchId', formData.branchId);
-    const classroomValid = validateField('classroomId', formData.classroomId);
+  const validateForm = useCallback((): boolean => {
+    const fields: (keyof FormData)[] = [
+      'subject', 'level', 'startDate', 'startTime', 
+      'durationMinutes', 'capacity', 'branchId', 'classroomId'
+    ];
     
-    return subjectValid && levelValid && startDateValid && startTimeValid && durationValid && capacityValid && branchValid && classroomValid;
-  };
+    return fields.every(field => validateField(field, formData[field]));
+  }, [formData, validateField]);
 
-  // Check for time conflicts
-  const hasTimeConflict = (): boolean => {
+  const hasTimeConflict = useCallback((): boolean => {
     if (!classroomAvailability || !formData.startTime || !formData.durationMinutes) return false;
 
     const startTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
@@ -369,12 +291,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     return classroomAvailability.occupied_slots.some(slot => {
       const slotStart = new Date(slot.start_time);
       const slotEnd = new Date(slot.end_time);
-      
       return (startTime < slotEnd && endTime > slotStart);
     });
-  };
+  }, [classroomAvailability, formData.startDate, formData.startTime, formData.durationMinutes]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -382,7 +303,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       return;
     }
 
-    // Check for time conflicts
     if (hasTimeConflict()) {
       setError('This time slot conflicts with an existing class in the selected classroom');
       return;
@@ -392,7 +312,6 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     setError('');
 
     try {
-      // Combine date and time for submission
       const startDateTime = combineDateTime(formData.startDate, formData.startTime);
       
       const requestData: CreateClassRequest | UpdateClassRequest = {
@@ -419,61 +338,82 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [validateForm, hasTimeConflict, combineDateTime, formData, isEdit, classData, onSuccess]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
+    resetForm();
     onClose();
-    setFormData({
-      subject: '',
-      description: '',
-      level: '',
-      startDate: '',
-      startTime: '10:00',
-      durationMinutes: 60,
-      capacity: 10,
-      branchId: '',
-      classroomId: '',
-    });
-    setError('');
-    setFieldErrors({
-      subject: '',
-      level: '',
-      startDate: '',
-      startTime: '',
-      durationMinutes: '',
-      capacity: '',
-      branchId: '',
-      classroomId: '',
-    });
-    setClassroomAvailability(null); // Reset availability
-    setClassroomsLoaded(false);
-    setClassroomToSet('');
-    onClose();
-  };
+  }, [resetForm, onClose]);
 
-  if (!isOpen) return null;
+  // Effects
+  useEffect(() => {
+    if (isOpen) {
+      setClassrooms([]);
+      setClassroomAvailability(null);
+      loadBranches();
+    }
+  }, [isOpen, loadBranches]);
 
-  // Generate time options (every 30 minutes from 8:00 to 20:00)
-  const generateTimeOptions = () => {
-    const options = [];
-    for (let hour = 8; hour <= 20; hour++) {
-      for (let minute of [0, 30]) {
-        if (hour === 20 && minute === 30) break; // Stop at 20:00
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        const displayTime = new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-SG', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        });
-        options.push({ value: timeString, label: displayTime });
+  useEffect(() => {
+    if (formData.branchId) {
+      loadClassrooms(formData.branchId);
+    } else {
+      setClassrooms([]);
+      setFormData(prev => ({ ...prev, classroomId: '' }));
+    }
+  }, [formData.branchId, loadClassrooms]);
+
+  // Critical: Handle same-branch scenario (when modal opens but branch hasn't changed)
+  useEffect(() => {
+    if (isOpen && formData.branchId && classrooms.length === 0) {
+      loadClassrooms(formData.branchId);
+    }
+  }, [isOpen, formData.branchId, classrooms.length, loadClassrooms]);
+
+  // Auto-populate classroom when editing
+  useEffect(() => {
+    if (classData?.classroom_id && classrooms.length > 0 && !formData.classroomId) {
+      const foundClassroom = classrooms.find(cr => cr.id === classData.classroom_id);
+      if (foundClassroom) {
+        setFormData(prev => ({ ...prev, classroomId: classData.classroom_id! }));
       }
     }
-    return options;
-  };
+  }, [classData, classrooms, formData.classroomId]);
 
-  const timeOptions = generateTimeOptions();
-  const minDate = getMinDate();
-  const maxDate = getMaxDate();
+  useEffect(() => {
+    checkClassroomAvailability();
+  }, [checkClassroomAvailability]);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (classData) {
+      const startDateTime = new Date(classData.start_time);
+      const localDate = startDateTime.toISOString().split('T')[0];
+      const localTime = startDateTime.toTimeString().slice(0, 5);
+
+      setFormData({
+        subject: classData.subject,
+        description: classData.description || '',
+        level: classData.level || '',
+        startDate: localDate,
+        startTime: localTime,
+        durationMinutes: classData.duration_minutes,
+        capacity: classData.capacity,
+        branchId: classData.branch_id || '',
+        classroomId: '', // Will be set by auto-populate effect
+      });
+    } else if (isOpen) {
+      setFormData(INITIAL_FORM_DATA);
+    }
+
+    if (isOpen) {
+      setFieldErrors(INITIAL_FIELD_ERRORS);
+      setError('');
+      setClassroomAvailability(null);
+    }
+  }, [classData, isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-white-100 to-indigo-200 backdrop-blur-sm flex items-center justify-center z-50">
@@ -803,4 +743,4 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   );
 };
 
-export default ClassForm;
+export default React.memo(ClassForm);
