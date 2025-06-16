@@ -823,13 +823,16 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                           <p><span className="font-medium">Student:</span> {enrollment.student_name}</p>
                           <p><span className="font-medium">Date:</span> {formatDateTime(enrollment.start_time)}</p>
                           <p><span className="font-medium">Duration:</span> {formatDuration(enrollment.duration_minutes)}</p>
-                        </div>
-                        <div>
-                          <p><span className="font-medium">Branch:</span> {enrollment.branch_name}</p>
-                          <p><span className="font-medium">Enrolled:</span> {formatDateTime(enrollment.enrolled_at)}</p>
                           {enrollment.tutor_first_name && (
                             <p><span className="font-medium">Tutor:</span> {enrollment.tutor_first_name} {enrollment.tutor_last_name}</p>
                           )}
+                        </div>
+                        <div>
+                          <p><span className="font-medium">Branch:</span> {enrollment.branch_name}</p>
+                          {enrollment.classroom_name && (
+                            <p><span className="font-medium">Classroom:</span> {enrollment.classroom_name}</p>
+                          )}
+                          <p><span className="font-medium">Enrolled:</span> {formatDateTime(enrollment.enrolled_at)}</p>
                         </div>
                       </div>
                     </div>
@@ -951,6 +954,7 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                 <p className="text-sm text-gray-600">Student: {showCancelConfirm.student_name}</p>
                 <p className="text-sm text-gray-600">Date: {formatDateTime(showCancelConfirm.start_time)}</p>
                 <p className="text-sm text-gray-600">Branch: {showCancelConfirm.branch_name}</p>
+                <p className="text-sm text-gray-600">Classroom: {showCancelConfirm.classroom_name}</p>
               </div>
             </div>
             

@@ -94,6 +94,7 @@ export interface Enrollment {
   duration_minutes: number;
   branch_name: string;
   branch_address: string;
+  classroom_name?: string;
   tutor_first_name?: string;
   tutor_last_name?: string;
 }

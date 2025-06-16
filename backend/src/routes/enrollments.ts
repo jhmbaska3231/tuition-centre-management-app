@@ -14,11 +14,13 @@ router.get('/my-students', authenticateToken, requireRole('parent'), async (req:
              CONCAT(s.first_name, ' ', s.last_name) as student_name,
              c.subject, c.start_time, c.duration_minutes,
              b.name as branch_name, b.address as branch_address,
+             cr.room_name as classroom_name,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name
       FROM "Enrollment" e
       JOIN "Student" s ON e.student_id = s.id
       JOIN "Class" c ON e.class_id = c.id
       LEFT JOIN "Branch" b ON c.branch_id = b.id
+      LEFT JOIN "Classroom" cr ON c.classroom_id = cr.id
       LEFT JOIN "User" u ON c.tutor_id = u.id
       WHERE s.parent_id = $1 AND s.active = TRUE AND c.active = TRUE
       ORDER BY c.start_time DESC
@@ -204,11 +206,13 @@ router.get('/:enrollmentId', authenticateToken, async (req: AuthRequest, res) =>
              CONCAT(s.first_name, ' ', s.last_name) as student_name, s.grade,
              c.subject, c.start_time, c.duration_minutes,
              b.name as branch_name, b.address as branch_address,
+             cr.room_name as classroom_name,
              u.first_name as tutor_first_name, u.last_name as tutor_last_name
       FROM "Enrollment" e
       JOIN "Student" s ON e.student_id = s.id
       JOIN "Class" c ON e.class_id = c.id
       LEFT JOIN "Branch" b ON c.branch_id = b.id
+      LEFT JOIN "Classroom" cr ON c.classroom_id = cr.id
       LEFT JOIN "User" u ON c.tutor_id = u.id
       WHERE e.id = $1 AND s.active = TRUE AND c.active = TRUE
     `;
