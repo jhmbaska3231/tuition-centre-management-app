@@ -220,13 +220,19 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
             <div key={classroom.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <MapPin className="text-indigo-600" size={20} />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    classroom.active ? 'bg-indigo-100' : 'bg-gray-100'
+                  }`}>
+                    <MapPin className={classroom.active ? 'text-indigo-600' : 'text-gray-600'} size={20} />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-800">{classroom.room_name}</h3>
-                    <span className="inline-block px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
-                      Capacity: {classroom.room_capacity}
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                      classroom.active
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {classroom.active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                 </div>
@@ -254,14 +260,19 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = ({ branch, onBac
               <div className="space-y-3 mb-4">
                 {classroom.description && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Description:</p>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Description:</p>
                     <p className="text-sm text-gray-600 leading-relaxed">{classroom.description}</p>
                   </div>
                 )}
                 
-                <div className="flex items-center mb-6 text-sm">
-                  <span className="text-gray-600">Active Classes:</span>
+                <div className="flex items-center text-sm">
+                  <span className="font-medium text-gray-600">Active Classes:</span>
                   <span className="text-gray-600 ml-1">{classroom.active_classes_count || 0}</span>
+                </div>
+
+                <div className="flex items-center text-sm">
+                  <span className="font-medium text-gray-600">Room capacity:</span>
+                  <span className="text-gray-600 ml-1">{classroom.room_capacity || 0}</span>
                 </div>
               </div>
 

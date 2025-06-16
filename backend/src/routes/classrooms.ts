@@ -10,6 +10,11 @@ const router = express.Router();
 router.get('/branch/:branchId', authenticateToken, requireAnyRole('admin', 'staff'), async (req: AuthRequest, res) => {
   try {
     const { branchId } = req.params;
+    const userRole = req.user!.role;
+    
+    // For admins, show all classrooms (active and inactive)
+    // For staff, show only active classrooms
+    const activeFilter = userRole === 'admin' ? '' : 'AND c.active = TRUE';
     
     const result = await pool.query(`
       SELECT 
@@ -26,9 +31,9 @@ router.get('/branch/:branchId', authenticateToken, requireAnyRole('admin', 'staf
       FROM "Classroom" c
       JOIN "Branch" b ON c.branch_id = b.id
       LEFT JOIN "Class" cl ON c.id = cl.classroom_id AND cl.active = TRUE
-      WHERE c.branch_id = $1 AND c.active = TRUE
+      WHERE c.branch_id = $1 ${activeFilter}
       GROUP BY c.id, b.name
-      ORDER BY c.room_name
+      ORDER BY c.active DESC, c.room_name
     `, [branchId]);
 
     res.json(result.rows);

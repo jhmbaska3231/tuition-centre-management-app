@@ -251,10 +251,12 @@ const ClassroomForm: React.FC<ClassroomFormProps> = ({
               </label>
               <div className="mt-2 text-sm text-gray-600">
                 <p className="mb-1">
-                  <span className="font-medium">Active:</span> Classroom is available for class scheduling.
+                  <span className="font-medium">Active: </span>
+                  Classroom is available for class scheduling and is visible to staff members.
                 </p>
                 <p>
-                  <span className="font-medium">Inactive:</span> Classroom is temporarily unavailable (e.g. under maintenance) but data is preserved.
+                  <span className="font-medium">Inactive: </span> 
+                  Classroom is temporarily unavailable (e.g. under maintenance) but data is preserved. Any existing classes with this classroom will remain.
                 </p>
               </div>
             </div>

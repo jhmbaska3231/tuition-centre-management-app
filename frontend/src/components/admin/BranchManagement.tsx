@@ -268,7 +268,7 @@ const BranchManagement: React.FC = () => {
               {/* Branch Details */}
               <div className="space-y-3 mb-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Address:</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Address:</p>
                   <p className="text-sm text-gray-600 leading-relaxed">{branch.address}</p>
                 </div>
                 

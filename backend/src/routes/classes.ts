@@ -286,17 +286,23 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
     // Validate classroom if provided
     if (classroomId) {
       const classroomCheck = await pool.query(`
-        SELECT cr.id, cr.room_capacity, cr.branch_id
+        SELECT cr.id, cr.room_capacity, cr.branch_id, cr.active
         FROM "Classroom" cr
-        WHERE cr.id = $1 AND cr.active = TRUE
+        WHERE cr.id = $1
       `, [classroomId]);
 
       if (classroomCheck.rows.length === 0) {
-        res.status(404).json({ error: 'Classroom not found or inactive' });
+        res.status(404).json({ error: 'Classroom not found' });
         return;
       }
 
       const classroom = classroomCheck.rows[0];
+
+      // Check if classroom is active (for non-admin users)
+      if (!classroom.active && userRole !== 'admin') {
+        res.status(400).json({ error: 'Selected classroom is currently inactive and unavailable for scheduling' });
+        return;
+      }
 
       // Check if classroom belongs to the selected branch
       if (classroom.branch_id !== branchId) {
