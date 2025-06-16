@@ -427,6 +427,7 @@ export interface ClassroomAvailability {
   occupied_slots: Array<{
     id: string;
     subject: string;
+    level?: string;
     start_time: string;
     end_time: string;
     capacity: number;

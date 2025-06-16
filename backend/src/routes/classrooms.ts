@@ -125,11 +125,12 @@ router.get('/:id/availability', authenticateToken, requireAnyRole('admin', 'staf
 
     const classroom = classroomResult.rows[0];
 
-    // Get existing classes for that date
+    // Get existing classes for that date with level information
     let query = `
       SELECT 
         c.id,
         c.subject,
+        c.level,
         c.start_time,
         c.end_time,
         c.capacity,

@@ -46,6 +46,16 @@ interface FieldErrors {
   classroomId: string;
 }
 
+// Interface for conflict information
+interface ConflictInfo {
+  id: string;
+  subject: string;
+  level?: string;
+  start_time: string;
+  end_time: string;
+  tutor_name?: string;
+}
+
 const INITIAL_FORM_DATA: FormData = {
   subject: '',
   description: '',
@@ -87,6 +97,35 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const isEdit = !!classData;
+
+  // Helper function to format time
+  const formatTime = useCallback((timeString: string): string => {
+    const date = new Date(timeString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  }, []);
+
+  // Helper function to format conflict details
+  const formatConflictMessage = useCallback((conflicts: ConflictInfo[]): string => {
+    if (conflicts.length === 0) return '';
+    
+    const conflictDetails = conflicts.map(conflict => {
+      const startTime = formatTime(conflict.start_time);
+      const endTime = formatTime(conflict.end_time);
+      const levelText = conflict.level ? ` (${conflict.level})` : '';
+      const tutorText = conflict.tutor_name ? ` with ${conflict.tutor_name}` : '';
+      
+      return `• "${conflict.subject}"${levelText} from ${startTime} to ${endTime}${tutorText}`;
+    }).join('\n');
+
+    const conflictCount = conflicts.length;
+    const conflictWord = conflictCount === 1 ? 'class' : 'classes';
+    
+    return `This time slot conflicts with ${conflictCount} existing ${conflictWord} in the selected classroom:\n\n${conflictDetails}`;
+  }, [formatTime]);
 
   // Memoized values
   const timeOptions = useMemo(() => {
@@ -286,13 +325,14 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     return fields.every(field => validateField(field, formData[field]));
   }, [formData, validateField]);
 
-  const hasTimeConflict = useCallback((): boolean => {
-    if (!classroomAvailability || !formData.startTime || !formData.durationMinutes) return false;
+  // Updated conflict detection function - now returns conflicting classes
+  const getTimeConflicts = useCallback((): ConflictInfo[] => {
+    if (!classroomAvailability || !formData.startTime || !formData.durationMinutes) return [];
 
     const startTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
     const endTime = new Date(startTime.getTime() + formData.durationMinutes * 60000);
 
-    return classroomAvailability.occupied_slots.some(slot => {
+    return classroomAvailability.occupied_slots.filter(slot => {
       const slotStart = new Date(slot.start_time);
       const slotEnd = new Date(slot.end_time);
       return (startTime < slotEnd && endTime > slotStart);
@@ -307,8 +347,10 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       return;
     }
 
-    if (hasTimeConflict()) {
-      setError('This time slot conflicts with an existing class in the selected classroom');
+    // Check for time conflicts and show detailed information
+    const conflicts = getTimeConflicts();
+    if (conflicts.length > 0) {
+      setError(formatConflictMessage(conflicts));
       return;
     }
 
@@ -342,7 +384,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     } finally {
       setIsLoading(false);
     }
-  }, [validateForm, hasTimeConflict, combineDateTime, formData, isEdit, classData, onSuccess]);
+  }, [validateForm, getTimeConflicts, formatConflictMessage, combineDateTime, formData, isEdit, classData, onSuccess]);
 
   const handleClose = useCallback(() => {
     resetForm();
@@ -708,7 +750,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
           
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm">{error}</p>
+              <p className="text-red-600 text-sm whitespace-pre-line">{error}</p>
             </div>
           )}
 
