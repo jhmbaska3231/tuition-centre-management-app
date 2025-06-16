@@ -1,7 +1,7 @@
 // frontend/src/components/admin/ClassroomManagement.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2, Users, MapPin, BookCopy, Calendar, ChevronLeft, X, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Users, MapPin, BookCopy, Calendar, ChevronLeft, X, CheckCircle } from 'lucide-react';
 import type { Classroom, Branch, ClassroomDeletionImpact } from '../../types';
 import ClassroomService from '../../services/classroom';
 import ClassroomForm from './ClassroomForm';

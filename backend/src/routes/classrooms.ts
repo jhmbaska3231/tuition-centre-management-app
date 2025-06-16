@@ -431,13 +431,7 @@ router.delete('/:id', authenticateToken, requireRole('admin'), async (req: AuthR
     
     const classroom = classroomResult.rows[0];
     
-    // Update classes to remove classroom assignment (set to NULL)
-    await client.query(
-      'UPDATE "Class" SET classroom_id = NULL, updated_at = NOW() WHERE classroom_id = $1',
-      [id]
-    );
-    
-    // Delete the classroom
+    // Delete the classroom - classes will automatically have classroom_id set to NULL due to foreign key constraint
     await client.query('DELETE FROM "Classroom" WHERE id = $1', [id]);
     
     await client.query('COMMIT');
