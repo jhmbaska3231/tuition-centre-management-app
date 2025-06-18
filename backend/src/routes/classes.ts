@@ -7,79 +7,148 @@ import { validateClass } from '../middleware/validation';
 
 const router = express.Router();
 
-// Helper function to check for teacher schedule conflicts
-const checkTeacherScheduleConflict = async (
+// Helper function to check for comprehensive teacher schedule conflicts (including travel time)
+const checkComprehensiveTeacherScheduleConflict = async (
   tutorId: string, 
   startTime: string, 
   durationMinutes: number, 
+  branchId: string,
   excludeClassId?: string
-): Promise<{ hasConflict: boolean; conflictingClass?: any }> => {
+): Promise<{ hasConflict: boolean; conflicts: { direct: any[], travel: any[] } }> => {
   try {
     const classStartTime = new Date(startTime);
     const classEndTime = new Date(classStartTime.getTime() + (durationMinutes * 60 * 1000));
 
-    // Query to find overlapping classes for the same tutor
+    // Get all existing classes for this tutor on the same date
+    const dateStart = new Date(classStartTime);
+    dateStart.setHours(0, 0, 0, 0);
+    const dateEnd = new Date(classStartTime);
+    dateEnd.setHours(23, 59, 59, 999);
+
     let query = `
-      SELECT c.id, c.subject, c.level, c.start_time, c.duration_minutes,
+      SELECT c.id, c.subject, c.level, c.start_time, c.duration_minutes, c.branch_id,
              b.name as branch_name
       FROM "Class" c
       LEFT JOIN "Branch" b ON c.branch_id = b.id
       WHERE c.tutor_id = $1 
         AND c.active = TRUE 
-        AND c.start_time + INTERVAL '1 minute' * c.duration_minutes > $2
-        AND c.start_time < $3
+        AND c.start_time >= $2
+        AND c.start_time <= $3
     `;
     
-    const queryParams = [tutorId, classStartTime.toISOString(), classEndTime.toISOString()];
+    const queryParams = [tutorId, dateStart.toISOString(), dateEnd.toISOString()];
     
     // If editing an existing class, exclude it from the conflict check
     if (excludeClassId) {
       query += ' AND c.id != $4';
       queryParams.push(excludeClassId);
     }
+    
+    query += ' ORDER BY c.start_time';
 
     const result = await pool.query(query, queryParams);
 
-    if (result.rows.length > 0) {
-      return {
-        hasConflict: true,
-        conflictingClass: result.rows[0]
-      };
+    const directConflicts = [];
+    const travelConflicts = [];
+
+    for (const existingClass of result.rows) {
+      const existingStart = new Date(existingClass.start_time);
+      const existingEnd = new Date(existingStart.getTime() + (existingClass.duration_minutes * 60 * 1000));
+
+      // Check for direct time overlap
+      const hasDirectOverlap = (classStartTime < existingEnd && classEndTime > existingStart);
+      
+      if (hasDirectOverlap) {
+        directConflicts.push({
+          ...existingClass,
+          end_time: existingEnd.toISOString()
+        });
+        continue; // Don't check travel time if there's direct conflict
+      }
+
+      // Check for travel time conflicts (only if different branches)
+      if (branchId !== existingClass.branch_id) {
+        const oneHourBefore = new Date(classStartTime.getTime() - 60 * 60 * 1000); // 1 hour before new class
+        const oneHourAfter = new Date(classEndTime.getTime() + 60 * 60 * 1000); // 1 hour after new class
+
+        // Check if existing class ends too close to new class start (need 1 hour to travel)
+        const existingEndsTooClose = existingEnd > oneHourBefore && existingEnd <= classStartTime;
+        
+        // Check if existing class starts too close to new class end (need 1 hour to travel)
+        const existingStartsTooClose = existingStart >= classEndTime && existingStart < oneHourAfter;
+
+        if (existingEndsTooClose || existingStartsTooClose) {
+          travelConflicts.push({
+            ...existingClass,
+            end_time: existingEnd.toISOString()
+          });
+        }
+      }
     }
 
-    return { hasConflict: false };
+    const hasConflict = directConflicts.length > 0 || travelConflicts.length > 0;
+    
+    return {
+      hasConflict,
+      conflicts: {
+        direct: directConflicts,
+        travel: travelConflicts
+      }
+    };
   } catch (error) {
-    console.error('Error checking teacher schedule conflict:', error);
+    console.error('Error checking comprehensive teacher schedule conflict:', error);
     throw new Error('Failed to check teacher availability');
   }
 };
 
-// Helper function to format conflict error message
-const formatConflictErrorMessage = (conflictingClass: any, requestedStartTime: string, requestedDuration: number): string => {
-  const conflictStart = new Date(conflictingClass.start_time);
-  const conflictEnd = new Date(conflictStart.getTime() + (conflictingClass.duration_minutes * 60 * 1000));
-  const requestedStart = new Date(requestedStartTime);
-  const requestedEnd = new Date(requestedStart.getTime() + (requestedDuration * 60 * 1000));
-
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleDateString('en-SG', {
-      weekday: 'short',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+// Helper function to format comprehensive conflict error message
+const formatComprehensiveConflictErrorMessage = (conflicts: { direct: any[], travel: any[] }): string => {
+  const formatTime = (timeString: string): string => {
+    const date = new Date(timeString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
     });
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-SG', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  let message = '';
+  
+  if (conflicts.direct.length > 0) {
+    const conflictDetails = conflicts.direct.map(conflict => {
+      const startTime = formatTime(conflict.start_time);
+      const endTime = formatTime(conflict.end_time);
+      const levelText = conflict.level ? ` (${conflict.level})` : '';
+      const branchText = conflict.branch_name ? ` at ${conflict.branch_name}` : '';
+      
+      return `• "${conflict.subject}"${levelText} from ${startTime} to ${endTime}${branchText}`;
+    }).join('\n');
 
-  return `Schedule conflict detected! You already have "${conflictingClass.subject}${conflictingClass.level ? ` (${conflictingClass.level})` : ''}" scheduled from ${formatDateTime(conflictStart)} to ${formatTime(conflictEnd)} at ${conflictingClass.branch_name}. Your requested class time (${formatDateTime(requestedStart)} to ${formatTime(requestedEnd)}) overlaps with this existing class.`;
+    const conflictCount = conflicts.direct.length;
+    const conflictWord = conflictCount === 1 ? 'class' : 'classes';
+    
+    message += `You already have ${conflictCount} ${conflictWord} scheduled at the same time:\n\n${conflictDetails}`;
+  }
+  
+  if (conflicts.travel.length > 0) {
+    if (message) message += '\n\n';
+    
+    const travelDetails = conflicts.travel.map(conflict => {
+      const startTime = formatTime(conflict.start_time);
+      const endTime = formatTime(conflict.end_time);
+      const levelText = conflict.level ? ` (${conflict.level})` : '';
+      const branchText = conflict.branch_name ? ` at ${conflict.branch_name}` : '';
+      
+      return `• "${conflict.subject}"${levelText} from ${startTime} to ${endTime}${branchText}`;
+    }).join('\n');
+
+    const conflictCount = conflicts.travel.length;
+    const conflictWord = conflictCount === 1 ? 'class' : 'classes';
+    
+    message += `You have ${conflictCount} ${conflictWord} at different branch(es) that require at least 1 hour buffer time:\n\n${travelDetails}`;
+  }
+  
+  return message;
 };
 
 // Get all active classes (available to parents, staff, and admin with different permissions)
@@ -340,10 +409,10 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
     }
 
     // Check for teacher schedule conflicts
-    const conflictCheck = await checkTeacherScheduleConflict(userId, startTime, durationMinutes);
+    const conflictCheck = await checkComprehensiveTeacherScheduleConflict(userId, startTime, durationMinutes, branchId);    
     
     if (conflictCheck.hasConflict) {
-      const errorMessage = formatConflictErrorMessage(conflictCheck.conflictingClass, startTime, durationMinutes);
+      const errorMessage = formatComprehensiveConflictErrorMessage(conflictCheck.conflicts);
       res.status(409).json({ error: errorMessage });
       return;
     }
@@ -510,16 +579,18 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
     if (startTime || durationMinutes) {
       const newStartTime = startTime || classItem.start_time;
       const newDuration = durationMinutes || classItem.duration_minutes;
+      const newBranchId = branchId || classItem.branch_id;
       
-      const conflictCheck = await checkTeacherScheduleConflict(
+      const conflictCheck = await checkComprehensiveTeacherScheduleConflict(
         classItem.tutor_id, 
         newStartTime, 
         newDuration, 
+        newBranchId,
         id // Exclude current class from conflict check
       );
       
       if (conflictCheck.hasConflict) {
-        const errorMessage = formatConflictErrorMessage(conflictCheck.conflictingClass, newStartTime, newDuration);
+        const errorMessage = formatComprehensiveConflictErrorMessage(conflictCheck.conflicts);
         res.status(409).json({ error: errorMessage });
         return;
       }

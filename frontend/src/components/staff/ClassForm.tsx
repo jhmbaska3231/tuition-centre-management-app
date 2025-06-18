@@ -7,6 +7,7 @@ import ClassService from '../../services/class';
 import BranchService from '../../services/branch';
 import ClassroomService from '../../services/classroom';
 import DateInput from '../common/DateInput';
+import { useAuth } from '../../hooks/useAuth';
 
 // Crucial card logic flow
 // First opening: Modal opens → clears classrooms → form populates → branch changes → classrooms reload
@@ -180,21 +181,32 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     return message;
   }, [formatTime]);
 
+  const { user } = useAuth();
+
   // Function to load and check teacher's schedule conflicts
   const checkTeacherScheduleConflicts = useCallback(async (): Promise<{ direct: TeacherScheduleClass[], travel: TeacherScheduleClass[] }> => {
-    if (!formData.startDate || !formData.startTime || !formData.durationMinutes) {
+    if (!formData.startDate || !formData.startTime || !formData.durationMinutes || !user?.id) {
       return { direct: [], travel: [] };
     }
 
     try {
-      // Get teacher's classes for the selected date
-      const teacherClasses = await ClassService.getAllClasses({
+      // Get all classes for the selected date
+      const allClasses = await ClassService.getAllClasses({
         startDate: formData.startDate,
         endDate: formData.startDate
       });
       
+      // Filter classes for the current user (teacher) only
+      const currentUserClasses = allClasses.filter(cls => {
+        const isSameTeacher = cls.tutor_id === user.id;
+        const isDifferentClass = isEdit ? cls.id !== classData?.id : true; // Exclude current class when editing
+        const hasTeacher = cls.tutor_id != null; // Exclude unassigned classes
+        
+        return isSameTeacher && isDifferentClass && hasTeacher;
+      });
+      
       // Convert to TeacherScheduleClass format and calculate end_time if missing
-      const teacherSchedule: TeacherScheduleClass[] = teacherClasses.map(cls => ({
+      const teacherSchedule: TeacherScheduleClass[] = currentUserClasses.map(cls => ({
         id: cls.id,
         subject: cls.subject,
         level: cls.level,
@@ -207,15 +219,11 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
 
       const newClassStart = new Date(`${formData.startDate}T${formData.startTime}:00`);
       const newClassEnd = new Date(newClassStart.getTime() + formData.durationMinutes * 60000);
-      const currentClassId = isEdit ? classData?.id : null;
 
       const directConflicts: TeacherScheduleClass[] = [];
       const travelConflicts: TeacherScheduleClass[] = [];
 
       for (const existingClass of teacherSchedule) {
-        // Skip the class being edited
-        if (currentClassId && existingClass.id === currentClassId) continue;
-
         const existingStart = new Date(existingClass.start_time);
         const existingEnd = new Date(existingClass.end_time!);
 
@@ -249,7 +257,7 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
       console.error('Failed to check teacher schedule:', err);
       return { direct: [], travel: [] };
     }
-  }, [formData.startDate, formData.startTime, formData.durationMinutes, formData.branchId, isEdit, classData?.id]);
+  }, [formData.startDate, formData.startTime, formData.durationMinutes, formData.branchId, isEdit, classData?.id, user?.id]);
 
   // Memoized values
   const timeOptions = useMemo(() => {

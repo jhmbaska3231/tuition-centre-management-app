@@ -1,7 +1,7 @@
 // frontend/src/components/admin/ClassReassignment.tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, UserCheck, Calendar, MapPin, Users, Clock, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { X, UserCheck, Calendar, MapPin, Users, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import type { UnassignedClass, StaffMember } from '../../types';
 import AdminService from '../../services/admin';
 import ClassService from '../../services/class';
@@ -538,7 +538,6 @@ const ClassReassignment: React.FC = () => {
             {selectedTutor && scheduleConflicts && hasConflicts && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start space-x-3">
-                  <AlertTriangle className="text-red-500 mt-0.5" size={20} />
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-red-800 mb-2">Schedule Conflict Detected</h4>
                     <p className="text-sm text-red-700 whitespace-pre-line">
