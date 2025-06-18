@@ -1,9 +1,22 @@
 // frontend/src/components/admin/ClassReassignment.tsx
 
-import React, { useState, useEffect } from 'react';
-import { X, UserCheck, Calendar, MapPin, Users, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, UserCheck, Calendar, MapPin, Users, Clock, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
 import type { UnassignedClass, StaffMember } from '../../types';
 import AdminService from '../../services/admin';
+import ClassService from '../../services/class';
+
+// Interface for teacher's schedule class (from ClassForm.tsx)
+interface TeacherScheduleClass {
+  id: string;
+  subject: string;
+  level?: string;
+  start_time: string;
+  end_time?: string;
+  duration_minutes: number;
+  branch_id?: string;
+  branch_name?: string;
+}
 
 const ClassReassignment: React.FC = () => {
   const [unassignedClasses, setUnassignedClasses] = useState<UnassignedClass[]>([]);
@@ -16,6 +29,10 @@ const ClassReassignment: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<UnassignedClass | null>(null);
   const [selectedTutor, setSelectedTutor] = useState('');
   const [assigning, setAssigning] = useState(false);
+  
+  // Conflict validation states
+  const [validatingConflicts, setValidatingConflicts] = useState(false);
+  const [scheduleConflicts, setScheduleConflicts] = useState<{ direct: TeacherScheduleClass[], travel: TeacherScheduleClass[] } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -39,10 +56,146 @@ const ClassReassignment: React.FC = () => {
     }
   };
 
+  // Helper function to format time
+  const formatTime = useCallback((timeString: string): string => {
+    const date = new Date(timeString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  }, []);
+
+  // Function to check teacher's schedule conflicts (similar to ClassForm.tsx)
+  const checkTeacherScheduleConflicts = useCallback(async (tutorId: string, classData: UnassignedClass): Promise<{ direct: TeacherScheduleClass[], travel: TeacherScheduleClass[] }> => {
+    try {
+      // Get teacher's classes for the selected date
+      const classDate = new Date(classData.start_time).toISOString().split('T')[0];
+      const teacherClasses = await ClassService.getAllClasses({
+        startDate: classDate,
+        endDate: classDate
+      });
+      
+      // Filter classes for the specific tutor and convert to TeacherScheduleClass format
+      const teacherSchedule: TeacherScheduleClass[] = teacherClasses
+        .filter(cls => cls.tutor_id === tutorId && cls.id !== classData.id)
+        .map(cls => ({
+          id: cls.id,
+          subject: cls.subject,
+          level: cls.level,
+          start_time: cls.start_time,
+          end_time: cls.end_time || new Date(new Date(cls.start_time).getTime() + cls.duration_minutes * 60000).toISOString(),
+          duration_minutes: cls.duration_minutes,
+          branch_id: cls.branch_id,
+          branch_name: cls.branch_name
+        }));
+
+      const newClassStart = new Date(classData.start_time);
+      const newClassEnd = new Date(newClassStart.getTime() + classData.duration_minutes * 60000);
+
+      const directConflicts: TeacherScheduleClass[] = [];
+      const travelConflicts: TeacherScheduleClass[] = [];
+
+      for (const existingClass of teacherSchedule) {
+        const existingStart = new Date(existingClass.start_time);
+        const existingEnd = new Date(existingClass.end_time!);
+
+        // Check for direct time overlap
+        const hasDirectOverlap = (newClassStart < existingEnd && newClassEnd > existingStart);
+        
+        if (hasDirectOverlap) {
+          directConflicts.push(existingClass);
+          continue; // Don't check travel time if there's direct conflict
+        }
+
+        // Check for travel time conflicts (only if different branches)
+        if (classData.branch_id !== existingClass.branch_id) {
+          const oneHourBefore = new Date(newClassStart.getTime() - 60 * 60 * 1000); // 1 hour before new class
+          const oneHourAfter = new Date(newClassEnd.getTime() + 60 * 60 * 1000); // 1 hour after new class
+
+          // Check if existing class ends too close to new class start (need 1 hour to travel)
+          const existingEndsTooClose = existingEnd > oneHourBefore && existingEnd <= newClassStart;
+          
+          // Check if existing class starts too close to new class end (need 1 hour to travel)
+          const existingStartsTooClose = existingStart >= newClassEnd && existingStart < oneHourAfter;
+
+          if (existingEndsTooClose || existingStartsTooClose) {
+            travelConflicts.push(existingClass);
+          }
+        }
+      }
+
+      return { direct: directConflicts, travel: travelConflicts };
+    } catch (err) {
+      console.error('Failed to check teacher schedule:', err);
+      return { direct: [], travel: [] };
+    }
+  }, []);
+
+  // Helper function to format teacher schedule conflicts
+  const formatTeacherConflictMessage = useCallback((conflicts: { direct: TeacherScheduleClass[], travel: TeacherScheduleClass[] }, tutorName: string): string => {
+    let message = '';
+    
+    if (conflicts.direct.length > 0) {
+      const conflictDetails = conflicts.direct.map(conflict => {
+        const startTime = formatTime(conflict.start_time);
+        const endTime = conflict.end_time ? formatTime(conflict.end_time) : formatTime(new Date(new Date(conflict.start_time).getTime() + conflict.duration_minutes * 60000).toISOString());
+        const levelText = conflict.level ? ` (${conflict.level})` : '';
+        const branchText = conflict.branch_name ? ` at ${conflict.branch_name}` : '';
+        
+        return `• "${conflict.subject}"${levelText} from ${startTime} to ${endTime}${branchText}`;
+      }).join('\n');
+
+      const conflictCount = conflicts.direct.length;
+      const conflictWord = conflictCount === 1 ? 'class' : 'classes';
+      
+      message += `${tutorName} already has ${conflictCount} ${conflictWord} scheduled at the same time:\n\n${conflictDetails}`;
+    }
+    
+    if (conflicts.travel.length > 0) {
+      if (message) message += '\n\n';
+      
+      const travelDetails = conflicts.travel.map(conflict => {
+        const startTime = formatTime(conflict.start_time);
+        const endTime = conflict.end_time ? formatTime(conflict.end_time) : formatTime(new Date(new Date(conflict.start_time).getTime() + conflict.duration_minutes * 60000).toISOString());
+        const levelText = conflict.level ? ` (${conflict.level})` : '';
+        const branchText = conflict.branch_name ? ` at ${conflict.branch_name}` : '';
+        
+        return `• "${conflict.subject}"${levelText} from ${startTime} to ${endTime}${branchText}`;
+      }).join('\n');
+
+      const conflictCount = conflicts.travel.length;
+      const conflictWord = conflictCount === 1 ? 'class' : 'classes';
+      
+      message += `${tutorName} has ${conflictCount} ${conflictWord} at different branch(es) that require at least 1 hour buffer time:\n\n${travelDetails}`;
+    }
+    
+    return message;
+  }, [formatTime]);
+
   const handleAssignTutor = (classItem: UnassignedClass) => {
     setSelectedClass(classItem);
     setSelectedTutor('');
+    setScheduleConflicts(null);
     setShowAssignModal(true);
+  };
+
+  const handleTutorSelection = async (tutorId: string) => {
+    setSelectedTutor(tutorId);
+    setScheduleConflicts(null);
+    
+    if (tutorId && selectedClass) {
+      setValidatingConflicts(true);
+      try {
+        const conflicts = await checkTeacherScheduleConflicts(tutorId, selectedClass);
+        setScheduleConflicts(conflicts);
+      } catch (err) {
+        console.error('Failed to validate schedule:', err);
+        setError('Failed to validate tutor schedule');
+      } finally {
+        setValidatingConflicts(false);
+      }
+    }
   };
 
   const handleAssignSubmit = async () => {
@@ -58,6 +211,7 @@ const ClassReassignment: React.FC = () => {
       setShowAssignModal(false);
       setSelectedClass(null);
       setSelectedTutor('');
+      setScheduleConflicts(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to assign tutor');
     } finally {
@@ -90,6 +244,10 @@ const ClassReassignment: React.FC = () => {
   const isUpcoming = (classItem: UnassignedClass) => {
     return new Date(classItem.start_time) > new Date();
   };
+
+  const selectedTutorData = staff.find(s => s.id === selectedTutor);
+  const tutorName = selectedTutorData ? `${selectedTutorData.first_name} ${selectedTutorData.last_name}` : '';
+  const hasConflicts = Boolean(scheduleConflicts && (scheduleConflicts.direct.length > 0 || scheduleConflicts.travel.length > 0));
 
   if (loading) {
     return (
@@ -180,7 +338,7 @@ const ClassReassignment: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-800">Classes Needing Assignment</h2>
             <span className="text-sm text-gray-500">
@@ -197,7 +355,7 @@ const ClassReassignment: React.FC = () => {
                   key={classItem.id}
                   className={`
                     bg-white rounded-2xl shadow-lg border-l-4 p-6 transition-all hover:shadow-xl
-                    ${upcoming ? 'border-l-orange-500' : 'border-l-gray-300'}
+                    ${upcoming ? 'border-l-indigo-500' : 'border-l-gray-300'}
                   `}
                 >
                   <div className="flex items-start justify-between">
@@ -304,8 +462,9 @@ const ClassReassignment: React.FC = () => {
               </label>
               <select
                 value={selectedTutor}
-                onChange={(e) => setSelectedTutor(e.target.value)}
+                onChange={(e) => handleTutorSelection(e.target.value)}
                 className="w-full p-3 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none"
+                disabled={validatingConflicts}
               >
                 <option value="">Choose a staff member</option>
                 {staff.map((staffMember) => (
@@ -314,7 +473,45 @@ const ClassReassignment: React.FC = () => {
                   </option>
                 ))}
               </select>
+              
+              {validatingConflicts && (
+                <div className="mt-2 flex items-center space-x-2 text-blue-600">
+                  <Loader2 className="animate-spin" size={16} />
+                  <span className="text-sm">Checking schedule conflicts...</span>
+                </div>
+              )}
             </div>
+
+            {/* Schedule Conflict Warning */}
+            {selectedTutor && scheduleConflicts && hasConflicts && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="text-red-500 mt-0.5" size={20} />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-red-800 mb-2">Schedule Conflict Detected</h4>
+                    <p className="text-sm text-red-700 whitespace-pre-line">
+                      {formatTeacherConflictMessage(scheduleConflicts, tutorName)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* No Conflicts - Success Indicator */}
+            {selectedTutor && scheduleConflicts && !hasConflicts && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-green-800">
+                    No schedule conflicts. {tutorName} is available for this class.
+                  </span>
+                </div>
+              </div>
+            )}
             
             <div className="flex space-x-3">
               <button
