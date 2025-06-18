@@ -58,6 +58,14 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
     return getOneMonthFromToday().toISOString().split('T')[0];
   };
 
+  // Helper function to check if class is approaching and has no tutor
+  const isClassApproaching = (startTime: string): boolean => {
+    const classDate = new Date(startTime);
+    const now = new Date();
+    const daysDifference = Math.ceil((classDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDifference <= 7; // Class is within 7 days
+  };
+
   // Load initial data when component mounts
   useEffect(() => {
     loadInitialData();
@@ -817,14 +825,55 @@ const ClassOperations: React.FC<ClassOperationsProps> = ({ refreshTrigger = 0 })
                           {enrollment.status}
                         </span>
                       </div>
+
+                      {/* No Tutor Assigned Warning */}
+                      {!enrollment.tutor_first_name && enrollment.status === 'enrolled' && (
+                        <div className={`mb-4 p-3 rounded-lg ${
+                          isClassApproaching(enrollment.start_time) 
+                            ? 'bg-red-50 border-red-400' 
+                            : 'bg-amber-50 border-amber-400'
+                        }`}>
+                          <div className="flex items-start space-x-2">
+                            <AlertCircle className={`mt-0.5 ${
+                              isClassApproaching(enrollment.start_time) 
+                                ? 'text-red-500' 
+                                : 'text-amber-500'
+                            }`} size={16} />
+                            <div>
+                              <h4 className={`text-sm font-medium ${
+                                isClassApproaching(enrollment.start_time) 
+                                  ? 'text-red-800' 
+                                  : 'text-amber-800'
+                              } mb-1`}>
+                                {isClassApproaching(enrollment.start_time) 
+                                  ? 'Class May Be Cancelled' 
+                                  : 'Class On Hold - No Tutor Assigned'
+                                }
+                              </h4>
+                              <p className={`text-xs ${
+                                isClassApproaching(enrollment.start_time) 
+                                  ? 'text-red-700' 
+                                  : 'text-amber-700'
+                              }`}>
+                                {isClassApproaching(enrollment.start_time) 
+                                  ? 'This class is approaching but still has no assigned tutor. It may unfortunately be cancelled if no replacement tutor is found.' 
+                                  : 'This class is temporarily on hold as we are working to assign a qualified tutor. We will notify you once a tutor is assigned.'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
                         <div>
                           <p><span className="font-medium">Student:</span> {enrollment.student_name}</p>
                           <p><span className="font-medium">Date:</span> {formatDateTime(enrollment.start_time)}</p>
                           <p><span className="font-medium">Duration:</span> {formatDuration(enrollment.duration_minutes)}</p>
-                          {enrollment.tutor_first_name && (
+                          {enrollment.tutor_first_name ? (
                             <p><span className="font-medium">Tutor:</span> {enrollment.tutor_first_name} {enrollment.tutor_last_name}</p>
+                          ) : (
+                            <p><span className="font-medium">Tutor:</span> To be assigned</p>
                           )}
                         </div>
                         <div>
