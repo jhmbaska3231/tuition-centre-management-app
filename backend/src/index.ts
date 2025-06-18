@@ -112,9 +112,15 @@ async function initDatabase() {
       throw new Error('Failed to connect to database');
     }
 
-    // Create schema and seed data
+    // Create schema only
     await createDatabaseSchema(pool);
-    await seedDatabase(pool);
+    
+    // Only seed database in development
+    if (process.env.NODE_ENV === 'development') {
+      await seedDatabase(pool);
+      console.log('Database seeding completed (development mode)');
+    }
+    
     console.log('Database initialization completed successfully');
   } catch (error) {
     console.error('Database initialization failed:', error);
@@ -150,30 +156,47 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    timestamp: new Date().toISOString()
   });
 });
 
-// Readiness probe endpoint, checks if the application is ready to receive traffic (required for Kubernetes)
+// Readiness probe endpoint, checks if the application is ready to serve traffic (required for Kubernetes)
 app.get('/ready', async (req, res) => {
   try {
-    // Test database connectivity
-    await pool.query('SELECT 1');
-    res.status(200).json({ 
-      status: 'ready', 
-      database: 'connected',
+    const isDbReady = await testDatabaseConnection(pool);
+    if (isDbReady) {
+      res.status(200).json({ 
+        status: 'ready',
+        database: 'connected',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(503).json({ 
+        status: 'not ready',
+        database: 'disconnected',
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'not ready',
+      error: 'Database connection failed',
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    console.error('Readiness check failed:', error);
-    res.status(503).json({ 
-      status: 'not ready', 
-      database: 'disconnected',
-      timestamp: new Date().toISOString(),
-      error: 'Database connection failed'
-    });
   }
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  pool.end();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received. Shutting down gracefully...');
+  pool.end();
+  process.exit(0);
 });
 
 // Error handling middleware
@@ -196,11 +219,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Initialize database and start server
+// Start server after database initialization
 initDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Health check available at http://localhost:${PORT}/health`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }).catch((error) => {
   console.error('Failed to start server:', error);
