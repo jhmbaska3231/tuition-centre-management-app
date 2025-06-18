@@ -21,7 +21,8 @@ import attendanceRoutes from './routes/attendance';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+// Update port to match Kubernetes deployment expectation
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(cors());
@@ -60,7 +61,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
-// Health check endpoints
+// Health check endpoints (required for Kubernetes)
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Tuition Center Management API',
@@ -69,19 +70,32 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/api/health', async (req, res) => {
+// Liveness probe endpoint - checks if the application is running
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Readiness probe endpoint - checks if the application is ready to receive traffic
+app.get('/ready', async (req, res) => {
   try {
+    // Test database connectivity
     await pool.query('SELECT 1');
-    res.json({ 
-      status: 'healthy', 
+    res.status(200).json({ 
+      status: 'ready', 
       database: 'connected',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'unhealthy', 
+    console.error('Readiness check failed:', error);
+    res.status(503).json({ 
+      status: 'not ready', 
       database: 'disconnected',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      error: 'Database connection failed'
     });
   }
 });
@@ -96,6 +110,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 initDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Health check available at http://localhost:${PORT}/api/health`);
+    console.log(`Health check available at http://localhost:${PORT}/health`);
   });
 });
