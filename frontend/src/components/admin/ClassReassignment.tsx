@@ -71,27 +71,68 @@ const ClassReassignment: React.FC = () => {
     try {
       // Get teacher's classes for the selected date
       const classDate = new Date(classData.start_time).toISOString().split('T')[0];
+      
+      console.log('=== DEBUGGING API CALL ===');
+      console.log('Requesting classes for date:', classDate);
+      console.log('API parameters:', { startDate: classDate, endDate: classDate });
+      
       const teacherClasses = await ClassService.getAllClasses({
         startDate: classDate,
         endDate: classDate
       });
       
-      // Filter classes for the specific tutor and convert to TeacherScheduleClass format
-      const teacherSchedule: TeacherScheduleClass[] = teacherClasses
-        .filter(cls => cls.tutor_id === tutorId && cls.id !== classData.id)
-        .map(cls => ({
-          id: cls.id,
-          subject: cls.subject,
-          level: cls.level,
-          start_time: cls.start_time,
-          end_time: cls.end_time || new Date(new Date(cls.start_time).getTime() + cls.duration_minutes * 60000).toISOString(),
-          duration_minutes: cls.duration_minutes,
-          branch_id: cls.branch_id,
-          branch_name: cls.branch_name
-        }));
+      // Debug logging
+      console.log('=== API RESPONSE ANALYSIS ===');
+      console.log('Total classes returned for date:', teacherClasses.length);
+      console.log('Target tutor ID:', tutorId);
+      console.log('Target class ID we are assigning to:', classData.id);
+      console.log('All classes returned:', teacherClasses.map(cls => ({ 
+        id: cls.id, 
+        subject: cls.subject, 
+        tutor_id: cls.tutor_id,
+        tutor_name: cls.tutor_first_name ? `${cls.tutor_first_name} ${cls.tutor_last_name}` : 'No tutor',
+        start_time: cls.start_time,
+        branch_name: cls.branch_name
+      })));
+      
+      // Filter classes for the specific tutor only - be very explicit about this
+      const tutorOnlyClasses = teacherClasses.filter(cls => {
+        const isSameTutor = cls.tutor_id === tutorId;
+        const isDifferentClass = cls.id !== classData.id;
+        const hasTutor = cls.tutor_id != null; // Exclude unassigned classes
+        
+        console.log(`Class ${cls.id} (${cls.subject}): tutor_id=${cls.tutor_id}, isSameTutor=${isSameTutor}, isDifferentClass=${isDifferentClass}, hasTutor=${hasTutor}`);
+        
+        return isSameTutor && isDifferentClass && hasTutor;
+      });
+      
+      console.log('=== FILTERING RESULTS ===');
+      console.log('Classes after filtering for target tutor:', tutorOnlyClasses.length);
+      if (tutorOnlyClasses.length === 0) {
+        console.log('⚠️ NO CLASSES FOUND FOR THIS TUTOR ON THIS DATE');
+        console.log('This could mean:');
+        console.log('1. The tutor really has no other classes that day (OK)');
+        console.log('2. The API is not returning all classes (BUG)');
+        console.log('3. The tutor ID is wrong (BUG)');
+      }
+      
+      // Convert to TeacherScheduleClass format
+      const teacherSchedule: TeacherScheduleClass[] = tutorOnlyClasses.map(cls => ({
+        id: cls.id,
+        subject: cls.subject,
+        level: cls.level,
+        start_time: cls.start_time,
+        end_time: cls.end_time || new Date(new Date(cls.start_time).getTime() + cls.duration_minutes * 60000).toISOString(),
+        duration_minutes: cls.duration_minutes,
+        branch_id: cls.branch_id,
+        branch_name: cls.branch_name
+      }));
 
       const newClassStart = new Date(classData.start_time);
       const newClassEnd = new Date(newClassStart.getTime() + classData.duration_minutes * 60000);
+
+      console.log('New class time:', newClassStart.toISOString(), 'to', newClassEnd.toISOString());
+      console.log('Checking against', teacherSchedule.length, 'existing classes for this tutor');
 
       const directConflicts: TeacherScheduleClass[] = [];
       const travelConflicts: TeacherScheduleClass[] = [];
@@ -100,10 +141,15 @@ const ClassReassignment: React.FC = () => {
         const existingStart = new Date(existingClass.start_time);
         const existingEnd = new Date(existingClass.end_time!);
 
+        console.log(`Checking class ${existingClass.id} (${existingClass.subject}): ${existingStart.toISOString()} to ${existingEnd.toISOString()}`);
+
         // Check for direct time overlap
         const hasDirectOverlap = (newClassStart < existingEnd && newClassEnd > existingStart);
         
+        console.log(`  Direct overlap check: ${hasDirectOverlap}`);
+        
         if (hasDirectOverlap) {
+          console.log(`  -> DIRECT CONFLICT DETECTED`);
           directConflicts.push(existingClass);
           continue; // Don't check travel time if there's direct conflict
         }
@@ -119,12 +165,18 @@ const ClassReassignment: React.FC = () => {
           // Check if existing class starts too close to new class end (need 1 hour to travel)
           const existingStartsTooClose = existingStart >= newClassEnd && existingStart < oneHourAfter;
 
+          console.log(`  Travel time check (different branches): existingEndsTooClose=${existingEndsTooClose}, existingStartsTooClose=${existingStartsTooClose}`);
+
           if (existingEndsTooClose || existingStartsTooClose) {
+            console.log(`  -> TRAVEL CONFLICT DETECTED`);
             travelConflicts.push(existingClass);
           }
+        } else {
+          console.log(`  Same branch - no travel time needed`);
         }
       }
 
+      console.log('Final conflicts:', { direct: directConflicts.length, travel: travelConflicts.length });
       return { direct: directConflicts, travel: travelConflicts };
     } catch (err) {
       console.error('Failed to check teacher schedule:', err);
@@ -338,7 +390,7 @@ const ClassReassignment: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-800">Classes Needing Assignment</h2>
             <span className="text-sm text-gray-500">
@@ -355,7 +407,7 @@ const ClassReassignment: React.FC = () => {
                   key={classItem.id}
                   className={`
                     bg-white rounded-2xl shadow-lg border-l-4 p-6 transition-all hover:shadow-xl
-                    ${upcoming ? 'border-l-indigo-500' : 'border-l-gray-300'}
+                    ${upcoming ? 'border-l-orange-500' : 'border-l-gray-300'}
                   `}
                 >
                   <div className="flex items-start justify-between">
