@@ -573,7 +573,7 @@ const ClassReassignment: React.FC = () => {
               </button>
               <button
                 onClick={handleAssignSubmit}
-                disabled={!selectedTutor || assigning}
+                disabled={!selectedTutor || assigning || hasConflicts}
                 className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {assigning ? 'Assigning...' : 'Assign Tutor'}
