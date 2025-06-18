@@ -11,13 +11,14 @@ A full-stack web application for managing tuition centres, this system enables e
 - **Profile Management**: Update personal information and account settings
 
 ### For Staff/Teachers
-- **Class Management**: Create, edit, and manage assigned classes
+- **Class Management**: Create, edit, and manage assigned classes with capacity and time conflict detection
 - **Attendance Tracking**: Mark attendance for students with detailed status options
 - **Student Overview**: View enrolled students and their information
 
 ### For Administrators
 - **Staff Management**: Create, edit, and manage staff accounts
-- **Class Assignment**: Assign tutors to unassigned classes
+- **Branch & Classroom Management**: Manage multiple branches and their classroom allocations
+- **Class Assignment**: Assign tutors to unassigned classes with automatic conflict resolution
 - **System Overview**: Monitor user activities and system usage
 
 ## Tech Stack
@@ -34,6 +35,10 @@ A full-stack web application for managing tuition centres, this system enables e
 - PostgreSQL database
 - JWT authentication
 - bcrypt for password hashing
+- express rate limit for API protection
+- Helmet for security headers
+- isomorphic dompurify for input sanitization
+- CORS configuration for cross-origin requests
 
 ## Prerequisites
 
@@ -63,7 +68,7 @@ A full-stack web application for managing tuition centres, this system enables e
 3. **Database Setup**
    - Create a PostgreSQL database
    - Update the database configuration in `backend/.env`
-   - The application automatically creates the database schema and seeds initial data upon each run
+   - The application automatically creates the database schema and seeds initial data (only for dev env) upon each run
 
 4. **Start the application**
    ```bash
