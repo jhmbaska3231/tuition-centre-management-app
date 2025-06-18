@@ -72,9 +72,18 @@ const authLimiter = rateLimit({
 
 app.use(generalLimiter);
 
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [
+      'https://your-frontend-domain.com',
+    ]
+  : [
+      'http://localhost:5173',
+      process.env.FRONTEND_URL || 'http://localhost:5173'
+    ];
+
 // Secure CORS configuration
 app.use(cors({
-  origin: [FRONTEND_URL, 'http://localhost:5173'], // Only allow specific origins
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
