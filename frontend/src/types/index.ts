@@ -414,6 +414,7 @@ export interface UnassignedClass {
   start_time: string;
   duration_minutes: number;
   capacity: number;
+  branch_id: string;
   branch_name: string;
   branch_address: string;
   classroom_name?: string;

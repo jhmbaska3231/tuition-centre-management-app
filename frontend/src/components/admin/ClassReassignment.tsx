@@ -180,130 +180,95 @@ const ClassReassignment: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Classes Requiring Assignment ({unassignedClasses.length})
-            </h2>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-red-200 rounded-full"></div>
-                <span>Past</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-orange-200 rounded-full"></div>
-                <span>Today</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-blue-200 rounded-full"></div>
-                <span>Future</span>
-              </div>
-            </div>
+            <h2 className="text-xl font-bold text-gray-800">Classes Needing Assignment</h2>
+            <span className="text-sm text-gray-500">
+              {unassignedClasses.length} class{unassignedClasses.length !== 1 ? 'es' : ''} total
+            </span>
           </div>
 
-          <div className="space-y-4">
-            {unassignedClasses
-              .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-              .map((classItem) => {
-                const classDate = new Date(classItem.start_time);
-                const today = new Date();
-                const isToday = classDate.toDateString() === today.toDateString();
-                const isPast = classDate < today;
-                const isFuture = classDate > today && !isToday;
-
-                let borderColor = 'border-gray-200';
-                let bgColor = 'bg-white';
-                if (isPast) {
-                  borderColor = 'border-red-200';
-                  bgColor = 'bg-red-50';
-                } else if (isToday) {
-                  borderColor = 'border-orange-200';
-                  bgColor = 'bg-orange-50';
-                } else if (isFuture) {
-                  borderColor = 'border-blue-200';
-                  bgColor = 'bg-blue-50';
-                }
-
-                return (
-                  <div key={classItem.id} className={`${bgColor} ${borderColor} border rounded-2xl p-6 hover:shadow-lg transition-shadow`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
+          <div className="grid gap-4">
+            {unassignedClasses.map((classItem) => {
+              const upcoming = isUpcoming(classItem);
+              
+              return (
+                <div
+                  key={classItem.id}
+                  className={`
+                    bg-white rounded-2xl shadow-lg border-l-4 p-6 transition-all hover:shadow-xl
+                    ${upcoming ? 'border-l-orange-500' : 'border-l-gray-300'}
+                  `}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div>
                           <h3 className="text-xl font-bold text-gray-800">{classItem.subject}</h3>
-                          {isPast && (
-                            <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
-                              Past Class
-                            </span>
+                          {classItem.description && (
+                            <p className="text-gray-600 text-sm mt-1">{classItem.description}</p>
                           )}
-                          {isToday && (
-                            <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full">
-                              Today
-                            </span>
-                          )}
-                          {isFuture && (
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
-                              Upcoming
+                          {upcoming && (
+                            <span className="inline-block mt-2 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                              Upcoming - Needs Urgent Assignment
                             </span>
                           )}
                         </div>
-                        
-                        {classItem.description && (
-                          <p className="text-gray-600 mb-3">{classItem.description}</p>
-                        )}
-                        
-                        <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <Calendar size={16} />
-                              <span>{formatDateTime(classItem.start_time)}</span>
-                            </div>
-                            
-                            <div className="flex items-center space-x-2">
-                              <Clock size={16} />
-                              <span>{formatDuration(classItem.duration_minutes)}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <MapPin size={16} />
-                              <span>{classItem.branch_name} ({classItem.classroom_name})</span>
-                            </div>
-                            
-                            <div className="flex items-center space-x-2">
-                              <Users size={16} />
-                              <span>{classItem.enrolled_count}/{classItem.capacity} enrolled ({getAvailableSpots(classItem)} spots left)</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {classItem.level && (
-                          <div className="mt-2">
-                            <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                              {classItem.level}
-                            </span>
-                          </div>
-                        )}
                       </div>
                       
-                      <div className="ml-6 flex flex-col space-y-2">
-                        <button
-                          onClick={() => handleAssignTutor(classItem)}
-                          className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium"
-                        >
-                          Assign Tutor
-                        </button>
-                        
-                        {classItem.enrolled_count > 0 && (
-                          <div className="text-xs text-gray-500 text-center">
-                            {classItem.enrolled_count} student{classItem.enrolled_count !== 1 ? 's' : ''} waiting
+                      <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Calendar size={16} />
+                            <span>{formatDateTime(classItem.start_time)}</span>
                           </div>
-                        )}
+                          
+                          <div className="flex items-center space-x-2">
+                            <Clock size={16} />
+                            <span>{formatDuration(classItem.duration_minutes)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <MapPin size={16} />
+                            <span>{classItem.branch_name} ({classItem.classroom_name})</span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <Users size={16} />
+                            <span>{classItem.enrolled_count}/{classItem.capacity} enrolled ({getAvailableSpots(classItem)} spots left)</span>
+                          </div>
+                        </div>
                       </div>
+
+                      {classItem.level && (
+                        <div className="mt-2">
+                          <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                            {classItem.level}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="ml-6 flex flex-col space-y-2">
+                      <button
+                        onClick={() => handleAssignTutor(classItem)}
+                        className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium"
+                      >
+                        Assign Tutor
+                      </button>
+                      
+                      {classItem.enrolled_count > 0 && (
+                        <div className="text-xs text-gray-500 text-center">
+                          {classItem.enrolled_count} student{classItem.enrolled_count !== 1 ? 's' : ''} waiting
+                        </div>
+                      )}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
