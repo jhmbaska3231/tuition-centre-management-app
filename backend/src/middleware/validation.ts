@@ -4,8 +4,9 @@ import { Request, Response, NextFunction } from 'express';
 
 // Email validation
 export const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  // More comprehensive email regex
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  return emailRegex.test(email) && email.length <= 254; // RFC 5321 limit
 };
 
 // Password validation (at least 8 characters)
@@ -13,10 +14,10 @@ export const isValidPassword = (password: string): boolean => {
   return Boolean(password && password.length >= 8);
 };
 
-// Name validation (only alphabets, at least 2 characters, no spaces)
+// Name validation (only alphabets, at least 2 characters, max 50 characters, no spaces)
 export const isValidName = (name: string): boolean => {
-  const nameRegex = /^[A-Za-z]{2,}$/; // Only letters, at least 2 characters, no spaces
-  return Boolean(name && name.trim().length >= 2 && nameRegex.test(name.trim()));
+  const nameRegex = /^[A-Za-z]{2,50}$/; // Only letters, 2-50 characters, no spaces
+  return Boolean(name && name.trim().length >= 2 && name.trim().length <= 50 && nameRegex.test(name.trim()));
 };
 
 // Phone validation (exactly 8 digits, optional)
@@ -54,12 +55,12 @@ export const validateParentRegistration = (req: Request, res: Response, next: Ne
   }
   
   if (!isValidName(firstName)) {
-    res.status(400).json({ error: 'First name must contain only letters and be at least 2 characters long' });
+    res.status(400).json({ error: 'First name must contain only letters and be 2-50 characters long' });
     return;
   }
   
   if (!isValidName(lastName)) {
-    res.status(400).json({ error: 'Last name must contain only letters and be at least 2 characters long' });
+    res.status(400).json({ error: 'Last name must contain only letters and be 2-50 characters long' });
     return;
   }
 
@@ -96,12 +97,12 @@ export const validateProfileUpdate = (req: Request, res: Response, next: NextFun
   const { firstName, lastName, phone } = req.body;
   
   if (firstName && !isValidName(firstName)) {
-    res.status(400).json({ error: 'First name must contain only letters and be at least 2 characters long' });
+    res.status(400).json({ error: 'First name must contain only letters and be 2-50 characters long' });
     return;
   }
   
   if (lastName && !isValidName(lastName)) {
-    res.status(400).json({ error: 'Last name must contain only letters and be at least 2 characters long' });
+    res.status(400).json({ error: 'Last name must contain only letters and be 2-50 characters long' });
     return;
   }
 
@@ -123,13 +124,13 @@ export const validateBranch = (req: Request, res: Response, next: NextFunction):
     return;
   }
   
-  if (name.trim().length < 2) {
-    res.status(400).json({ error: 'Branch name must be at least 2 characters' });
+  if (name.trim().length < 2 || name.trim().length > 50) {
+    res.status(400).json({ error: 'Branch name must be 2-50 characters long' });
     return;
   }
   
-  if (address.trim().length < 5) {
-    res.status(400).json({ error: 'Address must be at least 5 characters' });
+  if (address.trim().length < 5 || address.trim().length > 100) {
+    res.status(400).json({ error: 'Address must be 5-100 characters long' });
     return;
   }
 
@@ -151,8 +152,8 @@ export const validateClass = (req: Request, res: Response, next: NextFunction): 
     return;
   }
   
-  if (subject.trim().length < 2) {
-    res.status(400).json({ error: 'Subject must be at least 2 characters' });
+  if (subject.trim().length < 2 || subject.trim().length > 50) {
+    res.status(400).json({ error: 'Subject must be 2-50 characters long' });
     return;
   }
   
@@ -203,12 +204,12 @@ export const validateStudent = (req: Request, res: Response, next: NextFunction)
   }
   
   if (!isValidName(firstName)) {
-    res.status(400).json({ error: 'First name must contain only letters and be at least 2 characters long' });
+    res.status(400).json({ error: 'First name must contain only letters and be 2-50 characters long' });
     return;
   }
   
   if (!isValidName(lastName)) {
-    res.status(400).json({ error: 'Last name must contain only letters and be at least 2 characters long' });
+    res.status(400).json({ error: 'Last name must contain only letters and be 2-50 characters long' });
     return;
   }
   
@@ -228,6 +229,14 @@ export const validateStudent = (req: Request, res: Response, next: NextFunction)
     // Check if birth date is not in the future
     if (birthDate > new Date()) {
       res.status(400).json({ error: 'Date of birth cannot be in the future' });
+      return;
+    }
+
+    // Check if student is at least 2 years old
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    if (birthDate > twoYearsAgo) {
+      res.status(400).json({ error: 'Student must be at least 2 years old' });
       return;
     }
     

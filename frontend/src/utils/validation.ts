@@ -2,8 +2,8 @@
 
 // Email validation
 export const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  return emailRegex.test(email) && email.length <= 254; // RFC 5321 limit
 };
 
 // Password validation (at least 8 characters)
@@ -11,10 +11,10 @@ export const isValidPassword = (password: string): boolean => {
   return Boolean(password && password.length >= 8);
 };
 
-// Name validation (only alphabets, at least 2 characters, no spaces)
+// Name validation (only alphabets, 2-50 characters, no spaces)
 export const isValidName = (name: string): boolean => {
-  const nameRegex = /^[A-Za-z]{2,}$/; // Only letters, at least 2 characters, no spaces
-  return Boolean(name && name.trim().length >= 2 && nameRegex.test(name.trim()));
+  const nameRegex = /^[A-Za-z]{2,50}$/; // Only letters, 2-50 characters, no spaces
+  return Boolean(name && name.trim().length >= 2 && name.trim().length <= 50 && nameRegex.test(name.trim()));
 };
 
 // Get name validation error message
@@ -25,6 +25,10 @@ export const getNameValidationError = (name: string, fieldName: string): string 
   
   if (name.trim().length < 2) {
     return `${fieldName} must be at least 2 characters long`;
+  }
+  
+  if (name.trim().length > 50) {
+    return `${fieldName} must be no more than 50 characters long`;
   }
   
   if (!/^[A-Za-z]+$/.test(name.trim())) {

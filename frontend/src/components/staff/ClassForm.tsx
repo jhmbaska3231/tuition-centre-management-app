@@ -38,6 +38,7 @@ interface FormData {
 
 interface FieldErrors {
   subject: string;
+  description: string;
   level: string;
   startDate: string;
   startTime: string;
@@ -83,6 +84,7 @@ const INITIAL_FORM_DATA: FormData = {
 
 const INITIAL_FIELD_ERRORS: FieldErrors = {
   subject: '',
+  description: '',
   level: '',
   startDate: '',
   startTime: '',
@@ -354,8 +356,18 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
     
     switch (field) {
       case 'subject':
-        if (!value || value.trim().length < 2) {
+        if (!value || value.trim().length === 0) {
+          error = 'Subject is required';
+        } else if (value.trim().length < 2) {
           error = 'Subject must be at least 2 characters';
+        } else if (value.trim().length > 50) {
+          error = 'Subject must be no more than 50 characters';
+        }
+        break;
+      case 'description':
+        // Optional field - only validate if not empty
+        if (value && value.trim().length > 500) {
+          error = 'Description must be no more than 500 characters';
         }
         break;
       case 'level':
@@ -688,10 +700,21 @@ const ClassForm: React.FC<ClassFormProps> = ({ isOpen, onClose, classData, onSuc
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors"
+              maxLength={500}
+              className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                fieldErrors.description 
+                  ? 'border-red-300 focus:border-red-500' 
+                  : 'border-gray-200 focus:border-indigo-500'
+              }`}  // Add fieldErrors.description check
               placeholder="Brief description of the class content and objectives"
               rows={3}
             />
+            {fieldErrors.description && (
+              <p className="text-red-600 text-sm mt-1">{fieldErrors.description}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.description.length}/500 characters
+            </p>
           </div>
 
           {/* Branch Field */}
