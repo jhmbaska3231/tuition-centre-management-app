@@ -4,7 +4,8 @@ import type { Classroom, ApiError, CreateClassroomRequest, UpdateClassroomReques
 import AuthService from './auth';
 
 class ClassroomService {
-  private static readonly API_BASE_URL = 'http://localhost:8080/api';
+  // private static readonly API_BASE_URL = 'http://localhost:8080/api';
+  private static readonly API_BASE_URL = '/api';
 
   private static getAuthHeaders() {
     const token = AuthService.getToken();

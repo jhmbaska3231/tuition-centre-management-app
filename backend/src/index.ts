@@ -74,11 +74,11 @@ app.use(generalLimiter);
 
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
-      'https://your-frontend-domain.com',
+      FRONTEND_URL,
     ]
   : [
-      'http://localhost:5173',
-      process.env.FRONTEND_URL || 'http://localhost:5173'
+      FRONTEND_URL,
+      'http://localhost:5173'
     ];
 
 // Secure CORS configuration

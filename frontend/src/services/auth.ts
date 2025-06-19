@@ -12,7 +12,8 @@ import type {
 } from '../types';
 
 class AuthService {
-  private static readonly API_BASE_URL = 'http://localhost:8080/api';
+  // private static readonly API_BASE_URL = 'http://localhost:8080/api';
+  private static readonly API_BASE_URL = '/api';
   private static readonly TOKEN_KEY = 'authToken';
 
   static getToken(): string | null {

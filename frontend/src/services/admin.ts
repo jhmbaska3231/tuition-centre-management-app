@@ -13,7 +13,8 @@ import type {
 import AuthService from './auth';
 
 class AdminService {
-  private static readonly API_BASE_URL = 'http://localhost:8080/api';
+  // private static readonly API_BASE_URL = 'http://localhost:8080/api';
+  private static readonly API_BASE_URL = '/api';
 
   private static getAuthHeaders() {
     const token = AuthService.getToken();
