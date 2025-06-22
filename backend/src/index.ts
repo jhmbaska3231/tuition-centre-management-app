@@ -34,6 +34,7 @@ for (const envVar of requiredEnvVars) {
 const app = express();
 const PORT = process.env.PORT || 8080;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const prometheusClient = require('prom-client');
 
 // Security middleware
 app.use(helmet({
@@ -70,6 +71,16 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Collect default metrics (CPU, memory, event loop lag, GC, etc)
+prometheusClient.collectDefaultMetrics({ timeout: 5000 });
+
+// Create custom metrics
+const httpRequestsTotal = new prometheusClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'status']
+});
+
 app.use(generalLimiter);
 
 const allowedOrigins = process.env.NODE_ENV === 'production'
@@ -99,6 +110,17 @@ app.use(express.urlencoded({
   extended: false, 
   limit: '10mb'
 }));
+
+// Track HTTP requests for Prometheus
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    httpRequestsTotal.inc({ 
+      method: req.method, 
+      status: res.statusCode.toString() 
+    });
+  });
+  next();
+});
 
 // Create database connection pool using the config
 export const pool = createDatabasePool();
@@ -183,6 +205,16 @@ app.get('/ready', async (req, res) => {
       error: 'Database connection failed',
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// Scrape metrics endpoint (required for Prometheus) 
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', prometheusClient.register.contentType);
+    res.end(await prometheusClient.register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
   }
 });
 
