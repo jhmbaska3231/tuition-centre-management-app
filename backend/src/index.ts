@@ -81,89 +81,8 @@ const httpRequestsTotal = new prometheusClient.Counter({
   labelNames: ['method', 'status']
 });
 
-app.use(generalLimiter);
-
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [
-      FRONTEND_URL,
-    ]
-  : [
-      FRONTEND_URL,
-      'http://localhost:5173'
-    ];
-
-// Secure CORS configuration
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  maxAge: 86400, // 24 hours
-}));
-
-// Enhanced body parsing with size limits
-app.use(express.json({ 
-  limit: '10mb', // Prevent large payload attacks
-  strict: true
-}));
-app.use(express.urlencoded({ 
-  extended: false, 
-  limit: '10mb'
-}));
-
-// Track HTTP requests for Prometheus
-app.use((req, res, next) => {
-  res.on('finish', () => {
-    httpRequestsTotal.inc({ 
-      method: req.method, 
-      status: res.statusCode.toString() 
-    });
-  });
-  next();
-});
-
 // Create database connection pool using the config
 export const pool = createDatabasePool();
-
-// Initialize database
-async function initDatabase() {
-  try {
-    // Test database connection first
-    const isConnected = await testDatabaseConnection(pool);
-    if (!isConnected) {
-      throw new Error('Failed to connect to database');
-    }
-
-    // Create schema only
-    await createDatabaseSchema(pool);
-    
-    // Only seed database in development
-    if (process.env.NODE_ENV === 'development') {
-      await seedDatabase(pool);
-      console.log('Database seeding completed (development mode)');
-    }
-    
-    console.log('Database initialization completed successfully');
-  } catch (error) {
-    console.error('Database initialization failed:', error);
-    process.exit(1);
-  }
-}
-
-// Apply auth rate limiting to sensitive routes
-app.use('/api/auth', authLimiter);
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/branches', branchRoutes);
-app.use('/api/classrooms', classroomRoutes);
-app.use('/api/classes', classRoutes);
-app.use('/api/enrollments', enrollmentRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/students', studentRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/attendance', attendanceRoutes);
 
 // Health check endpoints (required for Kubernetes)
 app.get('/', (req, res) => {
@@ -217,6 +136,88 @@ app.get('/metrics', async (req, res) => {
     res.status(500).end(err);
   }
 });
+
+// Apply rate limiting to all other routes (this excludes the health endpoints)
+app.use(generalLimiter);
+
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [
+      FRONTEND_URL,
+    ]
+  : [
+      FRONTEND_URL,
+      'http://localhost:5173'
+    ];
+
+// Secure CORS configuration
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400, // 24 hours
+}));
+
+// Enhanced body parsing with size limits
+app.use(express.json({ 
+  limit: '10mb', // Prevent large payload attacks
+  strict: true
+}));
+app.use(express.urlencoded({ 
+  extended: false, 
+  limit: '10mb'
+}));
+
+// Track HTTP requests for Prometheus
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    httpRequestsTotal.inc({ 
+      method: req.method, 
+      status: res.statusCode.toString() 
+    });
+  });
+  next();
+});
+
+// Initialize database
+async function initDatabase() {
+  try {
+    // Test database connection first
+    const isConnected = await testDatabaseConnection(pool);
+    if (!isConnected) {
+      throw new Error('Failed to connect to database');
+    }
+
+    // Create schema only
+    await createDatabaseSchema(pool);
+    
+    // Only seed database in development
+    if (process.env.NODE_ENV === 'development') {
+      await seedDatabase(pool);
+      console.log('Database seeding completed (development mode)');
+    }
+    
+    console.log('Database initialization completed successfully');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    process.exit(1);
+  }
+}
+
+// Apply auth rate limiting to sensitive routes
+app.use('/api/auth', authLimiter);
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/classrooms', classroomRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
