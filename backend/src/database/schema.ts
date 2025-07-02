@@ -178,31 +178,47 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create indexes for performance
     const indexes = [
+      // User indexes
       'CREATE INDEX idx_user_email ON "User"(email)',
       'CREATE INDEX idx_user_role ON "User"(role)',
       'CREATE INDEX idx_user_active ON "User"(active)',
+      
+      // Branch indexes  
       'CREATE INDEX idx_branch_active ON "Branch"(active)',
+      
+      // Classroom indexes
       'CREATE INDEX idx_classroom_branch ON "Classroom"(branch_id)',
       'CREATE INDEX idx_classroom_active ON "Classroom"(active)',
       'CREATE INDEX idx_classroom_name ON "Classroom"(room_name)',
-      'CREATE INDEX idx_student_parent ON "Student"(parent_id)',
+      
+      // Student indexes
+      'CREATE INDEX idx_student_parent_active ON "Student"(parent_id, active)',
       'CREATE INDEX idx_student_branch ON "Student"(home_branch_id)',
       'CREATE INDEX idx_student_active ON "Student"(active)',
       'CREATE INDEX idx_student_names ON "Student"(first_name, last_name)',
+      
+      // Class indexes
+      'CREATE INDEX idx_class_branch_time ON "Class"(branch_id, start_time)',
+      'CREATE INDEX idx_class_subject ON "Class"(subject)',
       'CREATE INDEX idx_class_start_time ON "Class"(start_time)',
-      'CREATE INDEX idx_class_branch ON "Class"(branch_id)',
       'CREATE INDEX idx_class_classroom ON "Class"(classroom_id)',
       'CREATE INDEX idx_class_tutor ON "Class"(tutor_id)',
       'CREATE INDEX idx_class_active ON "Class"(active)',
+      
+      // Enrollment indexes
+      'CREATE INDEX idx_enrollment_class_status ON "Enrollment"(class_id, status)',
       'CREATE INDEX idx_enrollment_student ON "Enrollment"(student_id)',
-      'CREATE INDEX idx_enrollment_class ON "Enrollment"(class_id)',
       'CREATE INDEX idx_enrollment_status ON "Enrollment"(status)',
       'CREATE INDEX idx_enrollment_date ON "Enrollment"(enrolled_at)',
+      
+      // Payment indexes
       'CREATE INDEX idx_payment_student_month ON "Payment"(student_id, month)',
       'CREATE INDEX idx_payment_date ON "Payment"(payment_date)',
       'CREATE INDEX idx_payment_status ON "Payment"(paid)',
+      
+      // Attendance indexes
+      'CREATE INDEX idx_attendance_class_date ON "Attendance"(class_id, date)',
       'CREATE INDEX idx_attendance_student ON "Attendance"(student_id)',
-      'CREATE INDEX idx_attendance_class ON "Attendance"(class_id)',
       'CREATE INDEX idx_attendance_date ON "Attendance"(date)'
     ];
 
