@@ -32,7 +32,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Users table
     const createUsersTable = `
-      CREATE TABLE "User" (
+      CREATE TABLE IF NOT EXISTS "User" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
@@ -50,7 +50,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Branches table
     const createBranchesTable = `
-      CREATE TABLE "Branch" (
+      CREATE TABLE IF NOT EXISTS "Branch" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name TEXT NOT NULL,
         address TEXT NOT NULL,
@@ -65,7 +65,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Classrooms table
     const createClassroomsTable = `
-      CREATE TABLE "Classroom" (
+      CREATE TABLE IF NOT EXISTS "Classroom" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         room_name TEXT NOT NULL,
         description TEXT,
@@ -83,7 +83,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Students table
     const createStudentsTable = `
-      CREATE TABLE "Student" (
+      CREATE TABLE IF NOT EXISTS "Student" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
@@ -101,7 +101,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Classes table
     const createClassesTable = `
-      CREATE TABLE "Class" (
+      CREATE TABLE IF NOT EXISTS "Class" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         subject TEXT NOT NULL,
         description TEXT,
@@ -127,7 +127,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Enrollments table
     const createEnrollmentsTable = `
-      CREATE TABLE "Enrollment" (
+      CREATE TABLE IF NOT EXISTS "Enrollment" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         student_id UUID REFERENCES "Student"(id) ON DELETE CASCADE,
         class_id UUID REFERENCES "Class"(id) ON DELETE CASCADE,
@@ -142,7 +142,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Payments table
     const createPaymentsTable = `
-      CREATE TABLE "Payment" (
+      CREATE TABLE IF NOT EXISTS "Payment" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         student_id UUID REFERENCES "Student"(id) ON DELETE CASCADE,
         month TEXT NOT NULL,
@@ -163,7 +163,7 @@ export const createDatabaseSchema = async (pool: Pool) => {
 
     // Create Attendance table
     const createAttendanceTable = `
-      CREATE TABLE "Attendance" (
+      CREATE TABLE IF NOT EXISTS "Attendance" (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         student_id UUID REFERENCES "Student"(id) ON DELETE CASCADE,
         class_id UUID REFERENCES "Class"(id) ON DELETE CASCADE,
@@ -183,53 +183,58 @@ export const createDatabaseSchema = async (pool: Pool) => {
     // Create indexes for performance
     const indexes = [
       // User indexes
-      'CREATE INDEX idx_user_email ON "User"(email)',
-      'CREATE INDEX idx_user_role ON "User"(role)',
-      'CREATE INDEX idx_user_active ON "User"(active)',
+      'CREATE INDEX IF NOT EXISTS idx_user_email ON "User"(email)',
+      'CREATE INDEX IF NOT EXISTS idx_user_role ON "User"(role)',
+      'CREATE INDEX IF NOT EXISTS idx_user_active ON "User"(active)',
       
       // Branch indexes  
-      'CREATE INDEX idx_branch_active ON "Branch"(active)',
+      'CREATE INDEX IF NOT EXISTS idx_branch_active ON "Branch"(active)',
       
       // Classroom indexes
-      'CREATE INDEX idx_classroom_branch ON "Classroom"(branch_id)',
-      'CREATE INDEX idx_classroom_active ON "Classroom"(active)',
-      'CREATE INDEX idx_classroom_name ON "Classroom"(room_name)',
+      'CREATE INDEX IF NOT EXISTS idx_classroom_branch ON "Classroom"(branch_id)',
+      'CREATE INDEX IF NOT EXISTS idx_classroom_active ON "Classroom"(active)',
+      'CREATE INDEX IF NOT EXISTS idx_classroom_name ON "Classroom"(room_name)',
       
       // Student indexes
-      'CREATE INDEX idx_student_parent_active ON "Student"(parent_id, active)',
-      'CREATE INDEX idx_student_branch ON "Student"(home_branch_id)',
-      'CREATE INDEX idx_student_active ON "Student"(active)',
-      'CREATE INDEX idx_student_names ON "Student"(first_name, last_name)',
+      'CREATE INDEX IF NOT EXISTS idx_student_parent_active ON "Student"(parent_id, active)',
+      'CREATE INDEX IF NOT EXISTS idx_student_branch ON "Student"(home_branch_id)',
+      'CREATE INDEX IF NOT EXISTS idx_student_active ON "Student"(active)',
+      'CREATE INDEX IF NOT EXISTS idx_student_names ON "Student"(first_name, last_name)',
       
       // Class indexes
-      'CREATE INDEX idx_class_branch_time ON "Class"(branch_id, start_time)',
-      'CREATE INDEX idx_class_subject ON "Class"(subject)',
-      'CREATE INDEX idx_class_start_time ON "Class"(start_time)',
-      'CREATE INDEX idx_class_classroom ON "Class"(classroom_id)',
-      'CREATE INDEX idx_class_tutor ON "Class"(tutor_id)',
-      'CREATE INDEX idx_class_active ON "Class"(active)',
+      'CREATE INDEX IF NOT EXISTS idx_class_branch_time ON "Class"(branch_id, start_time)',
+      'CREATE INDEX IF NOT EXISTS idx_class_subject ON "Class"(subject)',
+      'CREATE INDEX IF NOT EXISTS idx_class_start_time ON "Class"(start_time)',
+      'CREATE INDEX IF NOT EXISTS idx_class_classroom ON "Class"(classroom_id)',
+      'CREATE INDEX IF NOT EXISTS idx_class_tutor ON "Class"(tutor_id)',
+      'CREATE INDEX IF NOT EXISTS idx_class_active ON "Class"(active)',
       
       // Enrollment indexes
-      'CREATE INDEX idx_enrollment_class_status ON "Enrollment"(class_id, status)',
-      'CREATE INDEX idx_enrollment_student ON "Enrollment"(student_id)',
-      'CREATE INDEX idx_enrollment_status ON "Enrollment"(status)',
-      'CREATE INDEX idx_enrollment_date ON "Enrollment"(enrolled_at)',
+      'CREATE INDEX IF NOT EXISTS idx_enrollment_class_status ON "Enrollment"(class_id, status)',
+      'CREATE INDEX IF NOT EXISTS idx_enrollment_student ON "Enrollment"(student_id)',
+      'CREATE INDEX IF NOT EXISTS idx_enrollment_status ON "Enrollment"(status)',
+      'CREATE INDEX IF NOT EXISTS idx_enrollment_date ON "Enrollment"(enrolled_at)',
       
       // Payment indexes
-      'CREATE INDEX idx_payment_student_month ON "Payment"(student_id, month)',
-      'CREATE INDEX idx_payment_date ON "Payment"(payment_date)',
-      'CREATE INDEX idx_payment_status ON "Payment"(paid)',
+      'CREATE INDEX IF NOT EXISTS idx_payment_student_month ON "Payment"(student_id, month)',
+      'CREATE INDEX IF NOT EXISTS idx_payment_date ON "Payment"(payment_date)',
+      'CREATE INDEX IF NOT EXISTS idx_payment_status ON "Payment"(paid)',
       
       // Attendance indexes
-      'CREATE INDEX idx_attendance_class_date ON "Attendance"(class_id, date)',
-      'CREATE INDEX idx_attendance_student ON "Attendance"(student_id)',
-      'CREATE INDEX idx_attendance_date ON "Attendance"(date)'
+      'CREATE INDEX IF NOT EXISTS idx_attendance_class_date ON "Attendance"(class_id, date)',
+      'CREATE INDEX IF NOT EXISTS idx_attendance_student ON "Attendance"(student_id)',
+      'CREATE INDEX IF NOT EXISTS idx_attendance_date ON "Attendance"(date)'
     ];
 
     for (const indexQuery of indexes) {
-      await pool.query(indexQuery);
+      try {
+        await pool.query(indexQuery);
+      } catch (error) {
+        // Ignore index creation errors (they might already exist)
+        console.log(`Index creation skipped: ${indexQuery.split(' ')[5]}`);
+      }
     }
-    console.log('Database indexes created');
+    console.log('Database indexes ready');
     console.log('Database schema setup completed successfully!');
 
   } catch (error) {
