@@ -22,9 +22,13 @@ export const createDatabaseSchema = async (pool: Pool) => {
       DROP TABLE IF EXISTS "Branch" CASCADE;
       DROP TABLE IF EXISTS "User" CASCADE;
     `;
-    // Comment out this 2 lines to persist database records
-    await pool.query(dropTables);
-    console.log('Dropped existing tables');
+    // Only drop tables in development
+    if (process.env.NODE_ENV === 'development') {
+      await pool.query(dropTables);
+      console.log('Dropped existing tables (development mode)');
+    } else {
+      console.log('Production mode: Preserving existing tables');
+    }
 
     // Create Users table
     const createUsersTable = `
