@@ -55,7 +55,6 @@ git --version  # verify
 ### 2. Install node.js and npm
 
 ```bash
-sudo apt update
 sudo apt install nodejs npm
 node -v  # verify
 npm -v  # verify
@@ -64,7 +63,6 @@ npm -v  # verify
 ### 3. Install postgresql
 
 ```bash
-sudo apt update
 sudo apt install postgresql
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
