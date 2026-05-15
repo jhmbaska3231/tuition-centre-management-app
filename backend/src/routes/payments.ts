@@ -3,6 +3,7 @@
 import express from 'express';
 import { pool } from '../index';
 import { authenticateToken, requireRole, AuthRequest } from '../middleware/auth';
+import { isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -29,6 +30,10 @@ router.get('/my-students', authenticateToken, requireRole('parent'), async (req:
 router.get('/:student_id/history', authenticateToken, requireRole('parent'), async (req: AuthRequest, res) => {
   try {
     const { student_id } = req.params;
+    if (!isValidUUID(student_id)) {
+      res.status(400).json({ error: 'Invalid student ID format' });
+      return;
+    }
 
     // Verify student belongs to this parent
     const studentCheck = await pool.query(

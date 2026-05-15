@@ -3,6 +3,7 @@
 import express from 'express';
 import { pool } from '../index';
 import { authenticateToken, requireRole, AuthRequest } from '../middleware/auth';
+import { isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -36,6 +37,10 @@ router.get('/all', authenticateToken, requireRole('admin'), async (req: AuthRequ
 router.get('/:id', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
 
     const result = await pool.query(
       'SELECT id, name, address, phone, active, created_at, updated_at FROM "Branch" WHERE id = $1',
@@ -107,6 +112,10 @@ router.post('/', authenticateToken, requireRole('admin'), async (req: AuthReques
 router.put('/:id', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { name, address, phone, active } = req.body;
 
     // Check if branch exists
@@ -176,6 +185,10 @@ router.put('/:id', authenticateToken, requireRole('admin'), async (req: AuthRequ
 router.get('/:id/deletion-impact', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
 
     // Get branch info
     const branchResult = await pool.query(
@@ -291,6 +304,10 @@ router.delete('/:id', authenticateToken, requireRole('admin'), async (req: AuthR
     await client.query('BEGIN');
     
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { acknowledged } = req.body;
 
     if (!acknowledged) {

@@ -3,7 +3,7 @@
 import express from 'express';
 import { pool } from '../index';
 import { authenticateToken, requireRole, requireAnyRole, AuthRequest } from '../middleware/auth';
-import { validateClass } from '../middleware/validation';
+import { validateClass, isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -254,6 +254,10 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const userRole = req.user!.role;
     const userId = req.user!.userId;
 
@@ -462,6 +466,10 @@ router.post('/', authenticateToken, requireAnyRole('staff', 'admin'), validateCl
 router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { subject, description, level, startTime, durationMinutes, capacity, branchId, classroomId } = req.body;
     const userRole = req.user!.role;
     const userId = req.user!.userId;
@@ -626,6 +634,10 @@ router.put('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (r
 router.delete('/:id', authenticateToken, requireAnyRole('staff', 'admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const userRole = req.user!.role;
     const userId = req.user!.userId;
 

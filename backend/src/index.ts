@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createDatabasePool, testDatabaseConnection } from './config/database';
 import { createDatabaseSchema, seedDatabase } from './database/schema';
+import { sanitizeInput, securityLogging, additionalSecurityHeaders } from './middleware/security';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -167,6 +168,11 @@ app.use(express.urlencoded({
   extended: false, 
   limit: '10mb'
 }));
+
+// Security middleware
+app.use(sanitizeInput);
+app.use(securityLogging);
+app.use(additionalSecurityHeaders);
 
 // Track HTTP requests for Prometheus
 app.use((req, res, next) => {

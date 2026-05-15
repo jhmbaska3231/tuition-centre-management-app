@@ -3,6 +3,7 @@
 import express from 'express';
 import { pool } from '../index';
 import { authenticateToken, requireRole, AuthRequest } from '../middleware/auth';
+import { isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -35,6 +36,10 @@ router.get('/my-classes', authenticateToken, requireRole('staff'), async (req: A
 router.get('/class/:classId/students', authenticateToken, requireRole('staff'), async (req: AuthRequest, res) => {
   try {
     const { classId } = req.params;
+    if (!isValidUUID(classId)) {
+      res.status(400).json({ error: 'Invalid class ID format' });
+      return;
+    }
     const staffId = req.user!.userId;
     
     // Verify this staff member is assigned to this class
@@ -70,6 +75,10 @@ router.get('/class/:classId/students', authenticateToken, requireRole('staff'), 
 router.get('/class/:classId/date/:date', authenticateToken, requireRole('staff'), async (req: AuthRequest, res) => {
   try {
     const { classId, date } = req.params;
+    if (!isValidUUID(classId)) {
+      res.status(400).json({ error: 'Invalid class ID format' });
+      return;
+    }
     const staffId = req.user!.userId;
     
     // Verify this staff member is assigned to this class
@@ -116,6 +125,10 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
     await client.query('BEGIN');
     
     const { classId, date } = req.params;
+    if (!isValidUUID(classId)) {
+      res.status(400).json({ error: 'Invalid class ID format' });
+      return;
+    }
     const { attendanceRecords } = req.body;
     const staffId = req.user!.userId;
     
@@ -246,6 +259,10 @@ router.post('/class/:classId/date/:date/mark', authenticateToken, requireRole('s
 router.get('/class/:classId/summary', authenticateToken, requireRole('staff'), async (req: AuthRequest, res) => {
   try {
     const { classId } = req.params;
+    if (!isValidUUID(classId)) {
+      res.status(400).json({ error: 'Invalid class ID format' });
+      return;
+    }
     const { startDate, endDate } = req.query;
     const staffId = req.user!.userId;
     

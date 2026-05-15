@@ -3,6 +3,7 @@
 import express from 'express';
 import { pool } from '../index';
 import { authenticateToken, requireRole, requireAnyRole, AuthRequest } from '../middleware/auth';
+import { isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -76,6 +77,10 @@ router.get('/all', authenticateToken, requireRole('admin'), async (req: AuthRequ
 router.get('/:id', authenticateToken, requireAnyRole('admin', 'staff'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
 
     const result = await pool.query(`
       SELECT 
@@ -109,10 +114,19 @@ router.get('/:id', authenticateToken, requireAnyRole('admin', 'staff'), async (r
 router.get('/:id/availability', authenticateToken, requireAnyRole('admin', 'staff'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { date, exclude_class_id } = req.query;
 
     if (!date) {
       res.status(400).json({ error: 'Date parameter is required' });
+      return;
+    }
+
+    if (exclude_class_id && !isValidUUID(exclude_class_id as string)) {
+      res.status(400).json({ error: 'Invalid exclude_class_id format' });
       return;
     }
 
@@ -235,6 +249,10 @@ router.post('/', authenticateToken, requireRole('admin'), async (req: AuthReques
 router.put('/:id', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { room_name, description, room_capacity, active } = req.body;
 
     // Check if classroom exists
@@ -321,6 +339,10 @@ router.put('/:id', authenticateToken, requireRole('admin'), async (req: AuthRequ
 router.get('/:id/deletion-impact', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
 
     // Get classroom info
     const classroomResult = await pool.query(`
@@ -412,6 +434,10 @@ router.delete('/:id', authenticateToken, requireRole('admin'), async (req: AuthR
     await client.query('BEGIN');
     
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { acknowledged } = req.body;
 
     if (!acknowledged) {

@@ -3,6 +3,7 @@
 import express from 'express';
 import { pool } from '../index';
 import { authenticateToken, requireRole, AuthRequest } from '../middleware/auth';
+import { isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -160,6 +161,10 @@ router.post('/', authenticateToken, requireRole('parent'), async (req: AuthReque
 router.delete('/:enrollmentId', authenticateToken, requireRole('parent'), async (req: AuthRequest, res) => {
   try {
     const { enrollmentId } = req.params;
+    if (!isValidUUID(enrollmentId)) {
+      res.status(400).json({ error: 'Invalid enrollment ID format' });
+      return;
+    }
 
     // Verify enrollment belongs to this parent and class is in the future
     const enrollmentCheck = await pool.query(`
@@ -200,6 +205,10 @@ router.delete('/:enrollmentId', authenticateToken, requireRole('parent'), async 
 router.get('/:enrollmentId', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { enrollmentId } = req.params;
+    if (!isValidUUID(enrollmentId)) {
+      res.status(400).json({ error: 'Invalid enrollment ID format' });
+      return;
+    }
 
     let query = `
       SELECT e.id, e.student_id, e.class_id, e.enrolled_at, e.status, e.cancelled_at,

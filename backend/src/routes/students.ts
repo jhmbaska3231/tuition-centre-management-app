@@ -3,7 +3,7 @@
 import express from 'express';
 import { pool } from '../index';
 import { authenticateToken, requireRole, AuthRequest } from '../middleware/auth';
-import { validateStudent } from '../middleware/validation';
+import { validateStudent, isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -107,6 +107,10 @@ router.put('/:id', authenticateToken, requireRole('parent'), validateStudent, as
     await client.query('BEGIN');
     
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { firstName, lastName, grade, dateOfBirth, homeBranchId } = req.body;
 
     // Verify student belongs to this parent and get current student data
@@ -248,6 +252,10 @@ router.put('/:id', authenticateToken, requireRole('parent'), validateStudent, as
 router.delete('/:id', authenticateToken, requireRole('parent'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
 
     // Verify student belongs to this parent
     const studentCheck = await pool.query(
@@ -281,6 +289,10 @@ router.delete('/:id', authenticateToken, requireRole('parent'), async (req: Auth
 router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     let query = `
       SELECT s.id, s.first_name, s.last_name, s.grade, s.date_of_birth, s.home_branch_id, s.active,
              s.created_at, s.updated_at,

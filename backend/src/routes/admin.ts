@@ -4,7 +4,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import { pool } from '../index';
 import { authenticateToken, requireRole, AuthRequest } from '../middleware/auth';
-import { validateParentRegistration } from '../middleware/validation';
+import { validateParentRegistration, isValidUUID } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -174,6 +174,10 @@ router.get('/staff', authenticateToken, requireRole('admin'), async (req: AuthRe
 router.get('/staff/:id', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
 
     const result = await pool.query(`
       SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.active, u.created_at, u.updated_at,
@@ -245,6 +249,10 @@ router.post('/staff', authenticateToken, requireRole('admin'), validateParentReg
 router.put('/staff/:id', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { firstName, lastName, phone, active } = req.body;
 
     // Verify staff member exists
@@ -284,6 +292,10 @@ router.put('/staff/:id', authenticateToken, requireRole('admin'), async (req: Au
 router.get('/staff/:id/deletion-impact', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
 
     // Get staff info and their classes
     const staffResult = await pool.query(`
@@ -342,6 +354,10 @@ router.delete('/staff/:id', authenticateToken, requireRole('admin'), async (req:
     await client.query('BEGIN');
     
     const { id } = req.params;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ error: 'Invalid ID format' });
+      return;
+    }
     const { acknowledged } = req.body; // Admin must acknowledge the impact
 
     if (!acknowledged) {
@@ -420,6 +436,10 @@ router.get('/classes/unassigned', authenticateToken, requireRole('admin'), async
 router.put('/classes/:classId/assign-tutor', authenticateToken, requireRole('admin'), async (req: AuthRequest, res) => {
   try {
     const { classId } = req.params;
+    if (!isValidUUID(classId)) {
+      res.status(400).json({ error: 'Invalid class ID format' });
+      return;
+    }
     const { tutorId } = req.body;
 
     if (!tutorId) {
