@@ -4,22 +4,23 @@ A full-stack web application for managing tuition centres, this system enables e
 
 ## Features
 
-### For parents
+### for parents
 - **student management**: add and manage children's profiles with grades and branch preferences
 - **class operations**: browse available classes, enroll students, and manage enrollments
-- **payment history**: track payment records and outstanding fees
+- **payment history**: track monthly payment records and payment status
 - **profile management**: update personal information and account settings
 
-### For staff/teachers
+### for staff/teachers
 - **class management**: create, edit, and manage assigned classes with capacity and time conflict detection
+- **enrollment management**: enroll and cancel student class enrollments
 - **attendance tracking**: mark attendance for students with detailed status options
-- **student overview**: view enrolled students and their information
+- **student overview**: view all students across the system and their information
 
-### For administrators
+### for administrators
 - **staff management**: create, edit, and manage staff accounts
 - **branch & classroom management**: manage multiple branches and their classroom allocations
 - **class assignment**: assign tutors to unassigned classes with automatic conflict resolution
-- **system overview**: monitor user activities and system usage
+- **full data visibility**: view all students, classes, enrollments, and branches across the system
 
 ## Tech stack
 
@@ -33,11 +34,13 @@ A full-stack web application for managing tuition centres, this system enables e
 - Node.js with Express
 - TypeScript
 - PostgreSQL database
+- pg for PostgreSQL database client
 - JWT authentication
 - bcrypt for password hashing
 - express-rate-limit for API protection
 - Helmet for security headers
 - isomorphic-dompurify for input sanitization
+- prom-client for Prometheus metrics
 - CORS configuration for cross-origin requests
 
 ---
@@ -138,7 +141,23 @@ cd frontend
 npm run dev
 ```
 
-> note: backend auto creates all database tables and seeds initial data upon each run (only in dev env)
+> note backend auto creates all database tables and seeds initial data upon each run (only in dev env)
+
+### 9. Maintain packages
+
+run periodically to check and fix known vulnerabilities in dependencies
+
+```bash
+cd backend
+npm audit  # check for vulnerabilities
+npm audit fix  # apply fixes
+```
+
+```bash
+cd frontend
+npm audit  # check for vulnerabilities
+npm audit fix  # apply fixes
+```
 
 ---
 
@@ -155,4 +174,4 @@ test account password is password123
 | parent| jaytoh@gmail.com        |
 | parent| alice.lim@gmail.com     |
 
-> note: these only created in dev env
+> note these are only created in dev env
