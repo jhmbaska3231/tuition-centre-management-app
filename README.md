@@ -1,6 +1,6 @@
 # Tuition Centre Management System
 
-A full-stack web application for managing tuition centres, this system enables efficient management of students, classes, enrollments, attendance tracking, and payment records across multiple branches
+A fullstack web application for managing tuition centres, this system enables efficient management of students, classes, enrollments, attendance tracking, and payment records across multiple branches
 
 ## Features
 
