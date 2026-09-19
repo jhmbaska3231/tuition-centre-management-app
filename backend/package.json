@@ -4,11 +4,14 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
+    "worker:dev": "nodemon --exec ts-node src/worker.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "create-admin": "ts-node scripts/create-admin.ts",
-    "create-admin:prod": "node dist/scripts/create-admin.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "worker": "node dist/worker.js",
+    "job:nightly": "ts-node src/jobs/nightly.ts",
+    "db:reset": "ts-node db/reset.ts",
+    "db:seed": "ts-node db/seed/dev.ts",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -16,26 +19,37 @@
   "description": "",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
-    "isomorphic-dompurify": "^2.25.0",
     "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.7.2",
+    "nodemailer": "^10.0.10",
     "pg": "^8.16.0",
-    "prom-client": "^15.1.3"
+    "pg-boss": "^12.33.1",
+    "prom-client": "^15.1.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
-    "@types/helmet": "^0.0.48",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/luxon": "^3.7.5",
     "@types/node": "^22.15.29",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.15.4",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
-  }
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "db:reset": "ts-node --project db/tsconfig.json db/reset.ts",
+  "db:seed": "ts-node --project db/tsconfig.json db/seed/dev.ts"
 }

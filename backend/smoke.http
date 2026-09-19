@@ -1,0 +1,235 @@
+### backend/smoke.http
+### send requests in order. each block's "# @name" lets later blocks reuse its response
+
+@base = http://localhost:8080
+@today = {{$datetime "YYYY-MM-DD"}}
+@weekAgo = {{$datetime "YYYY-MM-DD" -7 d}}
+@twoWeeks = {{$datetime "YYYY-MM-DD" 14 d}}
+
+### 1. health and readiness: expect 200, ready with database connected
+GET {{base}}/ready
+
+### 2. admin login: expect 200, accesstoken and user.role admin. a set-cookie header named rt appears
+# @name adminLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@tuition.com", "password": "password123" }
+
+###
+@admin = {{adminLogin.response.body.accessToken}}
+
+### 3. org and settings: expect timezone asia/singapore, session_horizon_weeks 12
+GET {{base}}/api/org
+Authorization: Bearer {{admin}}
+
+### 4. dashboard: expect non zero active_students, open_courses, outstanding_cents
+GET {{base}}/api/reports/overview
+Authorization: Bearer {{admin}}
+
+### 5. rate limiting header check: expect ratelimit-* headers on any /api response
+GET {{base}}/api/levels
+
+### 6. register a new parent: expect 201
+# @name register
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{ "firstName": "Smoke", "lastName": "Tester", "email": "smoke@example.com", "password": "password123", "phone": "98765432" }
+
+###
+@parent = {{register.response.body.accessToken}}
+
+### 7. register again with the same email: expect 409 conflict
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{ "firstName": "Smoke", "lastName": "Tester", "email": "smoke@example.com", "password": "password123" }
+
+### 8. levels are public: pick s1 for the child
+# @name levels
+GET {{base}}/api/levels
+
+###
+@levelS1 = {{levels.response.body.$[?(@.code=='S1')].id}}
+
+### 9. parent adds a child: expect 201 with guardians[0].is_billing_contact true
+# @name child
+POST {{base}}/api/students/mine
+Authorization: Bearer {{parent}}
+Content-Type: application/json
+
+{ "firstName": "Sam", "lastName": "Tester", "levelId": "{{levelS1}}", "relationship": "mother" }
+
+###
+@studentId = {{child.response.body.id}}
+
+### 10. parent browses courses: expect only open courses at s1 or mixed level (sec 1 mathematics, piano)
+# @name courses
+GET {{base}}/api/courses?studentId={{studentId}}
+Authorization: Bearer {{parent}}
+
+###
+@courseId = {{courses.response.body.$[?(@.name=='Sec 1 Mathematics')].id}}
+
+### 11. enroll: expect 201, status active, starts_on today
+# @name enroll
+POST {{base}}/api/enrollments
+Authorization: Bearer {{parent}}
+Content-Type: application/json
+
+{ "studentId": "{{studentId}}", "courseId": "{{courseId}}" }
+
+### 12. enroll again: expect 409 already enrolled
+POST {{base}}/api/enrollments
+Authorization: Bearer {{parent}}
+Content-Type: application/json
+
+{ "studentId": "{{studentId}}", "courseId": "{{courseId}}" }
+
+### 13. parent sees upcoming sessions for their children: expect saturday 10:00 sessions
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}
+Authorization: Bearer {{parent}}
+
+### 14. parent tries a staff endpoint: expect 403
+GET {{base}}/api/students
+Authorization: Bearer {{parent}}
+
+### 15. tutor login (hui teaches sec 1 mathematics)
+# @name tutorLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "hui.siew@tuition.com", "password": "password123" }
+
+###
+@tutor = {{tutorLogin.response.body.accessToken}}
+
+### 16. today's completed sessions for hui: narrowing to today to keep inside the edit window
+# @name pastSessions
+GET {{base}}/api/sessions?from={{today}}&to={{today}}&status=completed
+Authorization: Bearer {{tutor}}
+
+###
+@sessionId = {{pastSessions.response.body.$[0].id}}
+
+### 17. roster: expect john toh and sam tester (sam enrolled in block 11), both source "enrollment"
+# @name roster
+GET {{base}}/api/attendance/sessions/{{sessionId}}
+Authorization: Bearer {{tutor}}
+
+###
+@johnId = {{roster.response.body.$[?(@.student_name=='John Toh')].student_id}}
+
+### 18. mark john excused: expect 200 and a make up credit created (excused is the eligible status)
+PUT {{base}}/api/attendance/sessions/{{sessionId}}
+Authorization: Bearer {{tutor}}
+Content-Type: application/json
+
+{ "records": [ { "studentId": "{{johnId}}", "status": "excused", "notes": "Medical" } ] }
+
+### 19. a student who is not on this roster: expect 422 "not on this session's roster"
+PUT {{base}}/api/attendance/sessions/{{sessionId}}
+Authorization: Bearer {{tutor}}
+Content-Type: application/json
+
+{ "records": [ { "studentId": "00000000-0000-4000-8000-000000000000", "status": "present" } ] }
+
+### 20. jay logs in and sees the credit: expect one available credit for sec 1 mathematics
+# @name jayLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "jaytoh@gmail.com", "password": "password123" }
+
+###
+@jay = {{jayLogin.response.body.accessToken}}
+
+###
+# @name makeups
+GET {{base}}/api/makeups?status=available
+Authorization: Bearer {{jay}}
+
+###
+@makeupId = {{makeups.response.body.$[0].id}}
+
+### 21a. bookable sessions for the credit: expect [] with the seed: john is still enrolled in
+### the only sec 1 maths course, so every future session of it is excluded
+GET {{base}}/api/makeups/{{makeupId}}/options
+Authorization: Bearer {{jay}}
+
+### 21b. booking a session that is not an option: expect 422 "not available for this credit"
+POST {{base}}/api/makeups/{{makeupId}}/book
+Authorization: Bearer {{jay}}
+Content-Type: application/json
+
+{ "sessionId": "{{courses.response.body.$[1].id}}" }
+
+### 22. jay's invoices and balance: expect one paid, one issued, outstanding_cents 33000
+GET {{base}}/api/invoices
+Authorization: Bearer {{jay}}
+
+###
+GET {{base}}/api/invoices/my-balance
+Authorization: Bearer {{jay}}
+
+### 23. admin records jay paying 33000 by paynow: expect the issued invoice to become paid, unallocatedcents 0
+# @name jayInvoices
+GET {{base}}/api/invoices?billToUserId={{jayLogin.response.body.user.id}}&status=issued
+Authorization: Bearer {{admin}}
+
+###
+POST {{base}}/api/payments
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "payerUserId": "{{jayLogin.response.body.user.id}}", "amountCents": 33000, "method": "paynow", "reference": "SMOKE-001" }
+
+### 24. leave three weeks out, clear of the seeded request: expect 201 pending
+# @name leave
+POST {{base}}/api/leave
+Authorization: Bearer {{tutor}}
+Content-Type: application/json
+
+{ "starts_on": "{{$datetime "YYYY-MM-DD" 20 d}}", "ends_on": "{{$datetime "YYYY-MM-DD" 22 d}}", "leave_type": "annual", "reason": "Smoke test" }
+
+### 25. admin approves: expect status approved and affected_session_count 2 (sat sec 1 maths and sec 3 maths)
+POST {{base}}/api/leave/{{leave.response.body.id}}/decide
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "decision": "approved" }
+
+### 26. sessions needing cover: expect hui's two sessions inside the approved window
+# @name cover
+GET {{base}}/api/sessions/needing-cover
+Authorization: Bearer {{admin}}
+
+### 27. assign zen as cover for the first: expect 200, tutor_name "zen teo", warnings empty
+# @name staff
+GET {{base}}/api/staff?role=tutor
+Authorization: Bearer {{admin}}
+
+###
+POST {{base}}/api/sessions/{{cover.response.body.$[0].id}}/cover
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "tutor_id": "{{staff.response.body.$[?(@.email=='zen.teo@tuition.com')].id}}" }
+
+### 28. outbox: expect rows for tutor_changed, waitlist/absent/leave events, status sent once the worker ran (console provider in dev)
+GET {{base}}/api/notifications/outbox
+Authorization: Bearer {{admin}}
+
+### 29. refresh rotates the cookie: expect 200 and a new set-cookie rt
+POST {{base}}/api/auth/refresh
+
+### 30. logout, then refresh again: expect 204, then 401
+POST {{base}}/api/auth/logout
+
+###
+POST {{base}}/api/auth/refresh
+
+### 31. audit trail for the enrollment: expect enrollment.created by the smoke parent
+GET {{base}}/api/audit?entityType=enrollment&entityId={{enroll.response.body.id}}
+Authorization: Bearer {{admin}}

@@ -1,38 +1,21 @@
 # backend/Dockerfile
 
-FROM node:18-alpine
-
-# Create app directory
-WORKDIR /usr/src/app
-
-# Copy package files
+FROM node:22-alpine AS builder
+WORKDIR /app
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy source code
-COPY . .
-
-# Build TypeScript
+RUN npm ci
+COPY tsconfig.json ./
+COPY src ./src
 RUN npm run build
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /usr/src/app
-
-# Switch to non-root user
-USER nodejs
-
-# Expose port 8080 (matches Kubernetes deployment)
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=builder /app/dist ./dist
+RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
+USER app
 EXPOSE 8080
-
-# Health check for Docker
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
-
-# Start the application
-CMD ["npm", "start"]
+# api by default, the worker deployment overrides with: node dist/worker.js
+CMD ["node", "dist/index.js"]

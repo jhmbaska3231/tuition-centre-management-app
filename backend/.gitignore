@@ -1,14 +1,26 @@
-# Dependencies
+# dependencies
 node_modules/
 
-# Environment variables
+# build output
+dist/
+
+# environment files (the example is the template and stays tracked)
 .env
+.env.*
+!.env.example
 
-# Logs (TypeScript/Node might generate these)
+# logs
 *.log
+npm-debug.log*
 
-# OS files
+# editor and os
+.vscode/
+.idea/
 .DS_Store
 
-# TypeScript build info (might be generated)
+# typescript
 *.tsbuildinfo
+
+# keys and certificates that should never be committed
+*.pem
+*.key
