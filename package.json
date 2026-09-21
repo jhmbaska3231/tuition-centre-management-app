@@ -1,0 +1,22 @@
+{
+    "name": "tuition-centre-management",
+    "private": true,
+    "workspaces": [
+        "shared",
+        "backend",
+        "frontend"
+    ],
+    "engines": {
+        "node": ">=22.22"
+    },
+    "scripts": {
+        "build:shared": "npm run build -w shared",
+        "dev:api": "npm run build:shared && npm run dev -w backend",
+        "dev:worker": "npm run build:shared && npm run worker:dev -w backend",
+        "dev:web": "npm run build:shared && npm run dev -w frontend",
+        "db:reset": "npm run db:reset -w backend",
+        "job:nightly": "npm run job:nightly -w backend",
+        "typecheck": "npm run build -w shared && npm run typecheck -w backend && npm run typecheck -w frontend",
+        "build": "npm run build -w shared && npm run build -w backend && npm run build -w frontend"
+    }
+}

@@ -5,7 +5,7 @@ import { config } from '../../config';
 import { authLimiter } from '../../http/middleware/rate-limit';
 import { validate } from '../../http/middleware/validate';
 import { authenticate, currentUser } from './middleware';
-import { loginSchema, passwordResetConfirmSchema, passwordResetRequestSchema, registerSchema } from './schemas';
+import { loginSchema, passwordResetConfirmSchema, passwordResetRequestSchema, registerSchema } from '@tuition/shared';
 import * as service from './service';
 
 export const authRouter = Router();

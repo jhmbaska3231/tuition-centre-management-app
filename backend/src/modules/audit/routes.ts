@@ -1,20 +1,14 @@
 // backend/src/modules/audit/routes.ts
 
 import { Router } from 'express';
-import { z } from 'zod';
+import { auditQuery } from '@tuition/shared';
 import { many, pool } from '../../db';
-import { isoDate, uuid, validate } from '../../http/middleware/validate';
+import { validate } from '../../http/middleware/validate';
 import { authenticate, authorise, currentUser } from '../auth/middleware';
-
-const query = z.object({
-  entityType: z.string().trim().max(50).optional(), entityId: uuid.optional(), actorUserId: uuid.optional(),
-  action: z.string().trim().max(80).optional(), from: isoDate.optional(), to: isoDate.optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50), offset: z.coerce.number().int().min(0).default(0),
-});
 
 export const auditRouter = Router();
 auditRouter.use(authenticate, authorise('admin'));
-auditRouter.get('/', validate({ query }), async (req, res) => {
+auditRouter.get('/', validate({ query: auditQuery }), async (req, res) => {
   const f = req.validated.query;
   res.json(await many(pool,
     `SELECT a.*, CASE WHEN u.id IS NULL THEN NULL ELSE u.first_name || ' ' || u.last_name END AS actor_name

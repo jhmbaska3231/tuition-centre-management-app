@@ -47,22 +47,15 @@ export interface AuthSessionRow {
   created_at: Date;
 }
 
-export interface PublicUser {
-  id: string;
-  email: string;
-  role: Role;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-  createdAt: Date;
-}
+import type { PublicUser } from '@tuition/shared';
+export type { PublicUser };
 
 export const toPublicUser = (u: Pick<UserRow, 'id' | 'email' | 'role' | 'first_name' | 'last_name' | 'phone' | 'created_at'>): PublicUser => ({
   id: u.id,
   email: u.email,
   role: u.role,
-  firstName: u.first_name,
-  lastName: u.last_name,
+  first_name: u.first_name,
+  last_name: u.last_name,
   phone: u.phone,
-  createdAt: u.created_at,
+  created_at: u.created_at.toISOString(),
 });

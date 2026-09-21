@@ -1,21 +1,36 @@
 # backend/Dockerfile
+# build from the repository root: docker build -f backend/Dockerfile -t tuition-backend .
 
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY tsconfig.json ./
-COPY src ./src
-RUN npm run build
+
+# every workspace manifest must be present or npm ci cannot validate the lockfile
+COPY package.json package-lock.json ./
+COPY shared/package.json shared/
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
+RUN npm ci --workspace @tuition/shared --workspace backend
+
+COPY shared/ shared/
+COPY backend/tsconfig.json backend/
+COPY backend/src/ backend/src/
+RUN npm run build -w @tuition/shared && npm run build -w backend
 
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-COPY --from=builder /app/dist ./dist
-RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
-USER app
+
+COPY package.json package-lock.json ./
+COPY shared/package.json shared/
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
+RUN npm ci --omit=dev --workspace @tuition/shared --workspace backend && npm cache clean --force
+
+COPY --from=builder /app/shared/dist shared/dist
+COPY --from=builder /app/backend/dist backend/dist
+
+# the node image ships an unprivileged user, files stay root owned and read only to it
+USER node
 EXPOSE 8080
-# api by default, the worker deployment overrides with: node dist/worker.js
-CMD ["node", "dist/index.js"]
+# the worker deployment overrides this with: node backend/dist/worker.js
+CMD ["node", "backend/dist/index.js"]

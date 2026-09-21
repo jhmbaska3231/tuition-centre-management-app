@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+
+# environment files (the example is the template and stays tracked)
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# editor and os
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# typescript and vite caches
+*.tsbuildinfo
+.tmp/
+vite.config.ts.timestamp-*
+
+# test output
+coverage/
+
+# keys and certificates that should never be committed
+*.pem
+*.key
+*.p12

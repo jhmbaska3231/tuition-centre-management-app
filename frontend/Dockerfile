@@ -1,45 +1,23 @@
 # frontend/Dockerfile
+# build from the repository root: docker build -f frontend/Dockerfile -t tuition-frontend .
 
-# Build stage
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
+WORKDIR /app
 
-# Create app directory
-WORKDIR /usr/src/app
+# every workspace manifest must be present or npm ci cannot validate the lockfile
+COPY package.json package-lock.json ./
+COPY shared/package.json shared/
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
+RUN npm ci --workspace @tuition/shared --workspace @tuition/frontend
 
-# Copy package files
-COPY package*.json ./
+COPY shared/ shared/
+COPY frontend/ frontend/
+RUN npm run build -w @tuition/shared && npm run build -w @tuition/frontend
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN npm run build
-
-# Production stage
-FROM nginx:alpine
-
-# Create writable directories for nginx non root operation
-RUN mkdir -p /tmp/nginx/client_temp /tmp/nginx/proxy_temp /tmp/nginx/fastcgi_temp /tmp/nginx/uwsgi_temp /tmp/nginx/scgi_temp && \
-    chown -R nginx:nginx /tmp/nginx
-
-# Copy built files from builder stage
-COPY --from=builder /usr/src/app/dist /usr/share/nginx/html
-
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Set proper ownership of required directories for nginx user
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /tmp/nginx
-
-# Switch to non root user
-USER nginx
-
-# Expose port 8080 (matches Kubernetes deployment)
+# unprivileged variant runs as a non root user and listens on 8080 by default
+FROM nginxinc/nginx-unprivileged:stable-alpine
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 EXPOSE 8080
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]

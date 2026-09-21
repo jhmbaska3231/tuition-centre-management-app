@@ -25,7 +25,7 @@ export const updateMyProfile = (user: AuthUser, input: { firstName?: string; las
     if (input.phone !== undefined) fields.phone = input.phone;
     await repo.updateUserFields(tx, user.orgId, user.id, fields);
     await writeAudit(tx, { orgId: user.orgId, actorUserId: user.id, action: 'user.profile_updated', entityType: 'user', entityId: user.id, before: { first_name: before.first_name, last_name: before.last_name, phone: before.phone }, after: fields, ip });
-    return { id: user.id, email: before.email, role: before.role, firstName: input.firstName ?? before.first_name, lastName: input.lastName ?? before.last_name, phone: input.phone === undefined ? before.phone : input.phone };
+    return { id: user.id, email: before.email, role: before.role, first_name: input.firstName ?? before.first_name, last_name: input.lastName ?? before.last_name, phone: input.phone === undefined ? before.phone : input.phone };
   });
 
 // changing the password ends every other session, the caller's own family survives

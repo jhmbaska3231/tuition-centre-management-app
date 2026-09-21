@@ -1,0 +1,21 @@
+# .dockerignore
+# build context is the repository root for both images
+
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/*.log
+
+**/.env
+**/.env.*
+
+.git
+.vscode
+.idea
+**/.DS_Store
+
+# tooling and docs that neither image needs
+backend/db
+backend/smoke.http
+docs
+README.md

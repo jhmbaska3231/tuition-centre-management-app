@@ -6,7 +6,7 @@ import { isUniqueViolation, pool, withTransaction } from '../../db';
 import { ConflictError, UnauthorizedError } from '../../http/errors';
 import { getCurrentOrgId } from '../org/current-org';
 import * as repo from './repository';
-import { LoginInput, RegisterInput } from './schemas';
+import type { LoginInput, RegisterInput } from '@tuition/shared';
 import { hashToken, newFamilyId, newOpaqueToken, signAccessToken } from './tokens';
 import { PublicUser, toPublicUser, UserRow } from './types';
 import { writeAudit } from '../audit/writer';

@@ -50,7 +50,4 @@ export const validate = <B extends ZodType, P extends ZodType, Q extends ZodType
     next();
   };
 
-// common reusable pieces
-export const uuid = z.uuid();
-export const isoDate = z.iso.date();
-export const idParam = z.object({ id: uuid });
+export { uuid, isoDate, idParam } from '@tuition/shared';

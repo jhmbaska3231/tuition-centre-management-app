@@ -105,9 +105,10 @@ Content-Type: application/json
 ###
 @tutor = {{tutorLogin.response.body.accessToken}}
 
-### 16. today's completed sessions for hui: narrowing to today to keep inside the edit window
+### 16. hui's recent completed sessions. six days back keeps it inside the edit window
+### while ensuring at least one saturday or wednesday session exists
 # @name pastSessions
-GET {{base}}/api/sessions?from={{today}}&to={{today}}&status=completed
+GET {{base}}/api/sessions?from={{$datetime "YYYY-MM-DD" -6 d}}&to={{today}}&status=completed
 Authorization: Bearer {{tutor}}
 
 ###

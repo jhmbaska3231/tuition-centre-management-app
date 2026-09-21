@@ -1,15 +1,137 @@
+/* frontend/src/index.css */
+
 @import "tailwindcss";
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/*
+  two layers, deliberately
+
+  :root holds semantic values as plain css variables. these are what a tuition centre
+  can override at runtime: the themeprovider writes a centre's accent onto :root after
+  fetching /api/org, and every component picks it up with no re render and no prop
+
+  @theme inline maps those variables into tailwind's token namespace so bg-primary,
+  text-muted-foreground and so on resolve to them
+*/
+
+:root {
+  /* brand scale. hue 300 in oklch, chroma tuned for print safe depth */
+  --brand-50:  oklch(0.977 0.013 300);
+  --brand-100: oklch(0.946 0.031 300);
+  --brand-200: oklch(0.902 0.059 300);
+  --brand-300: oklch(0.827 0.106 300);
+  --brand-400: oklch(0.714 0.163 300);
+  --brand-500: oklch(0.606 0.196 300);
+  --brand-600: oklch(0.519 0.201 300);
+  --brand-700: oklch(0.441 0.178 300);
+  --brand-800: oklch(0.376 0.146 300);
+  --brand-900: oklch(0.322 0.116 300);
+  --brand-950: oklch(0.228 0.082 300);
+
+  /* surfaces and text: near neutral slate with subtle purple cast */
+  --background:          oklch(1 0 0);
+  --foreground:          oklch(0.21 0.012 300);
+  --card:                oklch(1 0 0);
+  --card-foreground:     oklch(0.21 0.012 300);
+  --popover:             oklch(1 0 0);
+  --popover-foreground:  oklch(0.21 0.012 300);
+
+  --muted:               oklch(0.968 0.005 300);
+  --muted-foreground:    oklch(0.516 0.015 300);
+
+  --border:              oklch(0.922 0.008 300);
+  --input:               oklch(0.922 0.008 300);
+  --ring:                var(--brand-700);
+
+  /* actions */
+  --primary:             var(--brand-700);
+  --primary-foreground:  oklch(0.985 0.005 300);
+  --secondary:           oklch(0.968 0.005 300);
+  --secondary-foreground: oklch(0.29 0.014 300);
+  --accent:              oklch(0.968 0.005 300);
+  --accent-foreground:   oklch(0.29 0.014 300);
+  --destructive:         oklch(0.577 0.208 27);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  /*
+    status colors are intentionally not themeable. green for paid and red for overdue
+    is a usability property, not branding. a centre whose brand color is red must not
+    render overdue invoices in their brand color
+  */
+  --status-success:    oklch(0.586 0.152 152);
+  --status-success-bg: oklch(0.955 0.04 152);
+  --status-warning:    oklch(0.681 0.162 70);
+  --status-warning-bg: oklch(0.962 0.055 85);
+  --status-danger:     oklch(0.577 0.208 27);
+  --status-danger-bg:  oklch(0.955 0.04 27);
+  --status-info:       oklch(0.585 0.148 250);
+  --status-info-bg:    oklch(0.955 0.035 250);
+  --status-neutral:    oklch(0.516 0.015 300);
+  --status-neutral-bg: oklch(0.968 0.005 300);
+
+  --radius: 0.5rem;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@theme inline {
+  --color-brand-50:  var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--status-success);
+  --color-success-bg: var(--status-success-bg);
+  --color-warning: var(--status-warning);
+  --color-warning-bg: var(--status-warning-bg);
+  --color-danger: var(--status-danger);
+  --color-danger-bg: var(--status-danger-bg);
+  --color-info: var(--status-info);
+  --color-info-bg: var(--status-info-bg);
+  --color-neutral: var(--status-neutral);
+  --color-neutral-bg: var(--status-neutral-bg);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+
+  --font-sans: "Inter var", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@layer base {
+  * { @apply border-border; }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* tabular figures everywhere money or counts appear, so columns line up */
+  .tabular { font-variant-numeric: tabular-nums; }
 }
