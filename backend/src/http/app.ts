@@ -84,6 +84,13 @@ export const createApp = (routers: MountedRouter[]) => {
     next();
   });
 
+  // authenticated api responses must not persist in the browser's disk cache. the
+  // frontend's query cache is the only client side cache, and it is cleared on logout
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   // 8. rate limit and mount the api
   app.use('/api', generalLimiter);
   for (const { path, router } of routers) {
