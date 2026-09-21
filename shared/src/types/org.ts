@@ -3,6 +3,15 @@
 import type { AttendanceStatus, IntegrationKind, NotificationEvent } from '../enums';
 import type { DateOnly, Timestamp } from './api';
 
+// safe to expose without authentication. extend this when landing
+// page copy and theme colours become configurable
+export interface PublicOrganisation {
+  name: string;
+  slug: string;
+  timezone: string;
+  currency: string;
+}
+
 export interface Organisation {
   id: string;
   name: string;

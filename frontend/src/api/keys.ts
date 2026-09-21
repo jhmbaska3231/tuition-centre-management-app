@@ -5,6 +5,8 @@
 // and detail regardless of filters
 
 export const keys = {
+  // kept across logout, see clearquerycache
+  publicOrg: ['public-org'] as const,
   org: {
     all: ['org'] as const,
     detail: () => [...keys.org.all, 'detail'] as const,

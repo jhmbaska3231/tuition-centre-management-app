@@ -26,14 +26,17 @@ export const queryClient = new QueryClient({
       retryDelay: attempt => Math.min(1000 * 2 ** attempt, 8000),
     },
     mutations: {
-      // mutations are never retried automatically. re sending an enrolment or a payment
+      // mutations are never retried automatically. re sending an enrollment or a payment
       // on a timeout risks a duplicate, and the user should decide
       retry: false,
     },
   },
 });
 
-// called on logout so a later login cannot see the previous user's cached data
+// query roots that hold no user data and survive logout. without this the org name
+// would be evicted on sign out and the whole app would blank while it refetched
+const KEEP_ON_LOGOUT = new Set(['public-org']);
+
 export const clearQueryCache = (): void => {
-  queryClient.clear();
+  queryClient.removeQueries({ predicate: q => !KEEP_ON_LOGOUT.has(String(q.queryKey[0])) });
 };

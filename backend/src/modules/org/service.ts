@@ -19,6 +19,11 @@ const assertBranchAccess = (user: AuthUser, branchId: string): void => {
   throw new ForbiddenError('You do not manage that branch');
 };
 
+export const getPublicOrganisation = async (orgId: string) => {
+  const org = await repo.findOrganisation(pool, orgId);
+  return { name: org.name, slug: org.slug, timezone: org.timezone, currency: org.currency };
+};
+
 // organisation and settings --------------------------------------------------------------------
 
 export const getOrganisation = async (orgId: string) => {

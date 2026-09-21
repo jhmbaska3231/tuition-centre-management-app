@@ -52,18 +52,18 @@ const templates: Record<string, Template> = {
 
   invoice_issued_v1: (p, ctx) => wrap(ctx, `Invoice ${p.invoiceNumber} from ${ctx.orgName}`, [
     `A new invoice ${p.invoiceNumber} for ${money(p.totalCents, ctx.currency)} is due on ${day(p.dueOn)}.`,
-    `View it here: ${appUrl()}/invoices/${p.invoiceId}`]),
+    `View it here: ${appUrl()}/parent/invoices/${p.invoiceId}`]),
 
   invoice_overdue_v1: (p, ctx) => wrap(ctx, `Overdue: invoice ${p.invoiceNumber}`, [
     `Invoice ${p.invoiceNumber} was due on ${day(p.dueOn)} and has an outstanding balance of ${money(p.balanceCents, ctx.currency)}.`,
-    `View it here: ${appUrl()}/invoices/${p.invoiceId}`]),
+    `View it here: ${appUrl()}/parent/invoices/${p.invoiceId}`]),
 
   waitlist_offer_v1: (p, ctx) => wrap(ctx, `A seat is available in ${p.courseName}`, [
     `A seat has opened in ${p.courseName}. The offer expires on ${when(p.expiresAt, ctx.timezone)}.`,
-    `Accept it here: ${appUrl()}/waitlist`]),
+    `Accept it here: ${appUrl()}/parent/classes`]),
 
   leave_request_submitted_v1: (p, ctx) => wrap(ctx, `Leave request from ${p.requester}`, [
-    `${p.requester} has requested leave from ${day(p.startsOn)} to ${day(p.endsOn)}.`, `Review it here: ${appUrl()}/leave`]),
+    `${p.requester} has requested leave from ${day(p.startsOn)} to ${day(p.endsOn)}.`, `Review it here: ${appUrl()}/admin/leave`]),
 
   leave_request_decided_v1: (p, ctx) => wrap(ctx, `Your leave request was ${p.decision}`, [
     `Your leave request has been ${p.decision}.`, ...(p.note ? [`Note: ${p.note}`] : [])]),

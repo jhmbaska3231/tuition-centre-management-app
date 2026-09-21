@@ -20,6 +20,10 @@ const adminOrManager = [authenticate, authorise('admin', 'branch_manager')] as c
 // /api/org ----------------------------------------------------------------------
 export const orgRouter = Router();
 
+// unauthenticated: the sign in and landing pages show the centre's name
+orgRouter.get('/public', async (_req, res) => {
+  res.json(await service.getPublicOrganisation(await getCurrentOrgId()));
+});
 orgRouter.get('/', authenticate, async (req, res) => {
   res.json(await service.getOrganisation(currentUser(req).orgId));
 });

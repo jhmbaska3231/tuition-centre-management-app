@@ -9,7 +9,12 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     // import.meta.dirname is the esm equivalent of __dirname, available from node 20.11
-    alias: { '@': path.resolve(import.meta.dirname, './src') },
+    alias: {
+      '@': path.resolve(import.meta.dirname, './src'),
+      // consume shared as typescript source rather than its commonjs build. vite compiles
+      // it as esm alongside the app, and an edited schema hot reloads without rebuilding
+      '@tuition/shared': path.resolve(import.meta.dirname, '../shared/src/index.ts'),
+    },
   },
   server: {
     port: 5173,
