@@ -1,9 +1,9 @@
 ### backend/smoke.http
-### send requests in order. each block's "# @name" lets later blocks reuse its response
+### send requests in order. each block's "# @name" lets later blocks reuse its response.
+### some expectations depend on the weekday, where they do, the comment says so
 
 @base = http://localhost:8080
 @today = {{$datetime "YYYY-MM-DD"}}
-@weekAgo = {{$datetime "YYYY-MM-DD" -7 d}}
 @twoWeeks = {{$datetime "YYYY-MM-DD" 14 d}}
 
 ### 1. health and readiness: expect 200, ready with database connected
@@ -105,16 +105,19 @@ Content-Type: application/json
 ###
 @tutor = {{tutorLogin.response.body.accessToken}}
 
-### 16. hui's recent completed sessions. six days back keeps it inside the edit window
-### while ensuring at least one saturday or wednesday session exists
+### 16. hui's completed sec 1 mathematics session in the last six days. filtering by course
+### makes this independent of the weekday: a six day window ending today spans seven
+### calendar days, so it holds exactly one saturday. the only miss is saturday before
+### 11:30, when this week's session has not completed yet
 # @name pastSessions
-GET {{base}}/api/sessions?from={{$datetime "YYYY-MM-DD" -6 d}}&to={{today}}&status=completed
+GET {{base}}/api/sessions?from={{$datetime "YYYY-MM-DD" -6 d}}&to={{today}}&status=completed&courseId={{courseId}}
 Authorization: Bearer {{tutor}}
 
 ###
 @sessionId = {{pastSessions.response.body.$[0].id}}
 
-### 17. roster: expect john toh and sam tester (sam enrolled in block 11), both source "enrollment"
+### 17. roster: expect john toh. sam tester appears only if this session is today, because
+### his enrolment starts today and the roster is derived from enrolment date ranges
 # @name roster
 GET {{base}}/api/attendance/sessions/{{sessionId}}
 Authorization: Bearer {{tutor}}
@@ -154,8 +157,9 @@ Authorization: Bearer {{jay}}
 ###
 @makeupId = {{makeups.response.body.$[0].id}}
 
-### 21a. bookable sessions for the credit: expect [] with the seed: john is still enrolled in
-### the only sec 1 maths course, so every future session of it is excluded
+### 21a. bookable sessions for the credit: expect [] until b7 in the frontend plan lands.
+### john is enrolled in the only sec 1 mathematics course, so every future session of it
+### is excluded. once a second course exists, expect its sessions here and book one in 21b
 GET {{base}}/api/makeups/{{makeupId}}/options
 Authorization: Bearer {{jay}}
 
@@ -186,27 +190,32 @@ Content-Type: application/json
 
 { "payerUserId": "{{jayLogin.response.body.user.id}}", "amountCents": 33000, "method": "paynow", "reference": "SMOKE-001" }
 
-### 24. leave three weeks out, clear of the seeded request: expect 201 pending
+### 24. seven days of leave three weeks out: always one saturday and one wednesday, clear of
+### the seeded leave (days 7 to 9), the seeded closure (day 10) and the term end.
+### expect 201 pending
 # @name leave
 POST {{base}}/api/leave
 Authorization: Bearer {{tutor}}
 Content-Type: application/json
 
-{ "starts_on": "{{$datetime "YYYY-MM-DD" 20 d}}", "ends_on": "{{$datetime "YYYY-MM-DD" 22 d}}", "leave_type": "annual", "reason": "Smoke test" }
+{ "starts_on": "{{$datetime "YYYY-MM-DD" 20 d}}", "ends_on": "{{$datetime "YYYY-MM-DD" 26 d}}", "leave_type": "annual", "reason": "Smoke test" }
 
-### 25. admin approves: expect status approved and affected_session_count 2 (sat sec 1 maths and sec 3 maths)
+### 25. admin approves: expect status approved and affected_session_count 3
+### (saturday sec 1 mathematics, saturday sec 3 mathematics, wednesday sec 3 mathematics)
 POST {{base}}/api/leave/{{leave.response.body.id}}/decide
 Authorization: Bearer {{admin}}
 Content-Type: application/json
 
 { "decision": "approved" }
 
-### 26. sessions needing cover: expect hui's two sessions inside the approved window
+### 26. sessions needing cover: expect hui's three sessions inside the approved window
 # @name cover
 GET {{base}}/api/sessions/needing-cover
 Authorization: Bearer {{admin}}
 
-### 27. assign zen as cover for the first: expect 200, tutor_name "zen teo", warnings empty
+### 27. assign zen as cover for the earliest: expect 200 and tutor_name "zen teo". warnings
+### may be non empty: availability is advisory, and zen is only available sunday, tuesday
+### and saturday
 # @name staff
 GET {{base}}/api/staff?role=tutor
 Authorization: Bearer {{admin}}
@@ -218,7 +227,9 @@ Content-Type: application/json
 
 { "tutor_id": "{{staff.response.body.$[?(@.email=='zen.teo@tuition.com')].id}}" }
 
-### 28. outbox: expect rows for tutor_changed, waitlist/absent/leave events, status sent once the worker ran (console provider in dev)
+### 28. outbox: expect rows for tutor_changed, leave_request_submitted, leave_request_decided,
+### account_created and the invoice events. pending rows become sent within a minute while
+### the worker runs, sent rows show an empty payload
 GET {{base}}/api/notifications/outbox
 Authorization: Bearer {{admin}}
 
