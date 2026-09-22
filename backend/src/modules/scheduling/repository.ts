@@ -239,6 +239,24 @@ export const adjacentSessionsAtOtherBranch = (q: Queryable, tutorId: string, bra
        AND s.ends_at > $3::timestamptz - make_interval(mins => $5) AND s.starts_at < $4::timestamptz + make_interval(mins => $5)`,
     [tutorId, branchId, startsAt, endsAt, bufferMinutes, excludeSessionId]);
 
+// a parent may read a single session only when one of their children is on its
+// roster (active enrollment in the course) or has a make up booked into it. mirrors the
+// parentid arm of listsessions so the list and the detail read agree on visibility
+export const parentCanSeeSession = async (q: Queryable, orgId: string, sessionId: string, parentId: string): Promise<boolean> =>
+  (await maybeOne(q,
+    `SELECT 1
+       FROM sessions s
+       JOIN student_guardians g ON g.user_id = $3
+      WHERE s.org_id = $1 AND s.id = $2
+        AND (
+          EXISTS (SELECT 1 FROM enrollments e
+                    WHERE e.course_id = s.course_id AND e.status = 'active' AND e.student_id = g.student_id)
+          OR EXISTS (SELECT 1 FROM makeup_bookings mb
+                       WHERE mb.booked_session_id = s.id AND mb.student_id = g.student_id)
+        )
+      LIMIT 1`,
+    [orgId, sessionId, parentId])) !== null;
+
 // availability ---------------------------------------------------------------------------
 
 export const listAvailability = (q: Queryable, userId: string) =>

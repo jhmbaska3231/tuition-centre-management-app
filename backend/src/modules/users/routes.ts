@@ -25,7 +25,7 @@ accountRouter.delete('/', authorise('parent'), validate({ body: deleteAccountSch
 });
 
 export const parentsRouter = Router();
-parentsRouter.use(authenticate, authorise('admin', 'branch_manager', 'tutor'));
+parentsRouter.use(authenticate, authorise('admin', 'branch_manager'));
 parentsRouter.get('/', validate({ query: listParentsQuery }), async (req, res) => { res.json(await service.listParents(currentUser(req), req.validated.query)); });
 parentsRouter.post('/', authorise('admin', 'branch_manager'), validate({ body: createParentSchema }), async (req, res) => { res.status(201).json(await service.createParent(currentUser(req), req.validated.body, ip(req))); });
 parentsRouter.get('/:id', validate({ params: parentIdParam }), async (req, res) => { res.json(await service.getParent(currentUser(req), req.validated.params.id)); });

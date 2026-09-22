@@ -222,6 +222,8 @@ export const getSession = async (user: AuthUser, id: string): Promise<SessionVie
   const s = await repo.findSessionView(pool, user.orgId, id);
   if (!s) throw new NotFoundError('Session');
   if (user.role === 'tutor' && s.tutor_id !== user.id) throw new NotFoundError('Session');
+  // parents may only read a session their child attends or has a make up booked into
+  if (user.role === 'parent' && !(await repo.parentCanSeeSession(pool, user.orgId, id, user.id))) throw new NotFoundError('Session');
   return s;
 };
 
