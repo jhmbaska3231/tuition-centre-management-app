@@ -3,7 +3,8 @@
 a multi branch tuition centre platform built for singapore centres. one deployment serves
 one centre, with its own branding, settings, fee structure and data
 
-> status: backend complete and verified end to end, frontend in progress
+> status: backend complete and verified end to end. frontend foundations, auth and role
+> dashboards in place. feature screens in progress
 
 ---
 
@@ -20,7 +21,8 @@ one centre, with its own branding, settings, fee structure and data
 **for tutors**
 - one screen per session: the roster, marked in a few taps at the classroom door
 - lesson notes and homework attached to the session, visible to parents
-- submit leave from the app and set weekly availability so admins do not double book them
+- submit leave from the app, and set weekly availability so admins are warned before
+  scheduling them outside it
 
 **for admins**
 - define a class once with its weekly slots, and sessions are generated automatically
@@ -34,8 +36,8 @@ one centre, with its own branding, settings, fee structure and data
 - multiple branches, with branch managers scoped to the branches they run
 
 **for the centre owner**
-- every change is recorded in an audit log: who cancelled an enrollment, who waived a fee,
-  who edited attendance after the fact
+- every change is recorded in an audit log: who cancelled an enrollment, who issued a credit
+  note, who edited attendance after the fact
 - email delivery configured by the admin, with per event toggles and per parent preferences
 
 ---
@@ -73,38 +75,56 @@ cancellation can never send a "your class is cancelled" email, and a provider ou
 retries rather than lost messages
 
 **every job is idempotent.** the nightly run can be executed twice, or by hand after an
-outage, and creates nothing extra. partial unique indexes enforce this at the database
-level rather than relying on the job's own bookkeeping
+outage, and creates nothing extra. unique constraints enforce this at the database level,
+on generated sessions, invoice lines and queued notifications, rather than relying on the
+job's own bookkeeping
 
-**timezone correctness is designed in.** every timestamp is `timestamptz` stored in utc,
-every calendar date is a `date`, and conversion happens using the centre's configured timezone.
+**timezone correctness is designed in.** every timestamp is timestamptz stored in utc,
+every calendar date is a date, and conversion happens using the centre's configured timezone.
 a server in another region produces identical results
+
+**one schema, both sides of the wire.** request validation is defined once in a shared
+package. the server enforces it and the browser runs the identical rules for instant form
+feedback. a field that becomes required fails the build on both sides at once, rather than
+surfacing as a confusing 400 in production
 
 ---
 
 ## architecture
 
-- **backend**: node 22, express 5, typescript, postgresql 18, parameterised sql via `pg`.
+- **backend**: node 22, express 5, typescript, postgresql 18, parameterised sql via pg.
   modular monolith: each domain module has routes, zod schemas, a service that owns
   transactions and business rules, and a repository that contains only sql
 - **worker**: the same image run as a separate process. pg-boss, a job queue that runs
   inside postgres, schedules the nightly job, hourly session reminders and the notification
   dispatcher. no extra infrastructure to operate
-- **frontend**: react 19, vite, tailwind
+- **shared**: a workspace package holding every zod request schema, response type and enum.
+  the backend validates with it and the frontend's forms validate with it, so the two sides
+  cannot drift
+- **frontend**: react 19, vite 8, tailwind 4, react router 8, tanstack query 5, and shadcn
+  components on base ui. every screen is typed against the shared package
 - **auth**: short lived hs256 access token held in memory, rotating refresh token in an
-  `httponly` cookie backed by server side sessions with reuse detection
-- **deployment**: two containers from one image, kubernetes, postgres with point in time
-  recovery. schema is applied by migration, never by the application at runtime
+  httponly cookie backed by server side sessions with reuse detection
+- **deployment**: kubernetes, three deployments from two images. the api and worker share
+  the backend image, the frontend is static files served by an unprivileged nginx. postgres
+  with point in time recovery. schema is applied by migration, never by the application at
+  runtime
 
 ```
+shared/src/     zod schemas, api response types, enums used by both sides
 backend/src/
-  config/     env validation, typed config
-  db/         pool, query helpers, transactions, pg error translation
-  http/       app factory, middleware, error contract
-  modules/    auth  org  users  students  scheduling  enrollment
-              billing  notifications  audit  reports
-  jobs/       nightly job, runnable standalone
-  worker.ts   pg-boss scheduler
+  config/       env validation, typed config
+  db/           pool, query helpers, transactions, pg error translation
+  http/         app factory, middleware, error contract
+  modules/      auth  org  users  students  scheduling  enrollment
+                billing  notifications  audit  reports
+  jobs/         nightly job, runnable standalone
+  worker.ts     pg-boss scheduler
+frontend/src/
+  api/          typed client, single flight token refresh, query keys
+  auth/         session bootstrap, route guards
+  features/     screens grouped by role: parent, tutor, admin
+  components/   layout, forms, and owned shadcn components
 ```
 
 the full schema including every constraint is in `backend/db/schema/0001_baseline.sql`
@@ -126,6 +146,10 @@ the full schema including every constraint is in `backend/db/schema/0001_baselin
 - every state change writes an audit row in the same transaction as the change
 - environment configuration is validated at boot, and production refuses to start with an
   insecure cookie flag, an unencrypted database connection, or a non https origin
+- the access token lives only in memory, never in browser storage, and authenticated api
+  responses are marked no-store so nothing sensitive persists in the browser cache
+- the frontend is served with a strict content security policy: scripts load only from the
+  app's own origin
 
 ---
 
@@ -139,7 +163,7 @@ header so a support report can be traced to the exact log line
 |---------------|--------|
 | auth          | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/logout-all`, `/auth/me`, `/auth/password-reset/{request,confirm}` |
 | account       | `/account/profile`, `/account/password`, `/account` |
-| org           | `/org`, `/org/settings`, `/org/notification-events`, `/org/integrations` |
+| org           | `/org`, `/org/public`, `/org/settings`, `/org/notification-events`, `/org/integrations` |
 | reference     | `/branches`, `/classrooms`, `/closures`, `/levels`, `/subjects`, `/terms`, `/fee-plans` |
 | people        | `/staff`, `/parents`, `/students`, `/students/mine`, `/students/:id/guardians` |
 | scheduling    | `/courses`, `/courses/:id/{slots,status,generate}`, `/sessions`, `/sessions/needing-cover`, `/sessions/:id/{cancel,cover,notes}`, `/tutors/:id/availability`, `/leave` |
@@ -147,7 +171,7 @@ header so a support report can be traced to the exact log line
 | billing       | `/invoices`, `/invoices/my-balance`, `/invoices/:id/{void,credit-notes}`, `/payments`, `/payments/:id/refund`, `/billing/webhooks/:provider` |
 | notifications | `/notifications/preferences`, `/notifications/test-email`, `/notifications/outbox` |
 | reporting     | `/reports/{overview,course-fill,enrollment-breakdown,revenue,attendance,tutor-workload,churn}`, `/audit` |
-| ops           | `/health`, `/ready`, `/metrics` |
+| ops           | `/health`, `/ready`, `/metrics` (outside `/api`, reachable only inside the cluster) |
 
 **background jobs**
 
@@ -161,21 +185,21 @@ header so a support report can be traced to the exact log line
 
 ## running it locally
 
-prerequisites: node 22.12+, postgresql 18, a database role with `createdb`
+prerequisites: node 22.22+, postgresql 18, a database role with createdb
 
 ```bash
-cd backend
-cp .env.example .env  # database credentials and two generated secrets
-npm install
-npm run db:reset      # schema and a full demo centre
-npm run dev           # api on :8080
-npm run worker:dev    # jobs and email dispatch
+npm install                           # from the repository root, installs every workspace
+cp backend/.env.example backend/.env  # database credentials and two generated secrets
+npm run db:reset                      # schema and a full demo centre
+npm run dev:api                       # api on :8080
+npm run dev:worker                    # jobs and email dispatch
+npm run dev:web                       # app on :5173
 ```
 
 the seed builds a working centre: two branches, eight courses, a term of generated sessions
 with attendance already marked, invoices in several payment states, a waitlisted student
 and a pending leave request. dates are relative to today, so a reset always produces
-current data. every seeded account uses the password `password123`, and the reset prints
+current data. every seeded account uses the password "password123", and the reset prints
 the list
 
 `backend/smoke.http` is a request collection covering registration, enrollment, attendance,

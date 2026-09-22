@@ -10,8 +10,9 @@ export interface ReportOverview {
   waitlisted: number;
   active_tutors: number;
   sessions_next_7_days: number;
-  outstanding_cents: Cents;
-  overdue_cents: Cents;
+  // null for branch managers: fees are billed per family, not per branch
+  outstanding_cents: Cents | null;
+  overdue_cents: Cents | null;
   pending_leave_requests: number;
 }
 
@@ -34,7 +35,7 @@ export interface EnrollmentBreakdownRow {
 }
 
 export interface RevenueMonthRow {
-  month: string;            // YYYY-MM
+  month: string;  // yyyy-mm
   invoiced_cents: Cents;
   collected_cents: Cents;
   credited_cents: Cents;

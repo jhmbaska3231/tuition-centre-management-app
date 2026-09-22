@@ -8,6 +8,11 @@ export interface AuthState {
   // true only while the initial refresh is in flight. guards wait for this rather than
   // redirecting to login on a page reload
   isBootstrapping: boolean;
+  // true after an explicit sign out, false after sign in. lets the guard distinguish a
+  // deliberate sign out, which must not carry a return path to the next person who signs
+  // in on this device, from an expired session, which should return the same user to
+  // where they were
+  signedOut: boolean;
   login: (input: LoginInput) => Promise<PublicUser>;
   register: (input: RegisterInput) => Promise<PublicUser>;
   logout: () => Promise<void>;

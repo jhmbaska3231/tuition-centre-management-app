@@ -32,11 +32,15 @@ export const AdminHomePage = () => {
           <StatCard label="Active enrolments" value={data?.active_enrollments} loading={isPending} />
           <StatCard label="Open courses" value={data?.open_courses} loading={isPending} to="/admin/courses" />
           <StatCard label="Sessions next 7 days" value={data?.sessions_next_7_days} loading={isPending} to="/admin/sessions" />
-          <StatCard label="Outstanding fees" value={data && money(data.outstanding_cents)} loading={isPending} to="/admin/billing" />
-          <StatCard
-            label="Overdue fees" value={data && money(data.overdue_cents)} loading={isPending} to="/admin/billing"
-            tone={data && data.overdue_cents > 0 ? 'danger' : 'default'}
-          />
+          {user.role === 'admin' && (
+            <>
+              <StatCard label="Outstanding fees" value={data?.outstanding_cents != null ? money(data.outstanding_cents) : undefined} loading={isPending} to="/admin/billing" />
+              <StatCard
+                label="Overdue fees" value={data?.overdue_cents != null ? money(data.overdue_cents) : undefined} loading={isPending} to="/admin/billing"
+                tone={data?.overdue_cents ? 'danger' : 'default'}
+              />
+            </>
+          )}
           <StatCard label="Waitlisted" value={data?.waitlisted} loading={isPending} />
           <StatCard
             label="Leave awaiting approval" value={data?.pending_leave_requests} loading={isPending} to="/admin/leave"

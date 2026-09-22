@@ -79,6 +79,12 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
       [orgId, 'Jurong', '50 Jurong Gateway Road, Singapore 608549', '67800002'])).id;
     await c.query(`INSERT INTO user_branches (user_id, branch_id) VALUES ($1, $2)`, [manager, branchA]);
 
+    // tutors belong to the branches they teach at, which is what lets a branch manager
+    // see and approve their leave. mary teaches at both
+    for (const [tutor, branch] of [[tutorHui, branchA], [tutorMary, branchA], [tutorMary, branchB], [tutorZen, branchB]]) {
+      await c.query('INSERT INTO user_branches (user_id, branch_id) VALUES ($1, $2)', [tutor, branch]);
+    }
+
     const room = async (branch: string, name: string, cap: number): Promise<string> =>
       (await one(c, `INSERT INTO classrooms (org_id, branch_id, name, capacity) VALUES ($1, $2, $3, $4) RETURNING id`,
         [orgId, branch, name, cap])).id;

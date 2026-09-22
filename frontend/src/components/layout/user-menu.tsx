@@ -19,7 +19,6 @@ export const UserMenu = ({ compact = false }: { compact?: boolean }) => {
 
   const signOut = async () => {
     await logout();
-    navigate('/login', { replace: true });
   };
 
   return (

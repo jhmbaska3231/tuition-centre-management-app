@@ -9,15 +9,23 @@ export const overview = (q: Queryable, orgId: string, branchIds: string[] | null
   one(q,
     `SELECT
        (SELECT count(*)::int FROM students s WHERE s.org_id = $1 AND s.archived_at IS NULL AND ($2::uuid[] IS NULL OR s.home_branch_id = ANY($2))) AS active_students,
-       (SELECT count(DISTINCT sg.user_id)::int FROM student_guardians sg JOIN students s ON s.id = sg.student_id WHERE s.org_id = $1 AND s.archived_at IS NULL) AS active_parents,
+       (SELECT count(DISTINCT sg.user_id)::int FROM student_guardians sg JOIN students s ON s.id = sg.student_id WHERE s.org_id = $1 AND s.archived_at IS NULL AND ($2::uuid[] IS NULL OR s.home_branch_id = ANY($2))) AS active_parents,
        (SELECT count(*)::int FROM courses c WHERE c.org_id = $1 AND c.status = 'open' AND ($2::uuid[] IS NULL OR c.branch_id = ANY($2))) AS open_courses,
        (SELECT count(*)::int FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE e.org_id = $1 AND e.status = 'active' AND ($2::uuid[] IS NULL OR c.branch_id = ANY($2))) AS active_enrollments,
        (SELECT count(*)::int FROM waitlist_entries w JOIN courses c ON c.id = w.course_id WHERE w.org_id = $1 AND w.status IN ('waiting', 'offered') AND ($2::uuid[] IS NULL OR c.branch_id = ANY($2))) AS waitlisted,
-       (SELECT count(*)::int FROM users WHERE org_id = $1 AND role = 'tutor' AND archived_at IS NULL) AS active_tutors,
+       (SELECT count(*)::int FROM users u WHERE u.org_id = $1 AND u.role = 'tutor' AND u.archived_at IS NULL AND ($2::uuid[] IS NULL OR EXISTS (SELECT 1 FROM user_branches ub WHERE ub.user_id = u.id AND ub.branch_id = ANY($2)))) AS active_tutors,
        (SELECT count(*)::int FROM sessions s JOIN courses c ON c.id = s.course_id WHERE s.org_id = $1 AND s.status = 'scheduled' AND s.starts_at BETWEEN now() AND now() + interval '7 days' AND ($2::uuid[] IS NULL OR c.branch_id = ANY($2))) AS sessions_next_7_days,
-       (SELECT COALESCE(sum(i.total_cents - i.paid_cents - COALESCE((SELECT sum(amount_cents) FROM credit_notes WHERE invoice_id = i.id), 0)), 0)::bigint FROM invoices i WHERE i.org_id = $1 AND i.status IN ('issued', 'partially_paid')) AS outstanding_cents,
-       (SELECT COALESCE(sum(i.total_cents - i.paid_cents - COALESCE((SELECT sum(amount_cents) FROM credit_notes WHERE invoice_id = i.id), 0)), 0)::bigint FROM invoices i WHERE i.org_id = $1 AND i.status IN ('issued', 'partially_paid') AND i.due_on < current_date) AS overdue_cents,
-       (SELECT count(*)::int FROM leave_requests WHERE org_id = $1 AND status = 'pending') AS pending_leave_requests`,
+       -- fees are billed per family and an invoice can span branches, so a branch level figure would be misleading. branch managers receive null and the card is hidden
+       CASE WHEN $2::uuid[] IS NULL THEN
+         (SELECT COALESCE(sum(i.total_cents - i.paid_cents - COALESCE((SELECT sum(amount_cents) FROM credit_notes WHERE invoice_id = i.id), 0)), 0)::bigint
+          FROM invoices i WHERE i.org_id = $1 AND i.status IN ('issued', 'partially_paid'))
+       END AS outstanding_cents,
+       CASE WHEN $2::uuid[] IS NULL THEN
+         (SELECT COALESCE(sum(i.total_cents - i.paid_cents - COALESCE((SELECT sum(amount_cents) FROM credit_notes WHERE invoice_id = i.id), 0)), 0)::bigint
+          FROM invoices i WHERE i.org_id = $1 AND i.status IN ('issued', 'partially_paid') AND i.due_on < current_date)
+       END AS overdue_cents,
+       -- matches the scope of get /leave for a branch manager, so the card and the list agree
+       (SELECT count(*)::int FROM leave_requests lr WHERE lr.org_id = $1 AND lr.status = 'pending' AND ($2::uuid[] IS NULL OR EXISTS (SELECT 1 FROM user_branches ub WHERE ub.user_id = lr.user_id AND ub.branch_id = ANY($2)))) AS pending_leave_requests`,
     [orgId, branchIds]);
 
 // fill rate per open course

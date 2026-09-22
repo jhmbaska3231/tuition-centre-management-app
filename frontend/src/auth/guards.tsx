@@ -15,12 +15,13 @@ const BootstrapScreen = () => (
 );
 
 export const RequireAuth = () => {
-  const { user, isBootstrapping } = useAuth();
+  const { user, isBootstrapping, signedOut } = useAuth();
   const location = useLocation();
 
   if (isBootstrapping) return <BootstrapScreen />;
-  // remember where they were headed so sign in can return them there
-  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  // remember where they were headed so sign in can return them there, unless they
+  // signed out on purpose
+  if (!user) return <Navigate to="/login" state={signedOut ? undefined : { from: location }} replace />;
   return <Outlet />;
 };
 
