@@ -48,6 +48,10 @@ CREATE TABLE organisation_settings (
   tax_rate_bp                   INTEGER NOT NULL DEFAULT 0 CHECK (tax_rate_bp BETWEEN 0 AND 10000),
   sibling_discount_bp           INTEGER NOT NULL DEFAULT 0 CHECK (sibling_discount_bp BETWEEN 0 AND 10000),
   invoice_prefix                TEXT NOT NULL DEFAULT 'INV',
+  -- how parents pay while there is no gateway: paynow uen, bank account, cheque payee.
+  -- read live rather than snapshotted onto invoices, so changing bank details updates
+  -- every unpaid invoice instead of sending parents to a closed account
+  payment_instructions          TEXT,
   created_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

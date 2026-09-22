@@ -19,6 +19,7 @@ export const updateSettingsSchema = z.object({
   tax_rate_bp: basisPoints,
   sibling_discount_bp: basisPoints,
   invoice_prefix: z.string().trim().min(1).max(10).regex(/^[A-Z0-9-]+$/, 'Uppercase letters, digits and hyphens only'),
+  payment_instructions: z.string().trim().max(2000).nullable().optional(),
 }).partial().refine(o => Object.keys(o).length > 0, 'No fields to update');
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 

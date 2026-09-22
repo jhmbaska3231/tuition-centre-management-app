@@ -39,6 +39,7 @@ export interface OrganisationSettings {
   tax_rate_bp: number;
   sibling_discount_bp: number;
   invoice_prefix: string;
+  payment_instructions: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

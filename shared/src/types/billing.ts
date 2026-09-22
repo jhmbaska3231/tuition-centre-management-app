@@ -62,6 +62,8 @@ export interface Invoice {
   voided_at: Timestamp | null;
   void_reason: string | null;
   notes: string | null;
+  // live from organisation_settings, not snapshotted. null when the centre has not set it
+  payment_instructions: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
   bill_to_name: string;

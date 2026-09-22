@@ -73,6 +73,7 @@ export const sessionCounts = (q: Queryable, courseId: string, periodStart: strin
 // invoices -------------------------------------------------------------------------
 const INVOICE_VIEW = `
   SELECT i.*, u.first_name || ' ' || u.last_name AS bill_to_name, u.email AS bill_to_email,
+         (SELECT s.payment_instructions FROM organisation_settings s WHERE s.org_id = i.org_id) AS payment_instructions,
          COALESCE((SELECT sum(cn.amount_cents) FROM credit_notes cn WHERE cn.invoice_id = i.id), 0)::bigint AS credited_cents,
          (i.total_cents - i.paid_cents - COALESCE((SELECT sum(cn.amount_cents) FROM credit_notes cn WHERE cn.invoice_id = i.id), 0))::bigint AS balance_cents,
          (i.status IN ('issued', 'partially_paid') AND i.due_on < current_date) AS is_overdue,
