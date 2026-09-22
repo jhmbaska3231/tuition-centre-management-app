@@ -14,6 +14,8 @@ export const updateSettingsSchema = z.object({
   makeup_eligible_statuses: z.array(z.enum(ATTENDANCE_STATUSES)).min(1),
   makeup_expiry_policy: z.enum(['end_of_term', 'fixed_days']),
   makeup_expiry_days: z.number().int().min(1),
+  makeup_min_lead_minutes: z.number().int().min(0),
+  makeup_cap_per_term: z.number().int().min(1).nullable(),
   billing_generation_day: z.number().int().min(1).max(28),
   billing_due_day: z.number().int().min(1).max(28),
   tax_rate_bp: basisPoints,

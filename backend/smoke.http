@@ -157,18 +157,41 @@ Authorization: Bearer {{jay}}
 ###
 @makeupId = {{makeups.response.body.$[0].id}}
 
-### 21a. bookable sessions for the credit: expect [] until b7 in the frontend plan lands.
-### john is enrolled in the only sec 1 mathematics course, so every future session of it
-### is excluded. once a second course exists, expect its sessions here and book one in 21b
+### 21a. bookable sessions for the credit: expect one or more sessions of
+### "sec 1 mathematics (wed)". john's own saturday course is excluded because he is on the
+### roster for those dates, and every option must start at least 24h out
+# @name options
 GET {{base}}/api/makeups/{{makeupId}}/options
 Authorization: Bearer {{jay}}
 
-### 21b. booking a session that is not an option: expect 422 "not available for this credit"
+###
+@optionId = {{options.response.body.$[0].id}}
+
+### 21b. book a session that is not an option: expect 422 "not available for this credit".
+### uses a pri 5 english session, a real session of the wrong subject, so this fails if the
+### subject and level rules stop being applied
 POST {{base}}/api/makeups/{{makeupId}}/book
 Authorization: Bearer {{jay}}
 Content-Type: application/json
 
-{ "sessionId": "{{courses.response.body.$[1].id}}" }
+{ "sessionId": "{{sessionId}}" }
+
+### 21c. book a real option: expect 200, status "booked",
+### booked_course_name "sec 1 mathematics (wed)"
+POST {{base}}/api/makeups/{{makeupId}}/book
+Authorization: Bearer {{jay}}
+Content-Type: application/json
+
+{ "sessionId": "{{optionId}}" }
+
+### 21d. the roster for that session now includes john with source "makeup".
+### proves the derived roster picks up the booking with nothing stored
+GET {{base}}/api/attendance/sessions/{{optionId}}
+Authorization: Bearer {{tutor}}
+
+### 21e. unbook: expect 200 and the credit back to "available" with booked_session_id null
+POST {{base}}/api/makeups/{{makeupId}}/unbook
+Authorization: Bearer {{jay}}
 
 ### 22. jay's invoices and balance: expect one paid, one issued, outstanding_cents 33000
 GET {{base}}/api/invoices

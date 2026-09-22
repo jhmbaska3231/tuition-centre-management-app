@@ -34,6 +34,9 @@ export interface OrganisationSettings {
   makeup_eligible_statuses: AttendanceStatus[];
   makeup_expiry_policy: 'end_of_term' | 'fixed_days';
   makeup_expiry_days: number;
+  makeup_min_lead_minutes: number;
+  // null means no cap
+  makeup_cap_per_term: number | null;
   billing_generation_day: number;
   billing_due_day: number;
   tax_rate_bp: number;

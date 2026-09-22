@@ -10,6 +10,7 @@ export interface OrganisationSettingsRow {
   session_horizon_weeks: number; adhoc_min_lead_minutes: number; adhoc_max_lead_days: number;
   travel_buffer_minutes: number; attendance_edit_window_days: number; waitlist_offer_hours: number;
   makeup_eligible_statuses: string[]; makeup_expiry_policy: 'end_of_term' | 'fixed_days'; makeup_expiry_days: number;
+  makeup_min_lead_minutes: number; makeup_cap_per_term: number | null;
   billing_generation_day: number; billing_due_day: number; tax_rate_bp: number; sibling_discount_bp: number;
   invoice_prefix: string; updated_at: Date;
 }

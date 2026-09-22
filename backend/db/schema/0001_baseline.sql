@@ -43,6 +43,8 @@ CREATE TABLE organisation_settings (
   makeup_expiry_policy          TEXT NOT NULL DEFAULT 'end_of_term'
                                 CHECK (makeup_expiry_policy IN ('end_of_term', 'fixed_days')),
   makeup_expiry_days            INTEGER NOT NULL DEFAULT 30 CHECK (makeup_expiry_days > 0),
+  makeup_min_lead_minutes       INTEGER NOT NULL DEFAULT 1440 CHECK (makeup_min_lead_minutes >= 0),
+  makeup_cap_per_term           INTEGER DEFAULT 2 CHECK (makeup_cap_per_term > 0),
   billing_generation_day        SMALLINT NOT NULL DEFAULT 25 CHECK (billing_generation_day BETWEEN 1 AND 28),
   billing_due_day               SMALLINT NOT NULL DEFAULT 7 CHECK (billing_due_day BETWEEN 1 AND 28),
   tax_rate_bp                   INTEGER NOT NULL DEFAULT 0 CHECK (tax_rate_bp BETWEEN 0 AND 10000),

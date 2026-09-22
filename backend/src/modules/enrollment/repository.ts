@@ -74,8 +74,13 @@ export const guardiansToNotify = (q: Queryable, studentId: string) =>
      WHERE sg.student_id = $1 AND sg.receives_notifications AND u.archived_at IS NULL`, [studentId]);
 
 export const orgContext = (q: Queryable, orgId: string) =>
-  one<{ timezone: string; waitlist_offer_hours: number; attendance_edit_window_days: number; makeup_eligible_statuses: string[]; makeup_expiry_policy: string; makeup_expiry_days: number }>(q,
-    `SELECT o.timezone, s.waitlist_offer_hours, s.attendance_edit_window_days, s.makeup_eligible_statuses, s.makeup_expiry_policy, s.makeup_expiry_days
+  one<{
+    timezone: string; waitlist_offer_hours: number; attendance_edit_window_days: number;
+    makeup_eligible_statuses: string[]; makeup_expiry_policy: string; makeup_expiry_days: number;
+    makeup_min_lead_minutes: number; makeup_cap_per_term: number | null;
+  }>(q,
+    `SELECT o.timezone, s.waitlist_offer_hours, s.attendance_edit_window_days, s.makeup_eligible_statuses,
+            s.makeup_expiry_policy, s.makeup_expiry_days, s.makeup_min_lead_minutes, s.makeup_cap_per_term
      FROM organisations o JOIN organisation_settings s ON s.org_id = o.id WHERE o.id = $1`, [orgId]);
 
 // lifecycle job queries
@@ -199,8 +204,28 @@ export const releaseBookingsForSession = (q: Queryable, sessionId: string, today
 export const expireMakeups = (q: Queryable, today: string) =>
   execute(q, `UPDATE makeup_bookings SET status = 'expired' WHERE status = 'available' AND expires_on < $1`, [today]);
 
-// sessions a credit can be booked into: same subject and level (or mixed), future, scheduled, with a seat, not already attending
-export const makeupOptions = (q: Queryable, orgId: string, studentId: string, subjectId: string, levelId: string | null, expiresOn: string) =>
+// a credit booked into a session that ended without attendance ever being marked is
+// stranded: not usable, not released, not expired. burn it, matching the policy applied when
+// a tutor marks the student absent at their make up. only past the attendance edit window,
+// because forfeiting drops the student off the derived roster and a tutor marking late
+// would no longer be able to record them
+export const forfeitUnmarkedBookings = (q: Queryable, editWindowDays: number) =>
+  many<{ id: string; student_id: string; booked_session_id: string }>(q,
+    `UPDATE makeup_bookings mb SET status = 'forfeited'
+      WHERE mb.status = 'booked'
+        AND EXISTS (SELECT 1 FROM sessions s
+                     WHERE s.id = mb.booked_session_id AND s.status = 'completed'
+                       AND s.ends_at < now() - make_interval(days => $1::int))
+        AND NOT EXISTS (SELECT 1 FROM attendance a
+                         WHERE a.session_id = mb.booked_session_id AND a.student_id = mb.student_id)
+      RETURNING mb.id, mb.student_id, mb.booked_session_id`);
+
+// sessions a credit can be booked into: same subject and level (or mixed), scheduled, with
+// a seat, starting at least the centre's notice period from now, and not one the student is
+// already on the roster for. the roster test is per session date rather than per course, so
+// a credit can be used on the student's own course outside their enrolment window. that is
+// the only option at a centre running one class per level
+export const makeupOptions = (q: Queryable, orgId: string, studentId: string, subjectId: string, levelId: string | null, expiresOn: string, minLeadMinutes: number) =>
   many<{ id: string; course_id: string; course_name: string; branch_name: string; starts_at: Date; ends_at: Date; seats_left: number }>(q,
     `SELECT s.id, s.course_id, c.name AS course_name, b.name AS branch_name, s.starts_at, s.ends_at,
             c.capacity - (
@@ -208,9 +233,29 @@ export const makeupOptions = (q: Queryable, orgId: string, studentId: string, su
                  AND e.starts_on <= (s.starts_at AT TIME ZONE o.timezone)::date AND (e.ends_on IS NULL OR e.ends_on >= (s.starts_at AT TIME ZONE o.timezone)::date))
             + (SELECT count(*)::int FROM makeup_bookings mb WHERE mb.booked_session_id = s.id AND mb.status = 'booked')) AS seats_left
      FROM sessions s JOIN courses c ON c.id = s.course_id JOIN branches b ON b.id = c.branch_id JOIN organisations o ON o.id = s.org_id
-     WHERE s.org_id = $1 AND s.status = 'scheduled' AND s.starts_at > now() AND c.status = 'open'
+     WHERE s.org_id = $1 AND s.status = 'scheduled' AND c.status = 'open'
+       AND s.starts_at > now() + make_interval(mins => $6::int)
        AND c.subject_id = $3 AND (c.level_id IS NULL OR c.level_id = $4)
        AND (s.starts_at AT TIME ZONE o.timezone)::date <= $5
-       AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = $2 AND e.status = 'active')
+       AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = $2 AND e.status = 'active'
+                         AND e.starts_on <= (s.starts_at AT TIME ZONE o.timezone)::date
+                         AND (e.ends_on IS NULL OR e.ends_on >= (s.starts_at AT TIME ZONE o.timezone)::date))
        AND NOT EXISTS (SELECT 1 FROM makeup_bookings mb WHERE mb.booked_session_id = s.id AND mb.student_id = $2 AND mb.status = 'booked')
-     ORDER BY s.starts_at`, [orgId, studentId, subjectId, levelId, expiresOn]);
+     ORDER BY s.starts_at`,
+    [orgId, studentId, subjectId, levelId, expiresOn, minLeadMinutes]);
+
+// how many make ups this student has already committed to in the term the missed session
+// belongs to. derives the term from the session so callers do not need to carry it.
+// is not distinct from, groups courses with no term together rather than matching nothing
+export const countMakeupsInSameTerm = async (q: Queryable, orgId: string, studentId: string, creditedFromSessionId: string): Promise<number> => {
+  const r = await one<{ n: number }>(q,
+    `WITH t AS (SELECT c.term_id FROM sessions s JOIN courses c ON c.id = s.course_id WHERE s.id = $3)
+     SELECT count(*)::int AS n
+       FROM makeup_bookings mb
+       JOIN sessions s2 ON s2.id = mb.credited_from_session_id
+       JOIN courses c2 ON c2.id = s2.course_id, t
+      WHERE mb.org_id = $1 AND mb.student_id = $2 AND mb.status IN ('booked', 'used')
+        AND c2.term_id IS NOT DISTINCT FROM t.term_id`,
+    [orgId, studentId, creditedFromSessionId]);
+  return r.n;
+};

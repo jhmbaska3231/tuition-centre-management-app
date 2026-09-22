@@ -247,8 +247,9 @@ export const markAttendance = (user: AuthUser, sessionId: string, records: Array
         } else if (previous && ctx.makeup_eligible_statuses.includes(previous)) {
           await repo.forfeitAvailableCredit(tx, r.studentId, sessionId);
         }
-      } else if (member.makeup_booking_id && ['present', 'late'].includes(r.status)) {
-        await repo.setMakeupStatus(tx, member.makeup_booking_id, 'used', undefined);
+      } else if (member.makeup_booking_id) {
+        // the credit is consumed either way: attending uses it, missing the booked session burns it
+        await repo.setMakeupStatus(tx, member.makeup_booking_id, ['present', 'late'].includes(r.status) ? 'used' : 'forfeited', undefined);
       }
       if (r.status === 'absent' && previous !== 'absent') {
         await notifyGuardians(tx, user.orgId, r.studentId, 'student_absent', 'student_absent_v1', { sessionId, courseName: session.course_name, startsAt: session.starts_at, studentName: member.student_name }, `student_absent:${sessionId}:${r.studentId}`);
@@ -266,13 +267,25 @@ export const listMakeups = (user: AuthUser, f: { studentId?: string; status?: st
   return repo.listMakeups(pool, user.orgId, f);
 };
 
+// shared by the options read and the booking write so both report the cap identically.
+// counts credits already committed, not credits granted: a student may accumulate many
+// excused absences, the cap limits how many they can actually claim back
+const assertMakeupCap = async (q: Queryable, orgId: string, cap: number | null, studentId: string, creditedFromSessionId: string) => {
+  if (cap === null) return;
+  const used = await repo.countMakeupsInSameTerm(q, orgId, studentId, creditedFromSessionId);
+  if (used >= cap) throw new RuleViolationError(`This student has used ${used} of ${cap} make-ups allowed this term`);
+};
+
 export const makeupOptions = async (user: AuthUser, id: string) => {
   const m = await repo.findMakeupView(pool, user.orgId, id);
   if (!m) throw new NotFoundError('Make-up credit');
   await assertStudentAccess(pool, user, m.student_id);
   if (m.status !== 'available') throw new RuleViolationError(`Credit is ${m.status}`);
+  const ctx = await repo.orgContext(pool, user.orgId);
+  // checked on the read as well as the write so the screen can explain an empty list
+  await assertMakeupCap(pool, user.orgId, ctx.makeup_cap_per_term, m.student_id, m.credited_from_session_id);
   const missed = (await repo.findSession(pool, user.orgId, m.credited_from_session_id))!;
-  return repo.makeupOptions(pool, user.orgId, m.student_id, missed.subject_id, missed.level_id, m.expires_on);
+  return repo.makeupOptions(pool, user.orgId, m.student_id, missed.subject_id, missed.level_id, m.expires_on, ctx.makeup_min_lead_minutes);
 };
 
 export const bookMakeup = (user: AuthUser, id: string, sessionId: string) =>
@@ -281,8 +294,12 @@ export const bookMakeup = (user: AuthUser, id: string, sessionId: string) =>
     if (!m) throw new NotFoundError('Make-up credit');
     await assertStudentAccess(tx, user, m.student_id);
     if (m.status !== 'available') throw new RuleViolationError(`Credit is ${m.status}`);
+    const ctx = await repo.orgContext(tx, user.orgId);
+    await assertMakeupCap(tx, user.orgId, ctx.makeup_cap_per_term, m.student_id, m.credited_from_session_id);
     const missed = (await repo.findSession(tx, user.orgId, m.credited_from_session_id))!;
-    const options = await repo.makeupOptions(tx, user.orgId, m.student_id, missed.subject_id, missed.level_id, m.expires_on);
+    // the notice period lives inside the options query, so a session starting too soon is
+    // simply not an option and the membership check below rejects it
+    const options = await repo.makeupOptions(tx, user.orgId, m.student_id, missed.subject_id, missed.level_id, m.expires_on, ctx.makeup_min_lead_minutes);
     const target = options.find(o => o.id === sessionId);
     if (!target) throw new RuleViolationError('That session is not available for this credit');
     if (target.seats_left <= 0) throw new RuleViolationError('That session is full');
@@ -317,10 +334,18 @@ export const releaseMakeupsForSession = async (tx: PoolClient, orgId: string, se
 // jobs --------------------------------------------------------------------
 
 export const runLifecycleJob = async (orgId: string) => {
-  const { timezone } = await repo.orgContext(pool, orgId);
-  const today = todayIn(timezone);
+  const ctx = await repo.orgContext(pool, orgId);
+  const today = todayIn(ctx.timezone);
   const settled = await withTransaction(tx => repo.settleEndedEnrollments(tx, today));
   const expiredCredits = await withTransaction(tx => repo.expireMakeups(tx, today));
+  // credits booked into a session nobody marked attendance for, past the edit window
+  const strandedCredits = await withTransaction(async tx => {
+    const rows = await repo.forfeitUnmarkedBookings(tx, ctx.attendance_edit_window_days);
+    for (const r of rows) {
+      await writeAudit(tx, { orgId, actorUserId: null, action: 'makeup.forfeited_unmarked', entityType: 'makeup_booking', entityId: r.id, after: { sessionId: r.booked_session_id } });
+    }
+    return rows.length;
+  });
   let expiredOffers = 0;
   const touchedCourses = new Set<string>();
   await withTransaction(async tx => {
@@ -335,5 +360,5 @@ export const runLifecycleJob = async (orgId: string) => {
   const courses = new Set<string>(touchedCourses);
   for (const e of await repo.listEnrollments(pool, orgId, { status: 'withdrawn' })) if (e.ends_on === addDays(today, -1)) courses.add(e.course_id);
   for (const courseId of courses) await withTransaction(tx => offerNextIfSeat(tx, orgId, courseId, today));
-  return { settled, expiredCredits, expiredOffers, coursesReoffered: courses.size };
+  return { settled, expiredCredits, strandedCredits, expiredOffers, coursesReoffered: courses.size };
 };

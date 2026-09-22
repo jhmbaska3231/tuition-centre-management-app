@@ -154,10 +154,11 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
     const emma = await student('Emma', 'Lim', 'S3', '2011-01-20', branchA, [[parentAlice, 'mother', true]]);
     const lily = await student('Lily', 'Ng', 'K2', '2020-05-11', branchB, [[parentBen, 'father', true]]);
     const marcus = await student('Marcus', 'Ng', 'P2', '2018-09-30', branchB, [[parentBen, 'father', true]]);
+    const nathan = await student('Nathan', 'Ng', 'S4', '2010-07-23', branchB, [[parentBen, 'father', true]]);
     const chloeJr = await student('Rachel', 'Tan', 'P6', '2014-11-05', branchA, [[parentChloe, 'mother', true]]);
     const ryan = await student('Ryan', 'Koh', 'S4', '2010-06-18', branchB, [[parentDavid, 'father', true], [parentEva, 'mother', false]]);
     const grace = await student('Grace', 'Koh', 'J1', '2008-02-27', branchB, [[parentDavid, 'father', true], [parentEva, 'mother', false]]);
-    const daniel = await student('Daniel', 'Goh', 'S2', '2012-12-09', branchA, [[parentEva, 'mother', true]]);
+    const daniel = await student('Daniel', 'Goh', 'S4', '2010-12-09', branchA, [[parentEva, 'mother', true]]);
     const mei = await student('Mei', 'Goh', 'P4', '2016-04-22', branchA, [[parentEva, 'mother', true]]);
 
     // courses with weekly slots, weekday 0 = Sunday
@@ -167,6 +168,8 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
     }
     const courseSpecs: CourseSpec[] = [
       { name: 'Sec 1 Mathematics', subject: 'Mathematics', level: 'S1', branch: branchA, tutor: tutorHui, room: roomA1, capacity: 10, plan: planSecondary, slots: [[6, '10:00', 90]] },
+      // a second s1 maths class so a make up credit from one has somewhere to go
+      { name: 'Sec 1 Mathematics (Wed)', subject: 'Mathematics', level: 'S1', branch: branchA, tutor: tutorHui, room: roomA1, capacity: 10, plan: planSecondary, slots: [[3, '17:00', 90]] },
       { name: 'Pri 5 English', subject: 'English', level: 'P5', branch: branchA, tutor: tutorMary, room: roomA2, capacity: 8, plan: planPrimary, slots: [[6, '13:00', 90]] },
       { name: 'Sec 3 Mathematics', subject: 'Mathematics', level: 'S3', branch: branchA, tutor: tutorHui, room: roomA1, capacity: 10, plan: planSecondary, slots: [[6, '14:00', 120], [3, '19:00', 90]] },
       { name: 'K2 English', subject: 'English', level: 'K2', branch: branchB, tutor: tutorMary, room: roomB2, capacity: 6, plan: planPrimary, slots: [[0, '09:00', 60]] },
@@ -235,9 +238,9 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
     enrollments.mei = await enroll(mei, 'Piano (mixed)', addDays(today, -7), parentEva);  // mid term join
     enrollments.rachelPiano = await enroll(chloeJr, 'Piano (mixed)', termStart, parentChloe);
 
-    // waitlist: sec 4 chemistry is full
+    // waitlist: sec 4 chemistry is full with ryan and daniel, nathan is next in line
     await c.query(`INSERT INTO waitlist_entries (org_id, student_id, course_id) VALUES ($1, $2, $3)`,
-      [orgId, emma, courses['Sec 4 Chemistry']]);
+      [orgId, nathan, courses['Sec 4 Chemistry']]);
 
     // attendance for completed sessions, one excused absence for emma generates a make up credit
     const markPast = async (courseName: string, studentId: string, enrollmentId: string, pattern: string[]): Promise<void> => {
