@@ -1,11 +1,7 @@
 // frontend/src/features/tutor/tutor-home-page.tsx
 
-import { useQuery } from '@tanstack/react-query';
 import { MapPin, Users } from 'lucide-react';
-import type { Session } from '@tuition/shared';
-import { api } from '@/api/client';
 import { errorMessage } from '@/api/errors';
-import { keys } from '@/api/keys';
 import { useCurrentUser } from '@/auth/context';
 import { PageHeader } from '@/components/layout/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,14 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDateLong, formatTimeRange, todayInCentre } from '@/lib/format';
+import { useSessions } from '@/api/queries/sessions';
 
 export const TutorHomePage = () => {
   const user = useCurrentUser();
   const today = todayInCentre();
-  const { data, isPending, error } = useQuery({
-    queryKey: keys.sessions.list({ from: today, to: today }),
-    queryFn: () => api.get<Session[]>('/sessions', { from: today, to: today }),
-  });
+  const { data, isPending, error } = useSessions({ from: today, to: today });
 
   return (
     <>

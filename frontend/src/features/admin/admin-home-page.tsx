@@ -1,22 +1,16 @@
 // frontend/src/features/admin/admin-home-page.tsx
 
-import { useQuery } from '@tanstack/react-query';
-import type { ReportOverview } from '@tuition/shared';
-import { api } from '@/api/client';
 import { errorMessage } from '@/api/errors';
-import { keys } from '@/api/keys';
 import { useCurrentUser } from '@/auth/context';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/stat-card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { money } from '@/lib/format';
+import { useReportOverview } from '@/api/queries/reports';
 
 export const AdminHomePage = () => {
   const user = useCurrentUser();
-  const { data, isPending, error } = useQuery({
-    queryKey: keys.reports.overview(),
-    queryFn: () => api.get<ReportOverview>('/reports/overview'),
-  });
+  const { data, isPending, error } = useReportOverview();
 
   return (
     <>

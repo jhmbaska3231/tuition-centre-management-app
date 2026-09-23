@@ -1,12 +1,8 @@
 // frontend/src/features/parent/parent-home-page.tsx
 
-import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Plus } from 'lucide-react';
 import { Link } from 'react-router';
-import type { BalanceSummary, Student } from '@tuition/shared';
-import { api } from '@/api/client';
 import { errorMessage } from '@/api/errors';
-import { keys } from '@/api/keys';
 import { useCurrentUser } from '@/auth/context';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/stat-card';
@@ -15,11 +11,13 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fullName, money } from '@/lib/format';
+import { useMyBalance } from '@/api/queries/billing';
+import { useMyStudents } from '@/api/queries/students';
 
 export const ParentHomePage = () => {
   const user = useCurrentUser();
-  const children = useQuery({ queryKey: keys.students.mine(), queryFn: () => api.get<Student[]>('/students/mine') });
-  const balance = useQuery({ queryKey: keys.invoices.myBalance(), queryFn: () => api.get<BalanceSummary>('/invoices/my-balance') });
+  const children = useMyStudents();
+  const balance = useMyBalance();
 
   return (
     <>
