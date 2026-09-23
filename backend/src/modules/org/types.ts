@@ -13,6 +13,8 @@ export interface OrganisationSettingsRow {
   makeup_min_lead_minutes: number; makeup_cap_per_term: number | null;
   billing_generation_day: number; billing_due_day: number; tax_rate_bp: number; sibling_discount_bp: number;
   invoice_prefix: string; payment_instructions: string | null; updated_at: Date;
+  landing_headline: string | null; landing_description: string | null;
+  accent_colour: string | null; logo_url: string | null;
 }
 
 export interface NotificationEventSettingRow { event_key: string; enabled: boolean; updated_at: Date }

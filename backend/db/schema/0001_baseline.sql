@@ -50,12 +50,18 @@ CREATE TABLE organisation_settings (
   tax_rate_bp                   INTEGER NOT NULL DEFAULT 0 CHECK (tax_rate_bp BETWEEN 0 AND 10000),
   sibling_discount_bp           INTEGER NOT NULL DEFAULT 0 CHECK (sibling_discount_bp BETWEEN 0 AND 10000),
   invoice_prefix                TEXT NOT NULL DEFAULT 'INV',
+  -- public branding: read by the unauthenticated landing page, null means use the
+  -- application's built in copy and theme
+  landing_headline              TEXT,
+  landing_description           TEXT,
+  accent_colour                 TEXT CHECK (accent_colour ~ '^#[0-9A-Fa-f]{6}$'),
+  logo_url                      TEXT CHECK (logo_url LIKE 'https://%'),
   -- how parents pay while there is no gateway: paynow uen, bank account, cheque payee.
   -- read live rather than snapshotted onto invoices, so changing bank details updates
   -- every unpaid invoice instead of sending parents to a closed account
   payment_instructions          TEXT,
   created_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
 );
 
 -- provider credentials set by the centre admin, config_encrypted is aes-256-gcm

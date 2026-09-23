@@ -3,13 +3,17 @@
 import type { AttendanceStatus, IntegrationKind, NotificationEvent } from '../enums';
 import type { DateOnly, Timestamp } from './api';
 
-// safe to expose without authentication. extend this when landing
-// page copy and theme colours become configurable
+// safe to expose without authentication: name, locale settings and public branding only
 export interface PublicOrganisation {
   name: string;
   slug: string;
   timezone: string;
   currency: string;
+  // branding, from organisation_settings. null means use the built in defaults
+  landing_headline: string | null;
+  landing_description: string | null;
+  accent_colour: string | null;
+  logo_url: string | null;
 }
 
 export interface Organisation {
@@ -42,6 +46,11 @@ export interface OrganisationSettings {
   tax_rate_bp: number;
   sibling_discount_bp: number;
   invoice_prefix: string;
+  // branding, from organisation_settings. null means use the built in defaults
+  landing_headline: string | null;
+  landing_description: string | null;
+  accent_colour: string | null;
+  logo_url: string | null;
   payment_instructions: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;

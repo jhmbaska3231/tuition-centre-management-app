@@ -18,6 +18,21 @@ const setClause = (fields: Record<string, unknown>, startAt: number): { sql: str
 
 // organisation and settings -----------------------------------------------------------------
 
+// the only organisation data an unauthenticated visitor can read. selects exactly the
+// public columns rather than reading the whole settings row and filtering in the service,
+// so a careless spread downstream cannot leak a private setting. left join so the sign in
+// page still renders the centre name if the settings row is ever missing
+export const findPublicOrganisation = (q: Queryable, orgId: string) =>
+  one<{
+    name: string; slug: string; timezone: string; currency: string;
+    landing_headline: string | null; landing_description: string | null;
+    accent_colour: string | null; logo_url: string | null;
+  }>(q,
+    `SELECT o.name, o.slug, o.timezone, o.currency,
+            s.landing_headline, s.landing_description, s.accent_colour, s.logo_url
+     FROM organisations o LEFT JOIN organisation_settings s ON s.org_id = o.id
+     WHERE o.id = $1`, [orgId]);
+
 export const findOrganisation = (q: Queryable, orgId: string) =>
   one<OrganisationRow>(q, 'SELECT * FROM organisations WHERE id = $1', [orgId]);
 

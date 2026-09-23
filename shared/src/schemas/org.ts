@@ -21,6 +21,10 @@ export const updateSettingsSchema = z.object({
   tax_rate_bp: basisPoints,
   sibling_discount_bp: basisPoints,
   invoice_prefix: z.string().trim().min(1).max(10).regex(/^[A-Z0-9-]+$/, 'Uppercase letters, digits and hyphens only'),
+  landing_headline: z.string().trim().max(80).nullable(),
+  landing_description: z.string().trim().max(300).nullable(),
+  accent_colour: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a six digit hex colour, for example #2563EB').nullable(),
+  logo_url: z.string().trim().url().startsWith('https://', 'Logo URL must use https').max(500).nullable(),
   payment_instructions: z.string().trim().max(2000).nullable().optional(),
 }).partial().refine(o => Object.keys(o).length > 0, 'No fields to update');
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
@@ -83,7 +87,6 @@ export type CreateSubjectInput = z.infer<typeof createSubjectSchema>;
 
 export const createStaffSchema = z.object({
   email: z.email().trim().toLowerCase().max(254),
-  password: z.string().min(8).max(72),
   role: z.enum(['tutor', 'branch_manager', 'admin']),
   firstName: personName,
   lastName: personName,

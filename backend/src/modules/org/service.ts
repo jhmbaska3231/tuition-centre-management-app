@@ -7,6 +7,8 @@ import { decrypt, encrypt } from '../../lib/crypto';
 import { writeAudit } from '../audit/writer';
 import { AuthUser } from '../auth/types';
 import { insertUser, revokeAllForUser } from '../auth/repository';
+import { newOpaqueToken } from '../auth/tokens';
+import { requestPasswordReset } from '../auth/service';
 import * as repo from './repository';
 import { IntegrationRow, StaffRow } from './types';
 import { applyClosure } from '../scheduling/service';
@@ -19,12 +21,9 @@ const assertBranchAccess = (user: AuthUser, branchId: string): void => {
   throw new ForbiddenError('You do not manage that branch');
 };
 
-export const getPublicOrganisation = async (orgId: string) => {
-  const org = await repo.findOrganisation(pool, orgId);
-  return { name: org.name, slug: org.slug, timezone: org.timezone, currency: org.currency };
-};
-
 // organisation and settings --------------------------------------------------------------------
+
+export const getPublicOrganisation = (orgId: string) => repo.findPublicOrganisation(pool, orgId);
 
 export const getOrganisation = async (orgId: string) => {
   const [org, settings] = await Promise.all([repo.findOrganisation(pool, orgId), repo.findSettings(pool, orgId)]);
@@ -292,12 +291,15 @@ export const getStaff = async (user: AuthUser, id: string): Promise<StaffRow> =>
 };
 
 export const createStaff = async (user: AuthUser, input: {
-  email: string; password: string; role: 'tutor' | 'branch_manager' | 'admin';
+  email: string; role: 'tutor' | 'branch_manager' | 'admin';
   firstName: string; lastName: string; phone?: string; branchIds: string[];
 }, ip: string | null): Promise<StaffRow> => {
-  const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
+  // an unguessable hash: the account exists but cannot be signed into until the invite link
+  // is used, so an admin never knows a staff member's password
+  const passwordHash = await bcrypt.hash(newOpaqueToken(), BCRYPT_COST);
+  let staff: StaffRow;
   try {
-    return await withTransaction(async tx => {
+    staff = await withTransaction(async tx => {
       await assertBranchesExist(tx, user.orgId, input.branchIds);
       const created = await insertUser(tx, {
         orgId: user.orgId, email: input.email, passwordHash, role: input.role,
@@ -314,6 +316,11 @@ export const createStaff = async (user: AuthUser, input: {
     if (isUniqueViolation(err, 'users_org_email_uq')) throw new ConflictError('An account with this email already exists');
     throw err;
   }
+  // must sit outside the transaction: this opens its own and looks the user up on a
+  // different connection, so it cannot see an uncommitted row, and it stays silent for
+  // unknown emails, which means the invite would be skipped with no error at all
+  await requestPasswordReset(staff.email, { ip, userAgent: null });
+  return staff;
 };
 
 export const updateStaff = (user: AuthUser, id: string, fields: { firstName?: string; lastName?: string; phone?: string | null }) =>
