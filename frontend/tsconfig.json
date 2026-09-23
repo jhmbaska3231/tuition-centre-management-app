@@ -1,3 +1,4 @@
+// frontend/tsconfig.json
 {
   "files": [],
   "references": [
@@ -7,5 +8,15 @@
     {
       "path": "./tsconfig.node.json"
     }
-  ]
+  ],
+  // not used for type checking: files is empty, so tsc -b builds the referenced projects
+  // with their own options. this exists for tooling that reads only the root config, the
+  // shadcn cli in particular, which otherwise writes components into a literal @ folder
+  "compilerOptions": {
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  }
 }

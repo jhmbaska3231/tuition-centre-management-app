@@ -29,6 +29,12 @@ export default defineConfig([
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // the shadcn cli (4.21+) writes cn imports from the cn package instead of from the
+      // utils. two merge implementations would resolve class conflicts differently, so a
+      // generated file must be pointed back at @/lib/utils before it is committed
+      'no-restricted-imports': ['error', {
+        paths: [{ name: 'cn', message: 'Import cn from @/lib/utils. The shadcn CLI writes this import; fix it after each add.' }],
+      }],
     },
   },
   {
