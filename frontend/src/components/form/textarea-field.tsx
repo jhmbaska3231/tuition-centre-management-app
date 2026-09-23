@@ -1,24 +1,20 @@
-// frontend/src/components/form/text-field.tsx
-//
-// one labelled input wired to react-hook-form. the frame comes from fieldshell so every
-// form looks the same
+// frontend/src/components/form/textarea-field.tsx
 
 import { useId } from 'react';
 import { Controller, type FieldValues } from 'react-hook-form';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { describedBy } from '@/lib/form';
 import { FieldShell, type FormFieldProps } from './field-shell';
 
-interface TextFieldProps<T extends FieldValues, TOut extends FieldValues> extends FormFieldProps<T, TOut> {
-  type?: 'text' | 'email' | 'password' | 'tel';
-  autoComplete?: string;
+interface TextareaFieldProps<T extends FieldValues, TOut extends FieldValues> extends FormFieldProps<T, TOut> {
   placeholder?: string;
+  // match the schema's max so the user is stopped while typing rather than refused on submit
+  maxLength?: number;
 }
 
-export const TextField = <T extends FieldValues, TOut extends FieldValues = T>({
-  control, name, label, description, type = 'text', autoComplete, placeholder,
-}: TextFieldProps<T, TOut>) => {
-  // unique per instance, so a dialog's form and the page behind it can share field names
+export const TextareaField = <T extends FieldValues, TOut extends FieldValues = T>({
+  control, name, label, description, placeholder, maxLength,
+}: TextareaFieldProps<T, TOut>) => {
   const id = useId();
   return (
     <Controller
@@ -26,13 +22,12 @@ export const TextField = <T extends FieldValues, TOut extends FieldValues = T>({
       name={name}
       render={({ field, fieldState }) => (
         <FieldShell id={id} label={label} description={description} error={fieldState.error}>
-          <Input
+          <Textarea
             {...field}
             value={field.value ?? ''}
             id={id}
-            type={type}
-            autoComplete={autoComplete}
             placeholder={placeholder}
+            maxLength={maxLength}
             aria-invalid={fieldState.invalid}
             aria-describedby={describedBy(id, fieldState.invalid, !!description)}
           />

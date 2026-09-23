@@ -1,7 +1,8 @@
-// frontend/src/components/form/text-field.tsx
+// frontend/src/components/form/date-field.tsx
 //
-// one labelled input wired to react-hook-form. the frame comes from fieldshell so every
-// form looks the same
+// a native date input: mobile friendly, accessible, and it emits yyyy-mm-dd exactly as the
+// shared schemas expect. min and max restrict the picker, but typed input can still get
+// past them, so the schema remains the real check
 
 import { useId } from 'react';
 import { Controller, type FieldValues } from 'react-hook-form';
@@ -9,16 +10,14 @@ import { Input } from '@/components/ui/input';
 import { describedBy } from '@/lib/form';
 import { FieldShell, type FormFieldProps } from './field-shell';
 
-interface TextFieldProps<T extends FieldValues, TOut extends FieldValues> extends FormFieldProps<T, TOut> {
-  type?: 'text' | 'email' | 'password' | 'tel';
-  autoComplete?: string;
-  placeholder?: string;
+interface DateFieldProps<T extends FieldValues, TOut extends FieldValues> extends FormFieldProps<T, TOut> {
+  min?: string;
+  max?: string;
 }
 
-export const TextField = <T extends FieldValues, TOut extends FieldValues = T>({
-  control, name, label, description, type = 'text', autoComplete, placeholder,
-}: TextFieldProps<T, TOut>) => {
-  // unique per instance, so a dialog's form and the page behind it can share field names
+export const DateField = <T extends FieldValues, TOut extends FieldValues = T>({
+  control, name, label, description, min, max,
+}: DateFieldProps<T, TOut>) => {
   const id = useId();
   return (
     <Controller
@@ -30,9 +29,9 @@ export const TextField = <T extends FieldValues, TOut extends FieldValues = T>({
             {...field}
             value={field.value ?? ''}
             id={id}
-            type={type}
-            autoComplete={autoComplete}
-            placeholder={placeholder}
+            type="date"
+            min={min}
+            max={max}
             aria-invalid={fieldState.invalid}
             aria-describedby={describedBy(id, fieldState.invalid, !!description)}
           />

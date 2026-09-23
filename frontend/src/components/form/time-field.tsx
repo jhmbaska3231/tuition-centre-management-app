@@ -1,7 +1,7 @@
-// frontend/src/components/form/text-field.tsx
+// frontend/src/components/form/time-field.tsx
 //
-// one labelled input wired to react-hook-form. the frame comes from fieldshell so every
-// form looks the same
+// a native time input. a step of 60 seconds keeps the value at hh:mm with no seconds,
+// matching the shared time of day format
 
 import { useId } from 'react';
 import { Controller, type FieldValues } from 'react-hook-form';
@@ -9,16 +9,9 @@ import { Input } from '@/components/ui/input';
 import { describedBy } from '@/lib/form';
 import { FieldShell, type FormFieldProps } from './field-shell';
 
-interface TextFieldProps<T extends FieldValues, TOut extends FieldValues> extends FormFieldProps<T, TOut> {
-  type?: 'text' | 'email' | 'password' | 'tel';
-  autoComplete?: string;
-  placeholder?: string;
-}
-
-export const TextField = <T extends FieldValues, TOut extends FieldValues = T>({
-  control, name, label, description, type = 'text', autoComplete, placeholder,
-}: TextFieldProps<T, TOut>) => {
-  // unique per instance, so a dialog's form and the page behind it can share field names
+export const TimeField = <T extends FieldValues, TOut extends FieldValues = T>({
+  control, name, label, description,
+}: FormFieldProps<T, TOut>) => {
   const id = useId();
   return (
     <Controller
@@ -30,9 +23,8 @@ export const TextField = <T extends FieldValues, TOut extends FieldValues = T>({
             {...field}
             value={field.value ?? ''}
             id={id}
-            type={type}
-            autoComplete={autoComplete}
-            placeholder={placeholder}
+            type="time"
+            step={60}
             aria-invalid={fieldState.invalid}
             aria-describedby={describedBy(id, fieldState.invalid, !!description)}
           />
