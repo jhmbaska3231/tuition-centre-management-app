@@ -68,6 +68,16 @@
   --status-neutral:    oklch(0.516 0.015 300);
   --status-neutral-bg: oklch(0.968 0.005 300);
 
+  /*
+    text on the matching -bg. the colours above are for icons, borders and large figures,
+    where 3:1 is enough. badge sized text needs 4.5:1, which these darker shades meet
+  */
+  --status-success-fg: oklch(0.45 0.12 152);
+  --status-warning-fg: oklch(0.47 0.12 60);
+  --status-danger-fg:  oklch(0.48 0.17 27);
+  --status-info-fg:    oklch(0.47 0.13 250);
+  --status-neutral-fg: oklch(0.45 0.015 300);
+
   --radius: 0.5rem;
 }
 
@@ -114,6 +124,12 @@
   --color-info-bg: var(--status-info-bg);
   --color-neutral: var(--status-neutral);
   --color-neutral-bg: var(--status-neutral-bg);
+
+  --color-success-fg: var(--status-success-fg);
+  --color-warning-fg: var(--status-warning-fg);
+  --color-danger-fg: var(--status-danger-fg);
+  --color-info-fg: var(--status-info-fg);
+  --color-neutral-fg: var(--status-neutral-fg);
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
