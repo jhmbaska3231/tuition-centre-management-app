@@ -188,7 +188,7 @@ export const listSessions = (q: Queryable, orgId: string, f: SessionFilters) =>
          AND (EXISTS (SELECT 1 FROM enrollments e
                        WHERE e.course_id = v.course_id AND e.student_id = sg.student_id AND e.status = 'active')
            OR EXISTS (SELECT 1 FROM makeup_bookings mb
-                       WHERE mb.booked_session_id = v.id AND mb.student_id = sg.student_id AND mb.status = 'booked'))
+                       WHERE mb.booked_session_id = v.id AND mb.student_id = sg.student_id))
      ) vs ON true
      WHERE ($9::uuid IS NULL OR vs.ids IS NOT NULL)
      ORDER BY v.starts_at`,

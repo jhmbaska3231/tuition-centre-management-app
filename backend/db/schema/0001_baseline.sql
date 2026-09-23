@@ -435,7 +435,11 @@ CREATE TABLE makeup_bookings (
   booked_at                 TIMESTAMPTZ,
   created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (student_id, credited_from_session_id)
+  UNIQUE (student_id, credited_from_session_id),
+  -- a credit may only point at a session while it is attached to it. unbooking and
+  -- releasing clear the pointer, so the roster can treat booked_session_id as membership
+  CONSTRAINT makeup_bookings_attached_status_chk
+    CHECK (booked_session_id IS NULL OR status IN ('booked', 'used', 'forfeited'))
 );
 CREATE INDEX makeup_bookings_student_status_idx ON makeup_bookings (student_id, status);
 CREATE INDEX makeup_bookings_booked_session_idx ON makeup_bookings (booked_session_id);

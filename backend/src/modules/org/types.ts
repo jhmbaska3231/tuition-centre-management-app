@@ -12,7 +12,7 @@ export interface OrganisationSettingsRow {
   makeup_eligible_statuses: string[]; makeup_expiry_policy: 'end_of_term' | 'fixed_days'; makeup_expiry_days: number;
   makeup_min_lead_minutes: number; makeup_cap_per_term: number | null;
   billing_generation_day: number; billing_due_day: number; tax_rate_bp: number; sibling_discount_bp: number;
-  invoice_prefix: string; updated_at: Date;
+  invoice_prefix: string; payment_instructions: string | null; updated_at: Date;
 }
 
 export interface NotificationEventSettingRow { event_key: string; enabled: boolean; updated_at: Date }

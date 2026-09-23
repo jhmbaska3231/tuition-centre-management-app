@@ -135,7 +135,10 @@ export const roster = (q: Queryable, sessionId: string) =>
        SELECT e.student_id, 'enrollment' AS source, e.id AS enrollment_id, NULL::uuid AS makeup_booking_id
        FROM enrollments e, ctx WHERE e.course_id = ctx.course_id AND e.status = 'active' AND e.starts_on <= ctx.d AND (e.ends_on IS NULL OR e.ends_on >= ctx.d)
        UNION ALL
-       SELECT mb.student_id, 'makeup', NULL, mb.id FROM makeup_bookings mb WHERE mb.booked_session_id = $1 AND mb.status IN ('booked', 'used'))
+       -- attachment is membership: booked_session_id is set on booking and cleared on unbook
+       -- or release, so any row still pointing here was expected at this session whatever
+       -- became of the credit afterwards (booked, used, or forfeited by a no show)
+       SELECT mb.student_id, 'makeup', NULL, mb.id FROM makeup_bookings mb WHERE mb.booked_session_id = $1)
      SELECT m.student_id, st.first_name || ' ' || st.last_name AS student_name, l.code AS level_code, m.source, m.enrollment_id, m.makeup_booking_id,
             a.id AS attendance_id, a.status, a.notes, a.marked_at
      FROM members m JOIN students st ON st.id = m.student_id LEFT JOIN levels l ON l.id = st.level_id
@@ -204,11 +207,10 @@ export const releaseBookingsForSession = (q: Queryable, sessionId: string, today
 export const expireMakeups = (q: Queryable, today: string) =>
   execute(q, `UPDATE makeup_bookings SET status = 'expired' WHERE status = 'available' AND expires_on < $1`, [today]);
 
-// a credit booked into a session that ended without attendance ever being marked is
-// stranded: not usable, not released, not expired. burn it, matching the policy applied when
-// a tutor marks the student absent at their make up. only past the attendance edit window,
-// because forfeiting drops the student off the derived roster and a tutor marking late
-// would no longer be able to record them
+// a credit booked into a session that ended with no attendance marked is stranded: not
+// usable, not released, not expired. burn it, the same way a no show at a make up burns it.
+// wait until the attendance edit window has closed first, so a tutor marking a few days
+// late still decides the outcome rather than the job deciding it for them
 export const forfeitUnmarkedBookings = (q: Queryable, editWindowDays: number) =>
   many<{ id: string; student_id: string; booked_session_id: string }>(q,
     `UPDATE makeup_bookings mb SET status = 'forfeited'
