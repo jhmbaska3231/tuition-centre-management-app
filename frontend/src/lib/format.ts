@@ -25,6 +25,13 @@ export const money = (cents: number): string =>
 export const amount = (cents: number): string =>
   new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
 
+// the symbol money() prints, for input prefixes. read from the same formatter so the two
+// always agree
+export const currencySymbol = (): string =>
+  new Intl.NumberFormat(locale, { style: 'currency', currency })
+    .formatToParts(0)
+    .find(part => part.type === 'currency')?.value ?? currency;
+
 // a dateonly string ('2026-09-21') has no timezone. parsing it as utc noon prevents it
 // from accidentally showing as the previous day in time zones behind utc (west of greenwich)
 const dateOnlyToDate = (d: string): Date => new Date(`${d}T12:00:00Z`);
@@ -75,6 +82,24 @@ export const todayInCentre = (): string =>
 
 export const addDays = (d: string, n: number): string =>
   new Date(dateOnlyToDate(d).getTime() + n * 86_400_000).toISOString().slice(0, 10);
+
+// monday of the week containing d. singapore weeks start on monday
+export const startOfWeek = (d: string): string => {
+  const weekday = dateOnlyToDate(d).getUTCDay();
+  return addDays(d, -((weekday + 6) % 7));
+};
+
+export const startOfMonth = (d: string): string => `${d.slice(0, 8)}01`;
+
+// day zero of the next month is the last day of this one
+export const endOfMonth = (d: string): string => {
+  const date = dateOnlyToDate(d);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 12)).toISOString().slice(0, 10);
+};
+
+// whole days from one dateonly to another, counted the way the api's range limit counts them
+export const daysBetween = (from: string, to: string): number =>
+  Math.round((dateOnlyToDate(to).getTime() - dateOnlyToDate(from).getTime()) / 86_400_000);
 
 export const fullName = (p: { first_name: string; last_name: string }): string =>
   `${p.first_name} ${p.last_name}`;
