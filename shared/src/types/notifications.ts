@@ -1,12 +1,16 @@
 // shared/src/types/notifications.ts
 
-import type { NotificationChannel } from '../enums';
+import type { NotificationChannel, NotificationEvent } from '../enums';
 import type { Timestamp } from './api';
 
 export interface NotificationPreference {
   channel: NotificationChannel;
-  event_key: string;
+  event_key: NotificationEvent;
   enabled: boolean;
+  // false when the centre has switched this event off for everyone. the personal toggle
+  // then has no effect, so the ui disables it and explains why rather than showing a
+  // control that silently does nothing
+  org_enabled: boolean;
 }
 
 export interface OutboxEntry {

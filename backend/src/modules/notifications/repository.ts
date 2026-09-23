@@ -36,6 +36,11 @@ export const markFailed = (q: Queryable, id: string, error: string) =>
 export const listPreferences = (q: Queryable, userId: string) =>
   many<PreferenceRow>(q, 'SELECT channel, event_key, enabled FROM notification_preferences WHERE user_id = $1 ORDER BY event_key', [userId]);
 
+// org level toggles. an event with no row is on, matching iseventenabled in outbox.ts
+export const listEventSettings = (q: Queryable, orgId: string) =>
+  many<{ event_key: string; enabled: boolean }>(q,
+    'SELECT event_key, enabled FROM notification_event_settings WHERE org_id = $1', [orgId]);
+
 export const upsertPreference = (q: Queryable, userId: string, channel: string, eventKey: string, enabled: boolean) =>
   execute(q,
     `INSERT INTO notification_preferences (user_id, channel, event_key, enabled) VALUES ($1, $2, $3, $4)
