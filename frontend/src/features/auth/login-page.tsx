@@ -6,11 +6,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { loginSchema, type LoginInput } from '@tuition/shared';
 import type { z } from 'zod';
 import { errorMessage } from '@/api/errors';
-import { useAuth } from '@/auth/context';
+import { useAuth, type SignOutReason } from '@/auth/context';
+import type { LoginRedirectState } from '@/auth/guards';
 import { TextField } from '@/components/form/text-field';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -21,9 +22,18 @@ import { applyServerErrors } from '@/lib/form';
 
 type LoginForm = z.input<typeof loginSchema>;
 
+// explanations for arriving here involuntarily. a plain sign out needs none
+const NOTICES: Partial<Record<SignOutReason, string>> = {
+  password_changed: 'Your password was changed. Sign in again.',
+  session_expired: 'Your session expired. Sign in again.',
+};
+
 export const LoginPage = () => {
   useDocumentTitle('Sign in');
   const { login } = useAuth();
+  const location = useLocation();
+  const reason = (location.state as LoginRedirectState | null)?.reason;
+  const notice = reason ? NOTICES[reason] : undefined;
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<LoginForm, unknown, LoginInput>({
@@ -48,6 +58,11 @@ export const LoginPage = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} noValidate className="space-y-6">
+          {!formError && notice && (
+            <Alert>
+              <AlertDescription>{notice}</AlertDescription>
+            </Alert>
+          )}
           {formError && (
             <Alert variant="destructive">
               <AlertDescription>{formError}</AlertDescription>

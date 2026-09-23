@@ -3,19 +3,26 @@
 import { createContext, use } from 'react';
 import type { LoginInput, PublicUser, RegisterInput, Role } from '@tuition/shared';
 
+// why the user is on the sign in page. signed_out and password_changed are deliberate, so
+// no return path is kept for the next person on this device. session_expired keeps it, so
+// the same user returns to where they were
+export type SignOutReason = 'signed_out' | 'password_changed' | 'session_expired';
+
+// session_expired is only ever set by the provider, when a refresh fails on its own
+export type ExplicitSignOutReason = Exclude<SignOutReason, 'session_expired'>;
+
 export interface AuthState {
   user: PublicUser | null;
   // true only while the initial refresh is in flight. guards wait for this rather than
   // redirecting to login on a page reload
   isBootstrapping: boolean;
-  // true after an explicit sign out, false after sign in. lets the guard distinguish a
-  // deliberate sign out, which must not carry a return path to the next person who signs
-  // in on this device, from an expired session, which should return the same user to
-  // where they were
-  signedOut: boolean;
+  // null while signed in, and on a first visit with no session
+  signOutReason: SignOutReason | null;
   login: (input: LoginInput) => Promise<PublicUser>;
   register: (input: RegisterInput) => Promise<PublicUser>;
-  logout: () => Promise<void>;
+  logout: (options?: { reason?: ExplicitSignOutReason }) => Promise<void>;
+  // the profile screen pushes the saved user in so the header updates immediately
+  updateCurrentUser: (user: PublicUser) => void;
   hasRole: (...roles: Role[]) => boolean;
 }
 

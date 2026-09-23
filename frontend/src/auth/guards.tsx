@@ -2,10 +2,17 @@
 
 import { Navigate, Outlet, useLocation } from 'react-router';
 import type { Role } from '@tuition/shared';
-import { useAuth } from './context';
+import { useAuth, type SignOutReason } from './context';
 import { homePathFor } from './home-path';
 
-interface FromState { from?: { pathname: string } }
+// what the redirect to sign in carries. from returns the user to the page they wanted,
+// including its search params so filtered views survive. reason explains why they are
+// signing in again. router state belongs to this one navigation, so a later manual visit
+// to /login shows no message
+export interface LoginRedirectState {
+  from?: { pathname: string; search: string };
+  reason?: SignOutReason;
+}
 
 // deliberately empty: a spinner that flashes for 80ms is worse than nothing
 const BootstrapScreen = () => (
@@ -15,13 +22,20 @@ const BootstrapScreen = () => (
 );
 
 export const RequireAuth = () => {
-  const { user, isBootstrapping, signedOut } = useAuth();
+  const { user, isBootstrapping, signOutReason } = useAuth();
   const location = useLocation();
 
   if (isBootstrapping) return <BootstrapScreen />;
-  // remember where they were headed so sign in can return them there, unless they
-  // signed out on purpose
-  if (!user) return <Navigate to="/login" state={signedOut ? undefined : { from: location }} replace />;
+  if (!user) {
+    // a deliberate sign out must not hand a return path to the next person on this device.
+    // an expired session, or a first visit to a protected link, returns them where they were
+    const deliberate = signOutReason === 'signed_out' || signOutReason === 'password_changed';
+    const state: LoginRedirectState = {
+      from: deliberate ? undefined : { pathname: location.pathname, search: location.search },
+      reason: signOutReason ?? undefined,
+    };
+    return <Navigate to="/login" state={state} replace />;
+  }
   return <Outlet />;
 };
 
@@ -44,8 +58,8 @@ export const RedirectIfAuthenticated = () => {
 
   if (isBootstrapping) return <BootstrapScreen />;
   if (user) {
-    const from = (location.state as FromState | null)?.from?.pathname;
-    return <Navigate to={from ?? homePathFor(user.role)} replace />;
+    const from = (location.state as LoginRedirectState | null)?.from;
+    return <Navigate to={from ? `${from.pathname}${from.search}` : homePathFor(user.role)} replace />;
   }
   return <Outlet />;
 };
