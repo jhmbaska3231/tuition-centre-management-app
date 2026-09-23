@@ -168,8 +168,8 @@ Authorization: Bearer {{jay}}
 @optionId = {{options.response.body.$[0].id}}
 
 ### 21b. book a session that is not an option: expect 422 "not available for this credit".
-### uses a pri 5 english session, a real session of the wrong subject, so this fails if the
-### subject and level rules stop being applied
+### uses hui's past sec 1 mathematics session, so this fails if the future rule stops being
+### applied
 POST {{base}}/api/makeups/{{makeupId}}/book
 Authorization: Bearer {{jay}}
 Content-Type: application/json
@@ -272,4 +272,101 @@ POST {{base}}/api/auth/refresh
 
 ### 31. audit trail for the enrollment: expect enrollment.created by the smoke parent
 GET {{base}}/api/audit?entityType=enrollment&entityId={{enroll.response.body.id}}
+Authorization: Bearer {{admin}}
+
+### ---------------------------------------------------------------------------
+### 32 to 38 cover the authorisation and settings changes from the B items.
+### 36 to 38 write settings; db:reset restores the defaults
+### ---------------------------------------------------------------------------
+
+### 32. a course jay's children are not enrolled in, and one of its sessions
+# @name allCourses
+GET {{base}}/api/courses
+Authorization: Bearer {{admin}}
+
+###
+# @name otherSessions
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}&courseId={{allCourses.response.body.$[?(@.name=='Pri 5 English')].id}}
+Authorization: Bearer {{admin}}
+
+### 33. B1: jay reads that session by id: expect 404 rather than 403, so the response does
+### not reveal that a session he cannot see exists
+GET {{base}}/api/sessions/{{otherSessions.response.body.$[0].id}}
+Authorization: Bearer {{jay}}
+
+### 34. B2: a tutor lists parents: expect 403. role gates return forbidden, unlike the
+### resource guard in 33 which returns not found
+GET {{base}}/api/parents
+Authorization: Bearer {{tutor}}
+
+### 35. B5: a session range wider than 92 days: expect 400 from the shared schema
+GET {{base}}/api/sessions?from={{today}}&to={{$datetime "YYYY-MM-DD" 120 d}}
+Authorization: Bearer {{admin}}
+
+### 36. B10: jay's notification preferences: expect 8 email events, all enabled with
+### org_enabled true
+GET {{base}}/api/notifications/preferences
+Authorization: Bearer {{jay}}
+
+### admin turns session reminders off for the whole centre
+PUT {{base}}/api/org/notification-events/session_reminder
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "enabled": false }
+
+### jay again: session_reminder now has org_enabled false and his own enabled unchanged.
+### this is the row the account screen greys out
+GET {{base}}/api/notifications/preferences
+Authorization: Bearer {{jay}}
+
+### put it back
+PUT {{base}}/api/org/notification-events/session_reminder
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "enabled": true }
+
+### 37. B3 and B4: admin sets payment instructions and branding
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "payment_instructions": "PayNow UEN 201812345A\nDBS Current 003-901234-5", "landing_headline": "Small classes, real progress", "accent_colour": "#2563EB", "logo_url": "https://example.com/logo.png" }
+
+### an invalid colour: expect 400 from the shared schema, not a database error
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "accent_colour": "red" }
+
+### clearing the logo: expect 200 with logo_url null, not a 400 from .url()
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "logo_url": "" }
+
+### B4: unauthenticated, expect the four branding fields and nothing else from settings
+GET {{base}}/api/org/public
+
+### B3: jay's invoice detail now carries the centre's payment instructions
+GET {{base}}/api/invoices/{{jayInvoices.response.body.$[0].id}}
+Authorization: Bearer {{jay}}
+
+### 38. B9: admin invites a tutor with no password: expect 201, then a password_reset row
+### in the outbox for that address. a second run without db:reset gives 409
+# @name branches
+GET {{base}}/api/branches
+
+###
+POST {{base}}/api/staff
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "email": "invited.tutor@tuition.com", "role": "tutor", "firstName": "Invited", "lastName": "Tutor", "branchIds": ["{{branches.response.body.$[0].id}}"] }
+
+###
+GET {{base}}/api/notifications/outbox
 Authorization: Bearer {{admin}}

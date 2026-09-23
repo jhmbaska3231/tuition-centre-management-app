@@ -4,6 +4,11 @@ import { z } from 'zod';
 import { ATTENDANCE_STATUSES, INTEGRATION_KINDS, NOTIFICATION_EVENTS } from '../enums';
 import { basisPoints, isoDate, personName, sgPhone, uuid } from '../primitives';
 
+// a form clearing a field sends "", not null. normalise before validating, so empty means
+// unset rather than failing the url check or storing a blank headline
+const clearable = <T extends z.ZodType>(inner: T) =>
+  z.preprocess(v => (typeof v === 'string' && v.trim() === '' ? null : v), inner.nullable());
+
 export const updateSettingsSchema = z.object({
   session_horizon_weeks: z.number().int().min(1).max(52),
   adhoc_min_lead_minutes: z.number().int().min(0),
@@ -21,11 +26,11 @@ export const updateSettingsSchema = z.object({
   tax_rate_bp: basisPoints,
   sibling_discount_bp: basisPoints,
   invoice_prefix: z.string().trim().min(1).max(10).regex(/^[A-Z0-9-]+$/, 'Uppercase letters, digits and hyphens only'),
-  landing_headline: z.string().trim().max(80).nullable(),
-  landing_description: z.string().trim().max(300).nullable(),
-  accent_colour: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a six digit hex colour, for example #2563EB').nullable(),
-  logo_url: z.string().trim().url().startsWith('https://', 'Logo URL must use https').max(500).nullable(),
-  payment_instructions: z.string().trim().max(2000).nullable().optional(),
+  landing_headline: clearable(z.string().trim().max(80)),
+  landing_description: clearable(z.string().trim().max(300)),
+  accent_colour: clearable(z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a six digit hex colour, for example #2563EB')),
+  logo_url: clearable(z.url({ protocol: /^https$/ }).max(500)),
+  payment_instructions: clearable(z.string().trim().max(2000)),
 }).partial().refine(o => Object.keys(o).length > 0, 'No fields to update');
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
