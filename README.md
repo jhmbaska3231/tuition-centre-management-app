@@ -155,31 +155,31 @@ the full schema including every constraint is in `backend/db/schema/0001_baselin
 
 ## api
 
-all routes under `/api`. errors are always
+all routes under  /api. errors are always
 `{ error: { code, message, details?, requestId } }`, with the request id also returned as a
 header so a support report can be traced to the exact log line
 
 | area          | routes |
 |---------------|--------|
-| auth          | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/logout-all`, `/auth/me`, `/auth/password-reset/{request,confirm}` |
-| account       | `/account/profile`, `/account/password`, `/account` |
-| org           | `/org`, `/org/public`, `/org/settings`, `/org/notification-events`, `/org/integrations` |
-| reference     | `/branches`, `/classrooms`, `/closures`, `/levels`, `/subjects`, `/terms`, `/fee-plans` |
-| people        | `/staff`, `/parents`, `/students`, `/students/mine`, `/students/:id/guardians` |
-| scheduling    | `/courses`, `/courses/:id/{slots,status,generate}`, `/sessions`, `/sessions/needing-cover`, `/sessions/:id/{cancel,cover,notes}`, `/tutors/:id/availability`, `/leave` |
-| enrollment    | `/enrollments`, `/enrollments/:id/{withdraw,attendance}`, `/waitlist`, `/attendance/sessions/:id`, `/makeups` |
-| billing       | `/invoices`, `/invoices/my-balance`, `/invoices/:id/{void,credit-notes}`, `/payments`, `/payments/:id/refund`, `/billing/webhooks/:provider` |
-| notifications | `/notifications/preferences`, `/notifications/test-email`, `/notifications/outbox` |
-| reporting     | `/reports/{overview,course-fill,enrollment-breakdown,revenue,attendance,tutor-workload,churn}`, `/audit` |
-| ops           | `/health`, `/ready`, `/metrics` (outside `/api`, reachable only inside the cluster) |
+| auth          | /auth/register, /auth/login, /auth/refresh, /auth/logout, /auth/logout-all, /auth/me, /auth/password-reset/{request,confirm} |
+| account       | /account/profile, /account/password, /account |
+| org           | /org, /org/public, /org/settings, /org/notification-events, /org/integrations |
+| reference     | /branches, /classrooms, /closures, /levels, /subjects, /terms, /fee-plans |
+| people        | /staff, /parents, /students, /students/mine, /students/:id/guardians |
+| scheduling    | /courses, /courses/:id/{slots,status,generate}, /sessions, /sessions/needing-cover, /sessions/:id/{cancel,cover,notes}, /tutors/:id/availability, /leave |
+| enrollment    | /enrollments, /enrollments/:id/{withdraw,attendance}, /waitlist, /attendance/sessions/:id, /makeups |
+| billing       | /invoices, /invoices/my-balance, /invoices/:id/{void,credit-notes}, /payments, /payments/:id/refund, /billing/webhooks/:provider |
+| notifications | /notifications/preferences, /notifications/test-email, /notifications/outbox |
+| reporting     | /reports/{overview,course-fill,enrollment-breakdown,revenue,attendance,tutor-workload,churn}, /audit |
+| ops           | /health, /ready, /metrics (outside /api, reachable only inside the cluster) |
 
 **background jobs**
 
 | job                      | schedule     | what it does |
 |--------------------------|--------------|--------------|
-| `nightly`                | 02:30 local  | complete finished sessions, extend next batch of upcoming sessions, settle ended enrollments, expire waitlist offers and make up credits, offer freed seats, issue invoices, queue overdue reminders |
-| `session-reminders`      | hourly       | remind guardians of sessions starting in 24 hours |
-| `dispatch-notifications` | every minute | send queued email, retry with backoff, scrub payloads after sending |
+|  nightly                 | 02:30 local  | complete finished sessions, extend next batch of upcoming sessions, settle ended enrollments, expire waitlist offers and make up credits, offer freed seats, issue invoices, queue overdue reminders |
+|  session-reminders       | hourly       | remind guardians of sessions starting in 24 hours |
+|  dispatch-notifications  | every minute | send queued email, retry with backoff, scrub payloads after sending |
 
 ---
 
