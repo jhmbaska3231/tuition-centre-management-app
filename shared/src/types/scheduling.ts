@@ -83,9 +83,12 @@ export interface Session {
   roster_count: number;
   // derived: no tutor, tutor archived, or tutor on approved leave for this date
   needs_cover: boolean;
+  // the requesting parent's children who attend this session, by active enrollment or a
+  // booked make up. absent for staff and for the single session read, which do not compute it
+  viewer_student_ids?: string[];
 }
 
-// reported by the session generator. skippedConflict entries are slots the exclusion
+// reported by the session generator. skippedconflict entries are slots the exclusion
 // constraints refused, they are surfaced rather than thrown so one clash does not
 // abort the rest of the run
 export interface GenerationReport {

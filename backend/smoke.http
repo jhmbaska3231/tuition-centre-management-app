@@ -189,6 +189,11 @@ Content-Type: application/json
 GET {{base}}/api/attendance/sessions/{{optionId}}
 Authorization: Bearer {{tutor}}
 
+### 21d-ii. jay's session list now includes the booked make up session, labelled with john.
+### proves the parent filter and the child label use the same rule
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}
+Authorization: Bearer {{jay}}
+
 ### 21e. unbook: expect 200 and the credit back to "available" with booked_session_id null
 POST {{base}}/api/makeups/{{makeupId}}/unbook
 Authorization: Bearer {{jay}}

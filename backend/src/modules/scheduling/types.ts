@@ -28,6 +28,9 @@ export interface SessionRow {
 export interface SessionView extends SessionRow {
   course_name: string; branch_id: string; branch_name: string; level_code: string | null; subject_name: string;
   tutor_name: string | null; classroom_name: string | null; roster_count: number; needs_cover: boolean;
+  // only computed by the parent scoped list: the requesting parent's children who attend
+  // this session, by active enrollment or a booked make up
+  viewer_student_ids?: string[];
 }
 
 export interface LeaveRow {

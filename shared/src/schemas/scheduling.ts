@@ -71,6 +71,11 @@ export const listCoursesQuery = z.object({
   studentId: uuid.optional(),
 });
 
+// one request should not be able to scan a year of sessions. 92 days covers a full term,
+// which is the widest view any screen needs
+const MAX_RANGE_DAYS = 92;
+const daysBetween = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / 86_400_000;
+
 export const listSessionsQuery = z.object({
   from: isoDate,
   to: isoDate,
@@ -79,7 +84,9 @@ export const listSessionsQuery = z.object({
   tutorId: uuid.optional(),
   classroomId: uuid.optional(),
   status: z.enum(SESSION_STATUSES).optional(),
-}).refine(q => q.to >= q.from, { path: ['to'], message: 'to must not be before from' });
+})
+  .refine(q => q.to >= q.from, { path: ['to'], message: 'to must not be before from' })
+  .refine(q => daysBetween(q.from, q.to) <= MAX_RANGE_DAYS, { path: ['to'], message: `Range must not exceed ${MAX_RANGE_DAYS} days` });
 
 export const createAdhocSessionSchema = z.object({
   course_id: uuid,

@@ -168,17 +168,30 @@ export const findSessionForUpdate = (q: Queryable, orgId: string, id: string) =>
 
 export interface SessionFilters { from: Date; to: Date; courseId?: string; branchId?: string; tutorId?: string; classroomId?: string; status?: string; parentId?: string }
 
+// the parent filter and the child labels are the same rule: a session is visible to a parent
+// exactly when one of their children attends it, by active enrollment in the course or by a
+// make up booked into this specific session. deriving it once in a lateral keeps the filter
+// and the label from drifting, and guarantees every row a parent sees can be labelled.
+// the lateral sits outside the view rather than inside it so only the parent path pays for it
 export const listSessions = (q: Queryable, orgId: string, f: SessionFilters) =>
   many<SessionView>(q,
-    `${SESSION_VIEW}
-     WHERE s.org_id = $1 AND s.starts_at >= $2 AND s.starts_at < $3
-       AND ($4::uuid IS NULL OR s.course_id = $4) AND ($5::uuid IS NULL OR c.branch_id = $5)
-       AND ($6::uuid IS NULL OR s.tutor_id = $6) AND ($7::uuid IS NULL OR s.classroom_id = $7)
-       AND ($8::text IS NULL OR s.status = $8)
-       AND ($9::uuid IS NULL OR EXISTS (
-             SELECT 1 FROM enrollments e JOIN student_guardians g ON g.student_id = e.student_id
-             WHERE e.course_id = s.course_id AND e.status = 'active' AND g.user_id = $9))
-     ORDER BY s.starts_at`,
+    `SELECT v.*, COALESCE(vs.ids, '{}') AS viewer_student_ids
+     FROM (${SESSION_VIEW}
+           WHERE s.org_id = $1 AND s.starts_at >= $2 AND s.starts_at < $3
+             AND ($4::uuid IS NULL OR s.course_id = $4) AND ($5::uuid IS NULL OR c.branch_id = $5)
+             AND ($6::uuid IS NULL OR s.tutor_id = $6) AND ($7::uuid IS NULL OR s.classroom_id = $7)
+             AND ($8::text IS NULL OR s.status = $8)) v
+     LEFT JOIN LATERAL (
+       SELECT array_agg(DISTINCT sg.student_id) AS ids
+       FROM student_guardians sg
+       WHERE sg.user_id = $9
+         AND (EXISTS (SELECT 1 FROM enrollments e
+                       WHERE e.course_id = v.course_id AND e.student_id = sg.student_id AND e.status = 'active')
+           OR EXISTS (SELECT 1 FROM makeup_bookings mb
+                       WHERE mb.booked_session_id = v.id AND mb.student_id = sg.student_id AND mb.status = 'booked'))
+     ) vs ON true
+     WHERE ($9::uuid IS NULL OR vs.ids IS NOT NULL)
+     ORDER BY v.starts_at`,
     [orgId, f.from, f.to, f.courseId ?? null, f.branchId ?? null, f.tutorId ?? null, f.classroomId ?? null, f.status ?? null, f.parentId ?? null]);
 
 export const listSessionsNeedingCover = (q: Queryable, orgId: string, branchIds: string[] | null) =>
