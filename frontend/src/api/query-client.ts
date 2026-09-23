@@ -40,3 +40,9 @@ const KEEP_ON_LOGOUT = new Set(['public-org']);
 export const clearQueryCache = (): void => {
   queryClient.removeQueries({ predicate: q => !KEEP_ON_LOGOUT.has(String(q.queryKey[0])) });
 };
+
+// marks every query under each root key stale and refetches the ones on screen. the
+// promise settles once those refetches finish, so a mutation that returns it from
+// onsuccess resolves only after the screen already shows fresh data
+export const invalidate = (keysToInvalidate: ReadonlyArray<readonly unknown[]>) =>
+  Promise.all(keysToInvalidate.map(queryKey => queryClient.invalidateQueries({ queryKey })));
