@@ -61,7 +61,7 @@ CREATE TABLE organisation_settings (
   -- every unpaid invoice instead of sending parents to a closed account
   payment_instructions          TEXT,
   created_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- provider credentials set by the centre admin, config_encrypted is aes-256-gcm
