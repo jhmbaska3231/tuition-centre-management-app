@@ -14,6 +14,7 @@ import { ParentHomePage } from '@/features/parent/parent-home-page';
 import { LandingPage } from '@/features/public/landing-page';
 import { NotFoundPage } from '@/features/public/not-found-page';
 import { TutorHomePage } from '@/features/tutor/tutor-home-page';
+import { ChildrenPage } from '@/features/parent/children/children-page';
 
 const placeholder = (path: string, title: string) => ({ path, element: <PlaceholderPage title={title} /> });
 
@@ -47,7 +48,8 @@ export const router = createBrowserRouter([
             element: <RequireRole roles={['parent']} />,
             children: [
               { path: '/parent', Component: ParentHomePage },
-              placeholder('/parent/children', 'Children'),
+              { path: '/parent/children', Component: ChildrenPage },
+              placeholder('/parent/children/:studentId', 'Child'),
               placeholder('/parent/classes', 'Classes'),
               placeholder('/parent/invoices', 'Invoices'),
               placeholder('/parent/invoices/:invoiceId', 'Invoice'),

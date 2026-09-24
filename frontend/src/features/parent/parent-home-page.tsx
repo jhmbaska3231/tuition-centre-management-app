@@ -4,7 +4,7 @@
 // the children. each section loads and fails on its own, so one slow or failing request
 // never blanks the rest of the page
 
-import { CalendarClock, ChevronRight, Plus, Users } from 'lucide-react';
+import { CalendarClock, Plus, Users } from 'lucide-react';
 import { Link } from 'react-router';
 import type { MakeupCredit, Session, Student, WaitlistEntry } from '@tuition/shared';
 import { useMyBalance } from '@/api/queries/billing';
@@ -21,7 +21,8 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNow } from '@/hooks/use-now';
-import { addDays, formatDate, formatDateTime, formatList, fullName, money, todayInCentre } from '@/lib/format';
+import { addDays, formatDate, formatDateTime, formatList, money, todayInCentre } from '@/lib/format';
+import { ChildCard } from './children/child-card';
 
 type OpenOffer = WaitlistEntry & { offer_expires_at: string };
 
@@ -116,25 +117,9 @@ const UpcomingList = ({ sessions, childNames, labelChildren, now }: {
   );
 };
 
-const classCount = (n: number) => (n === 0 ? 'No classes yet' : n === 1 ? '1 class' : `${n} classes`);
-
 const ChildrenList = ({ students }: { students: Student[] }) => (
   <div className="grid gap-3 sm:grid-cols-2">
-    {students.map(student => (
-      <Link key={student.id} to="/parent/children" className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <Card className="transition-colors group-hover:bg-muted/50">
-          <CardContent className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate font-medium">{fullName(student)}</p>
-              <p className="text-sm text-muted-foreground">
-                {[student.level_name, classCount(student.active_enrollment_count)].filter(Boolean).join(', ')}
-              </p>
-            </div>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          </CardContent>
-        </Card>
-      </Link>
-    ))}
+    {students.map(student => <ChildCard key={student.id} student={student} />)}
   </div>
 );
 
@@ -186,7 +171,7 @@ export const ParentHomePage = () => {
         <section aria-labelledby="your-children">
           <div className="mb-3 flex items-center justify-between">
             <h2 id="your-children" className="text-sm font-semibold">Your children</h2>
-            <Link to="/parent/children" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
+            <Link to="/parent/children?add=1" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
               <Plus className="size-4" aria-hidden /> Add child
             </Link>
           </div>
@@ -198,7 +183,7 @@ export const ParentHomePage = () => {
                 icon={Users}
                 title="No children added yet"
                 description="Add your child to browse and enrol in classes."
-                action={<Link to="/parent/children" className={buttonVariants()}>Add your first child</Link>}
+                action={<Link to="/parent/children?add=1" className={buttonVariants()}>Add your first child</Link>}
               />
             }
           >

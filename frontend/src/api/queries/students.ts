@@ -2,11 +2,17 @@
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
-  AddGuardianInput, CreateOwnStudentInput, Student, UpdateGuardianInput, UpdateStudentInput,
+  AddGuardianInput, Student, UpdateGuardianInput, UpdateStudentInput,
 } from '@tuition/shared';
 import { api } from '../client';
 import { keys } from '../keys';
 import { invalidate } from '../query-client';
+import type { z } from 'zod';
+import type { createOwnStudentSchema } from '@tuition/shared';
+
+// what the client sends: the schema's input, where fields with defaults are optional.
+// z.infer would give the output, which requires them because the server fills them in
+export type CreateOwnStudentBody = z.input<typeof createOwnStudentSchema>;
 
 // the signed in parent's own children
 export const useMyStudents = () =>
@@ -21,7 +27,7 @@ export const useStudent = (id: string) =>
 // the caller becomes guardian and billing contact
 export const useCreateOwnStudent = () =>
   useMutation({
-    mutationFn: (input: CreateOwnStudentInput) => api.post<Student>('/students/mine', input),
+    mutationFn: (input: CreateOwnStudentBody) => api.post<Student>('/students/mine', input),
     onSuccess: () => invalidate([keys.students.all]),
   });
 
