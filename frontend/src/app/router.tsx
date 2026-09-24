@@ -15,6 +15,7 @@ import { LandingPage } from '@/features/public/landing-page';
 import { NotFoundPage } from '@/features/public/not-found-page';
 import { TutorHomePage } from '@/features/tutor/tutor-home-page';
 import { ChildrenPage } from '@/features/parent/children/children-page';
+import { ChildDetailPage } from '@/features/parent/children/child-detail-page';
 
 const placeholder = (path: string, title: string) => ({ path, element: <PlaceholderPage title={title} /> });
 
@@ -49,8 +50,9 @@ export const router = createBrowserRouter([
             children: [
               { path: '/parent', Component: ParentHomePage },
               { path: '/parent/children', Component: ChildrenPage },
-              placeholder('/parent/children/:studentId', 'Child'),
+              { path: '/parent/children/:studentId', Component: ChildDetailPage },
               placeholder('/parent/classes', 'Classes'),
+              placeholder('/parent/enrollments/:enrollmentId', 'Class'),
               placeholder('/parent/invoices', 'Invoices'),
               placeholder('/parent/invoices/:invoiceId', 'Invoice'),
               placeholder('/parent/makeups', 'Make-up classes'),
