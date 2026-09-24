@@ -104,5 +104,9 @@ export const daysBetween = (from: string, to: string): number =>
 export const fullName = (p: { first_name: string; last_name: string }): string =>
   `${p.first_name} ${p.last_name}`;
 
+// "john", "john and sarah", "john, sarah and mei", joined the way the centre's locale joins lists
+export const formatList = (items: string[]): string =>
+  new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(items);
+
 export const initials = (p: { first_name: string; last_name: string }): string =>
   `${p.first_name[0] ?? ''}${p.last_name[0] ?? ''}`.toUpperCase();

@@ -51,6 +51,7 @@ export const router = createBrowserRouter([
               placeholder('/parent/classes', 'Classes'),
               placeholder('/parent/invoices', 'Invoices'),
               placeholder('/parent/invoices/:invoiceId', 'Invoice'),
+              placeholder('/parent/makeups', 'Make-up classes'),
             ],
           },
           {
