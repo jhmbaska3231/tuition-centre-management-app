@@ -38,10 +38,11 @@ interface FilterSelectProps<T extends string> {
 }
 
 export const FilterSelect = <T extends string>({ label, allLabel, value, onChange, options }: FilterSelectProps<T>) => {
-  const items = [{ value: '' as const, label: allLabel }, ...options];
+  const items = [{ value: '', label: allLabel }, ...options];
   return (
-    // the values come only from items, so the cast restores the type base ui widens away
-    <Select items={items} value={value} onValueChange={next => onChange((next ?? '') as T | '')}>
+    // stated rather than inferred: base ui reads the value type through a conditional type,
+    // and inferred from '' | T inside this generic component it concludes every value is ''
+    <Select<T | ''> items={items} value={value} onValueChange={next => onChange(next ?? '')}>
       <SelectTrigger aria-label={label} className="w-full sm:w-44">
         <SelectValue />
       </SelectTrigger>
