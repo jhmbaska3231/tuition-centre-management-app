@@ -69,3 +69,11 @@ export const listStudentsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
+
+// the details on a refused level change: each level specific enrollment that must be
+// withdrawn first. a schema rather than only a type, so the frontend can check the shape of
+// a payload that arrives as unknown instead of trusting it
+export const levelChangeConflictDetailsSchema = z.object({
+  courses: z.array(z.object({ enrollmentId: uuid, courseId: uuid, courseName: z.string() })),
+});
+export type LevelChangeConflictDetails = z.infer<typeof levelChangeConflictDetailsSchema>;

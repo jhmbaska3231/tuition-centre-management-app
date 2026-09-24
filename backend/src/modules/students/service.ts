@@ -6,6 +6,7 @@ import { writeAudit } from '../audit/writer';
 import { AuthUser } from '../auth/types';
 import * as repo from './repository';
 import { StudentListFilters, StudentView } from './types';
+import type { LevelChangeConflictDetails } from '@tuition/shared';
 
 const STAFF_WRITE = new Set(['admin', 'branch_manager']);
 const STAFF_READ = new Set(['admin', 'branch_manager', 'tutor']);
@@ -37,9 +38,12 @@ const assertReferences = async (q: Queryable, orgId: string, levelId?: string | 
 const assertLevelChangeAllowed = async (q: Queryable, studentId: string, newLevelId: string | null) => {
   const conflicts = await repo.listLevelConflictingEnrollments(q, studentId, newLevelId);
   if (conflicts.length > 0) {
+    const details: LevelChangeConflictDetails = {
+      courses: conflicts.map(c => ({ enrollmentId: c.enrollment_id, courseId: c.course_id, courseName: c.course_name })),
+    };
     throw new RuleViolationError(
       'Withdraw from these level-specific courses before changing level: ' + conflicts.map(c => c.course_name).join(', '),
-      { courses: conflicts.map(c => c.course_name) });
+      details);
   }
 };
 

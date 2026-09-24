@@ -114,13 +114,15 @@ export const findLevel = (q: Queryable, orgId: string, id: string) =>
 export const findBranch = (q: Queryable, orgId: string, id: string) =>
   maybeOne<{ id: string; archived_at: Date | null }>(q, 'SELECT id, archived_at FROM branches WHERE org_id = $1 AND id = $2', [orgId, id]);
 
-// active enrollments in level specific courses whose level differs from the proposed one
+// active enrollments in level specific courses whose level differs from the proposed one.
+// the ids let a refusal link the parent straight to each enrollment
 export const listLevelConflictingEnrollments = (q: Queryable, studentId: string, newLevelId: string | null) =>
-  many<{ course_name: string }>(q,
-    `SELECT c.name AS course_name
+  many<{ enrollment_id: string; course_id: string; course_name: string }>(q,
+    `SELECT e.id AS enrollment_id, c.id AS course_id, c.name AS course_name
      FROM enrollments e JOIN courses c ON c.id = e.course_id
      WHERE e.student_id = $1 AND e.status = 'active' AND c.level_id IS NOT NULL
-       AND ($2::uuid IS NULL OR c.level_id <> $2)`,
+       AND ($2::uuid IS NULL OR c.level_id <> $2)
+     ORDER BY c.name`,
     [studentId, newLevelId]);
 
 export const countActiveEnrollments = async (q: Queryable, studentId: string) =>
