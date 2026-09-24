@@ -49,3 +49,8 @@ export const navFor = (role: Role): NavItem[] => {
     case 'branch_manager': return ADMIN.filter(i => i.to !== '/admin/settings');
   }
 };
+
+// parent and tutor screens are used mostly on phones, so below md their navigation is a
+// bottom tab bar within thumb reach rather than a menu behind a button. a tab bar holds
+// five items at most, so keep those two lists that short
+export const hasTabBar = (role: Role): boolean => role === 'parent' || role === 'tutor';

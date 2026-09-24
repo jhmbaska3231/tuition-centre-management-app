@@ -79,6 +79,14 @@
   --status-neutral-fg: oklch(0.45 0.015 300);
 
   --radius: 0.5rem;
+
+  /*
+    the mobile tab bar. the height is shared by the bar and by anything that must clear it.
+    the offset is zero by default, and the app shell sets it only for roles that have the
+    bar and only below md, so main's padding and any sticky bottom element read one value
+  */
+  --tab-bar-height: 3.5rem;
+  --tab-bar-offset: 0px;
 }
 
 @theme inline {
