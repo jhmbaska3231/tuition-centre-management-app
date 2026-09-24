@@ -269,3 +269,52 @@ Content-Type: application/json
 { "email": "invited.tutor@tuition.com", "password": "{{password}}" }
 
 ?? status == 401
+
+### 11. B19: eva adds david as a second guardian of daniel, but cannot switch off his emails
+# @name evaLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "eva.goh@gmail.com", "password": "{{password}}" }
+
+?? status == 200
+
+###
+# @name evaStudents
+GET {{base}}/api/students/mine
+Authorization: Bearer {{evaLogin.accessToken}}
+
+?? status == 200
+
+###
+# @name withDavid
+POST {{base}}/api/students/{{evaStudents.find(s => s.first_name === 'Daniel').id}}/guardians
+Authorization: Bearer {{evaLogin.accessToken}}
+Content-Type: application/json
+
+{ "email": "david.koh@gmail.com", "relationship": "father" }
+
+?? status == 201
+?? js response.parsedBody.guardians.length == 2
+
+### switching off another guardian's emails is refused
+PATCH {{base}}/api/students/{{evaStudents.find(s => s.first_name === 'Daniel').id}}/guardians/{{withDavid.guardians.find(g => g.email === 'david.koh@gmail.com').user_id}}
+Authorization: Bearer {{evaLogin.accessToken}}
+Content-Type: application/json
+
+{ "receivesNotifications": false }
+
+?? status == 403
+
+### eva is the billing contact, so removing her is refused
+DELETE {{base}}/api/students/{{evaStudents.find(s => s.first_name === 'Daniel').id}}/guardians/{{evaLogin.user.id}}
+Authorization: Bearer {{evaLogin.accessToken}}
+
+?? status == 422
+
+### removing david is allowed, leaving eva as the only guardian
+DELETE {{base}}/api/students/{{evaStudents.find(s => s.first_name === 'Daniel').id}}/guardians/{{withDavid.guardians.find(g => g.email === 'david.koh@gmail.com').user_id}}
+Authorization: Bearer {{evaLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.guardians.length == 1

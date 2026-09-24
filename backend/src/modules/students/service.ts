@@ -167,6 +167,12 @@ export const updateGuardian = (user: AuthUser, studentId: string, guardianUserId
     const current = student.guardians.find(g => g.user_id === guardianUserId);
     if (!current) throw new NotFoundError('Guardian');
 
+    // a parent may only change their own email preference: switching off another
+    // guardian's emails would silence them without their knowing. staff keep full control
+    if (user.role === 'parent' && guardianUserId !== user.id && input.receivesNotifications !== undefined) {
+      throw new ForbiddenError();
+    }
+
     // the billing contact can only be moved to someone else, never switched off outright
     if (input.isBillingContact === false && current.is_billing_contact) {
       throw new RuleViolationError('Set another guardian as billing contact instead');
