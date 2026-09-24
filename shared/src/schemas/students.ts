@@ -6,14 +6,18 @@ import { email, isoDate, personName, uuid } from '../primitives';
 
 const relationship = z.enum(RELATIONSHIPS);
 
+// the rules for a non empty value, exported so forms can apply them to their own inputs
+export const studentSchool = z.string().trim().max(100);
+export const studentNotes = z.string().trim().max(2000);
+
 const studentFields = {
   firstName: personName,
   lastName: personName,
   levelId: uuid.nullable(),
   dateOfBirth: isoDate.nullable(),
-  school: z.string().trim().max(100).nullable(),
+  school: studentSchool.nullable(),
   homeBranchId: uuid.nullable(),
-  notes: z.string().trim().max(2000).nullable(),
+  notes: studentNotes.nullable(),
 };
 
 // parent adding their own child. the caller becomes the guardian and billing contact.

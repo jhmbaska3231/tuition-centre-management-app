@@ -6,7 +6,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRef, useState, type ReactNode } from 'react';
-import { useForm, type DefaultValues, type FieldValues, type UseFormReturn } from 'react-hook-form';
+import { useForm, type DefaultValues, type FieldPath, type FieldValues, type UseFormReturn } from 'react-hook-form';
 import type { z } from 'zod';
 import { errorMessage } from '@/api/errors';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -32,6 +32,13 @@ interface FormDialogProps<TIn extends FieldValues, TOut extends FieldValues> {
   // throw to keep the dialog open. validation errors land on their fields, anything else
   // appears above them
   onSubmit: (values: TOut) => Promise<void>;
+  // turns a domain error into something the form can show: a message on one field, or
+  // content above the fields, which may include links. return null for the default message.
+  // validation errors never reach this, they are mapped onto their fields first
+  mapError?: (error: unknown) =>
+    | { kind: 'field'; field: FieldPath<NoInfer<TIn>>; message: string }
+    | { kind: 'form'; message: ReactNode }
+    | null;
   children: (form: UseFormReturn<TIn, unknown, TOut>) => ReactNode;
 }
 
@@ -45,10 +52,10 @@ type FormBodyProps<TIn extends FieldValues, TOut extends FieldValues> =
 // the form starts from defaultvalues each time, with no reset effect and no render of
 // stale values first
 const FormBody = <TIn extends FieldValues, TOut extends FieldValues>({
-  schema, defaultValues, submitLabel, pendingLabel, onSubmit, children, onBusyChange, close,
+  schema, defaultValues, submitLabel, pendingLabel, onSubmit, mapError, children, onBusyChange, close,
 }: FormBodyProps<TIn, TOut>) => {
   const form = useForm<TIn, unknown, TOut>({ resolver: zodResolver(schema), defaultValues });
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<ReactNode>(null);
 
   const submit = form.handleSubmit(async values => {
     setFormError(null);
@@ -56,7 +63,11 @@ const FormBody = <TIn extends FieldValues, TOut extends FieldValues>({
     try {
       await onSubmit(values);
     } catch (err) {
-      if (!applyServerErrors(form.setError, err)) setFormError(errorMessage(err));
+        if (!applyServerErrors(form.setError, err)) {
+        const mapped = mapError?.(err) ?? null;
+        if (mapped?.kind === 'field') form.setError(mapped.field, { type: 'server', message: mapped.message });
+        else setFormError(mapped?.message ?? errorMessage(err));
+      }
       return;
     } finally {
       onBusyChange(false);

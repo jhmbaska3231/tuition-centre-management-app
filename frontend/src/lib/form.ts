@@ -24,3 +24,14 @@ export const describedBy = (id: string, invalid: boolean, hasDescription: boolea
 // the output type is a plain string so the submit handler never sees null
 export const requiredChoice = (message: string) =>
   z.string().nullable().pipe(z.string({ error: message }));
+
+// a text input the api treats as absent when empty: the form holds "", the api receives
+// null. the rule for a non empty value comes from the shared package, so the form never
+// restates a length or format the api already defines
+export const fromText = (rule: z.ZodType<string, string>) =>
+  z.string().transform(value => (value.trim() === '' ? null : value)).pipe(rule.nullable());
+
+// a select over a fixed set of values that must be chosen. like requiredchoice, the form
+// can hold null while nothing is picked, and the output is always one of the values
+export const requiredEnum = <const T extends readonly [string, ...string[]]>(values: T, message: string) =>
+  z.enum(values).nullable().pipe(z.enum(values, { error: message }));
