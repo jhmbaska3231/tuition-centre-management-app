@@ -1,0 +1,271 @@
+# backend/smoke/b-items.http
+#
+# end to end checks of the api against a freshly seeded database. run with npm run smoke,
+# which resets the database first. requests run top to bottom, and a "# @name" makes that
+# response's body available to later requests under that name. every ?? line is an
+# assertion, so a run ends in a pass or fail summary
+
+{{
+  // dates in the centre's timezone, matching how the api decides what today is
+  const centreDate = days => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' })
+    .format(new Date(Date.now() + days * 86_400_000));
+  exports.today = centreDate(0);
+  exports.twoWeeks = centreDate(13);
+  exports.rangeLimit = centreDate(92);
+  exports.pastRangeLimit = centreDate(120);
+}}
+
+### 1. sign in as each role this file uses
+# @name adminLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@tuition.com", "password": "{{password}}" }
+
+?? status == 200
+
+###
+# @name tutorLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "hui.siew@tuition.com", "password": "{{password}}" }
+
+?? status == 200
+
+###
+# @name jayLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "jaytoh@gmail.com", "password": "{{password}}" }
+
+?? status == 200
+
+### 2. reference data the checks below look things up in
+# @name courses
+GET {{base}}/api/courses
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+
+###
+# @name levels
+GET {{base}}/api/levels
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+
+###
+# @name jayStudents
+GET {{base}}/api/students/mine
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+
+### 3. B1: sessions of jc1 economics, a course none of jay's children attend
+# @name foreignSessions
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}&courseId={{courses.find(c => c.name === 'JC1 Economics').id}}
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length > 0
+
+### jay reads one by id: expect 404, not 403, so the response does not reveal that a
+# session he cannot see exists
+GET {{base}}/api/sessions/{{foreignSessions[0].id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 404
+
+### 4. B14 and B8: every session in jay's list is labelled with at least one of his children
+# @name jaySessions
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length > 0
+?? js response.parsedBody.every(s => s.viewer_student_ids.length > 0) == true
+
+### the control for 3: a session his own child attends reads normally, so the 404 above
+# is the access rule and not a broken endpoint
+GET {{base}}/api/sessions/{{jaySessions[0].id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+
+### staff are guardians of nobody, so their lists carry no child labels
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.every(s => s.viewer_student_ids.length === 0) == true
+
+### 5. B2: a tutor lists parents: expect 403. role gates return forbidden, unlike the
+# resource guard in 3 which returns not found
+GET {{base}}/api/parents
+Authorization: Bearer {{tutorLogin.accessToken}}
+
+?? status == 403
+
+### 6. B5: a range wider than 92 days is refused by the shared schema
+GET {{base}}/api/sessions?from={{today}}&to={{pastRangeLimit}}
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 400
+
+### exactly 92 days is allowed. boundaries are where off by one mistakes hide
+GET {{base}}/api/sessions?from={{today}}&to={{rangeLimit}}
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+
+### 7. B10: jay's preferences: the eight parent events, all enabled, none switched off
+# by the centre
+GET {{base}}/api/notifications/preferences
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length == 8
+?? js response.parsedBody.every(p => p.enabled && p.org_enabled) == true
+
+### admin switches session reminders off for the whole centre
+PUT {{base}}/api/org/notification-events/session_reminder
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "enabled": false }
+
+?? status == 200
+
+### jay again: that row now has org_enabled false while his own choice is unchanged. this
+# is the row the account screen greys out
+GET {{base}}/api/notifications/preferences
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.find(p => p.event_key === 'session_reminder').org_enabled == false
+?? js response.parsedBody.find(p => p.event_key === 'session_reminder').enabled == true
+
+### jay changes his own preference: the response is the full matrix, so the screen can
+# replace its cached copy in one go
+PUT {{base}}/api/notifications/preferences
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "channel": "email", "eventKey": "invoice_issued", "enabled": false }
+
+?? status == 200
+?? js response.parsedBody.length == 8
+?? js response.parsedBody.find(p => p.event_key === 'invoice_issued').enabled == false
+
+### put both back
+PUT {{base}}/api/org/notification-events/session_reminder
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "enabled": true }
+
+?? status == 200
+
+###
+PUT {{base}}/api/notifications/preferences
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "channel": "email", "eventKey": "invoice_issued", "enabled": true }
+
+?? status == 200
+
+### 8. B3 and B4: admin saves payment instructions and branding
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "payment_instructions": "PayNow UEN 201812345A\nDBS Current 003-901234-5", "landing_headline": "Small classes, real progress", "accent_colour": "#2563EB", "logo_url": "https://example.com/logo.png" }
+
+?? status == 200
+
+### an invalid colour is refused by the shared schema, not by the database
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "accent_colour": "red" }
+
+?? status == 400
+
+### clearing the logo sends an empty string, which must mean unset rather than fail the
+# url check
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "logo_url": "" }
+
+?? status == 200
+?? js response.parsedBody.logo_url == null
+
+### B4: unauthenticated, the public endpoint shows the branding and no private setting
+GET {{base}}/api/org/public
+
+?? status == 200
+?? js response.parsedBody.landing_headline == Small classes, real progress
+?? js 'payment_instructions' in response.parsedBody == false
+
+### B3: jay's invoice detail carries the centre's payment instructions
+# @name jayInvoices
+GET {{base}}/api/invoices
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+
+###
+GET {{base}}/api/invoices/{{jayInvoices[0].id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.payment_instructions.includes('PayNow') == true
+
+### 9. B18: john is enrolled in sec 1 mathematics, which is level specific, so moving him
+# to sec 2 is refused, and the refusal names each enrollment by id so the screen can
+# link to it
+PATCH {{base}}/api/students/{{jayStudents.find(s => s.first_name === 'John').id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "levelId": "{{levels.find(l => l.code === 'S2').id}}" }
+
+?? status == 422
+?? js response.parsedBody.error.details.courses.length > 0
+?? js response.parsedBody.error.details.courses[0].enrollmentId.length == 36
+
+### 10. B9: admin invites a tutor with no password
+# @name branches
+GET {{base}}/api/branches
+
+?? status == 200
+
+###
+POST {{base}}/api/staff
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "email": "invited.tutor@tuition.com", "role": "tutor", "firstName": "Invited", "lastName": "Tutor", "branchIds": ["{{branches[0].id}}"] }
+
+?? status == 201
+
+### the invite is queued: a password reset email to that address
+GET {{base}}/api/notifications/outbox
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(n => n.recipient_email === 'invited.tutor@tuition.com' && n.event_key === 'password_reset') == true
+
+### and the account cannot be signed into until the link is used, whatever password is tried
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "invited.tutor@tuition.com", "password": "{{password}}" }
+
+?? status == 401

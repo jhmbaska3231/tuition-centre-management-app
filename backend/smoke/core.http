@@ -1,0 +1,375 @@
+# backend/smoke/core.http
+#
+# the main flows end to end against a freshly seeded database: signing in, a new family
+# enrolling, attendance and make-ups, billing, leave and cover. run with npm run smoke,
+# which resets the database first. requests run top to bottom, a "# @name" makes that
+# response's body available to later requests by name, and every ?? line is an assertion
+#
+# one step depends on the clock: 16 needs a completed saturday session in the last six
+# days, which does not exist yet on a saturday before 11:30 singapore time. the window
+# cannot be wider, because attendance older than seven days can no longer be marked
+
+{{
+  // dates in the centre's timezone, matching how the api decides what today is
+  const centreDate = days => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' })
+    .format(new Date(Date.now() + days * 86_400_000));
+  exports.today = centreDate(0);
+  exports.sixDaysAgo = centreDate(-6);
+  exports.twoWeeks = centreDate(13);
+  exports.leaveStart = centreDate(20);
+  exports.leaveEnd = centreDate(26);
+}}
+
+### 1. health and readiness, with the database connected
+GET {{base}}/ready
+
+?? status == 200
+
+### 2. admin signs in: an access token in the body and a refresh cookie named rt
+# @name adminLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@tuition.com", "password": "{{password}}" }
+
+?? status == 200
+?? js response.parsedBody.user.role == admin
+?? js String(response.headers['set-cookie']).includes('rt=') == true
+
+### 3. the organisation runs in singapore time
+GET {{base}}/api/org
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js JSON.stringify(response.parsedBody).includes('Asia/Singapore') == true
+
+### 4. the dashboard has real numbers from the seed
+GET {{base}}/api/reports/overview
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.active_students > 0
+?? js response.parsedBody.open_courses > 0
+?? js response.parsedBody.outstanding_cents > 0
+
+### 5. rate limit headers appear on any api response, including public ones
+GET {{base}}/api/levels
+
+?? status == 200
+?? js 'ratelimit-policy' in response.headers == true
+
+### 6. a new parent registers
+# @name register
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{ "firstName": "Smoke", "lastName": "Tester", "email": "smoke@example.com", "password": "{{password}}", "phone": "98765432" }
+
+?? status == 201
+
+### 7. the same email again is a conflict
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{ "firstName": "Smoke", "lastName": "Tester", "email": "smoke@example.com", "password": "{{password}}" }
+
+?? status == 409
+
+### 8. levels are public, so a family can pick one before signing in
+# @name levels
+GET {{base}}/api/levels
+
+?? status == 200
+
+### 9. the parent adds a child and becomes guardian and billing contact
+# @name child
+POST {{base}}/api/students/mine
+Authorization: Bearer {{register.accessToken}}
+Content-Type: application/json
+
+{ "firstName": "Sam", "lastName": "Tester", "levelId": "{{levels.find(l => l.code === 'S1').id}}", "relationship": "mother" }
+
+?? status == 201
+?? js response.parsedBody.guardians[0].is_billing_contact == true
+
+### 10. browsing for that child shows only open courses at s1 or mixed level
+# @name courses
+GET {{base}}/api/courses?studentId={{child.id}}
+Authorization: Bearer {{register.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.every(c => c.level_code === 'S1' || c.level_code === null) == true
+?? js response.parsedBody.some(c => c.name === 'Piano (mixed)') == true
+
+### 11. enrol in sec 1 mathematics, starting today
+# @name enroll
+POST {{base}}/api/enrollments
+Authorization: Bearer {{register.accessToken}}
+Content-Type: application/json
+
+{ "studentId": "{{child.id}}", "courseId": "{{courses.find(c => c.name === 'Sec 1 Mathematics').id}}" }
+
+?? status == 201
+?? js response.parsedBody.status == active
+?? js response.parsedBody.starts_on === today == true
+
+### 12. enrolling again is a conflict
+POST {{base}}/api/enrollments
+Authorization: Bearer {{register.accessToken}}
+Content-Type: application/json
+
+{ "studentId": "{{child.id}}", "courseId": "{{courses.find(c => c.name === 'Sec 1 Mathematics').id}}" }
+
+?? status == 409
+
+### 13. the parent's upcoming sessions, each labelled with sam
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}
+Authorization: Bearer {{register.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length > 0
+?? js response.parsedBody.every(s => s.viewer_student_ids.includes(child.id)) == true
+
+### 14. a parent calling a staff endpoint is forbidden
+GET {{base}}/api/students
+Authorization: Bearer {{register.accessToken}}
+
+?? status == 403
+
+### 15. hui signs in. she teaches sec 1 mathematics
+# @name tutorLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "hui.siew@tuition.com", "password": "{{password}}" }
+
+?? status == 200
+
+### 16. her completed sec 1 mathematics session in the last six days. a six day window
+# ending today spans seven calendar days, so it holds exactly one saturday
+# @name pastSessions
+GET {{base}}/api/sessions?from={{sixDaysAgo}}&to={{today}}&status=completed&courseId={{courses.find(c => c.name === 'Sec 1 Mathematics').id}}
+Authorization: Bearer {{tutorLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length == 1
+
+### 17. its roster includes john toh. sam is absent, since his enrolment starts today and
+# the roster is derived from enrolment dates
+# @name roster
+GET {{base}}/api/attendance/sessions/{{pastSessions[0].id}}
+Authorization: Bearer {{tutorLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(r => r.student_name === 'John Toh') == true
+
+### 18. john is marked excused, the eligible status, which creates a make-up credit
+PUT {{base}}/api/attendance/sessions/{{pastSessions[0].id}}
+Authorization: Bearer {{tutorLogin.accessToken}}
+Content-Type: application/json
+
+{ "records": [ { "studentId": "{{roster.find(r => r.student_name === 'John Toh').student_id}}", "status": "excused", "notes": "Medical" } ] }
+
+?? status == 200
+?? js response.parsedBody.marked == 1
+
+### 19. a student who is not on the roster is refused
+PUT {{base}}/api/attendance/sessions/{{pastSessions[0].id}}
+Authorization: Bearer {{tutorLogin.accessToken}}
+Content-Type: application/json
+
+{ "records": [ { "studentId": "00000000-0000-4000-8000-000000000000", "status": "present" } ] }
+
+?? status == 422
+
+### 20. jay signs in and sees the one available credit
+# @name jayLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "jaytoh@gmail.com", "password": "{{password}}" }
+
+?? status == 200
+
+###
+# @name makeups
+GET {{base}}/api/makeups?status=available
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length == 1
+?? js response.parsedBody[0].missed_course_name == Sec 1 Mathematics
+
+### 21. the credit's options: the wednesday class only. john's own saturday class is
+# excluded because he is already on its roster, and every option starts at least 24
+# hours out
+# @name options
+GET {{base}}/api/makeups/{{makeups[0].id}}/options
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length > 0
+?? js response.parsedBody.every(o => o.course_name === 'Sec 1 Mathematics (Wed)') == true
+?? js response.parsedBody.every(o => new Date(o.starts_at) - Date.now() > 86_400_000) == true
+
+### 22. booking a session that is not an option is refused. the past session is used, so
+# this fails if the future rule stops being applied
+POST {{base}}/api/makeups/{{makeups[0].id}}/book
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "sessionId": "{{pastSessions[0].id}}" }
+
+?? status == 422
+
+### 23. booking a real option
+POST {{base}}/api/makeups/{{makeups[0].id}}/book
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "sessionId": "{{options[0].id}}" }
+
+?? status == 200
+?? js response.parsedBody.status == booked
+?? js response.parsedBody.booked_course_name == Sec 1 Mathematics (Wed)
+
+### 24. that session's roster now includes john as a make-up, with nothing stored: the
+# roster is derived from the booking
+GET {{base}}/api/attendance/sessions/{{options[0].id}}
+Authorization: Bearer {{tutorLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(r => r.student_name === 'John Toh' && r.source === 'makeup') == true
+
+### 25. jay's own session list includes the make-up session, labelled with john
+GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(s => s.id === options[0].id && s.viewer_student_ids.includes(roster.find(r => r.student_name === 'John Toh').student_id)) == true
+
+### 26. unbooking returns the credit
+POST {{base}}/api/makeups/{{makeups[0].id}}/unbook
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.status == available
+?? js response.parsedBody.booked_session_id == null
+
+### 27. jay's invoices: one paid, one issued, 33000 outstanding
+GET {{base}}/api/invoices
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length == 2
+
+###
+GET {{base}}/api/invoices/my-balance
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.outstanding_cents == 33000
+
+### 28. admin records jay paying 33000 by paynow, fully allocated to the issued invoice
+# @name jayOpenInvoices
+GET {{base}}/api/invoices?billToUserId={{jayLogin.user.id}}&status=issued
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length == 1
+
+###
+POST {{base}}/api/payments
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "payerUserId": "{{jayLogin.user.id}}", "amountCents": 33000, "method": "paynow", "reference": "SMOKE-001" }
+
+?? status == 201
+?? js response.parsedBody.unallocatedCents == 0
+
+### and the payment reaches his balance
+GET {{base}}/api/invoices/my-balance
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.outstanding_cents == 0
+
+### 29. hui requests seven days of leave three weeks out: always one saturday and one
+# wednesday, clear of the seeded leave, the seeded closure and the term end
+# @name leave
+POST {{base}}/api/leave
+Authorization: Bearer {{tutorLogin.accessToken}}
+Content-Type: application/json
+
+{ "starts_on": "{{leaveStart}}", "ends_on": "{{leaveEnd}}", "leave_type": "annual", "reason": "Smoke test" }
+
+?? status == 201
+?? js response.parsedBody.status == pending
+
+### 30. admin approves. four of hui's sessions fall inside: saturday sec 1 and sec 3
+# mathematics, wednesday sec 3 mathematics, and the wednesday sec 1 mathematics class
+POST {{base}}/api/leave/{{leave.id}}/decide
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "decision": "approved" }
+
+?? status == 200
+?? js response.parsedBody.status == approved
+?? js response.parsedBody.affected_session_count == 4
+
+### 31. those four now need cover
+# @name cover
+GET {{base}}/api/sessions/needing-cover
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length == 4
+
+### 32. zen covers the earliest. warnings may appear, since availability is advisory
+# @name staff
+GET {{base}}/api/staff?role=tutor
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+
+###
+POST {{base}}/api/sessions/{{cover[0].id}}/cover
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "tutor_id": "{{staff.find(s => s.email === 'zen.teo@tuition.com').id}}" }
+
+?? status == 200
+?? js response.parsedBody.session.tutor_name == Zen Teo
+
+### 33. the outbox holds the events these steps raised
+GET {{base}}/api/notifications/outbox
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js ['tutor_changed', 'leave_request_submitted', 'leave_request_decided', 'account_created'].every(k => response.parsedBody.some(n => n.event_key === k)) == true
+
+### 34. refresh rotates the cookie: a new rt is set
+POST {{base}}/api/auth/refresh
+
+?? status == 200
+?? js String(response.headers['set-cookie']).includes('rt=') == true
+
+### 35. after logout, the same cookie can no longer refresh
+POST {{base}}/api/auth/logout
+
+?? status == 204
+
+###
+POST {{base}}/api/auth/refresh
+
+?? status == 401
+
+### 36. the audit trail records the enrollment from 11
+GET {{base}}/api/audit?entityType=enrollment&entityId={{enroll.id}}
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(a => a.action === 'enrollment.created') == true

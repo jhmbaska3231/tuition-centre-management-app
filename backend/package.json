@@ -11,7 +11,8 @@
     "job:nightly": "ts-node src/jobs/nightly.ts",
     "db:reset": "ts-node db/reset.ts",
     "db:seed": "ts-node db/seed/dev.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke": "httpyac send smoke/core.http smoke/b-items.http --all --env dev -o short --output-failed exchange"
   },
   "keywords": [],
   "author": "",
@@ -44,6 +45,7 @@
     "@types/node": "^22.15.29",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.15.4",
+    "httpyac": "^6.16.7",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

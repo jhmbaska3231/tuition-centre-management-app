@@ -9,6 +9,7 @@ build/
 .env
 .env.*
 !.env.example
+backend/smoke/http-client.private.env.json
 
 # logs
 *.log
