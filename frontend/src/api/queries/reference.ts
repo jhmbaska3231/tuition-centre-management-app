@@ -4,7 +4,7 @@
 // these keys, so it is kept fresh for longer than screen data
 
 import { useQuery } from '@tanstack/react-query';
-import type { Branch, Level } from '@tuition/shared';
+import type { Branch, Level, Subject } from '@tuition/shared';
 import { api } from '../client';
 import { keys } from '../keys';
 
@@ -15,3 +15,6 @@ export const useLevels = () =>
 
 export const useBranches = () =>
   useQuery({ queryKey: keys.reference.branches, queryFn: () => api.get<Branch[]>('/branches'), staleTime: REFERENCE_STALE_MS });
+
+export const useSubjects = () =>
+  useQuery({ queryKey: keys.reference.subjects, queryFn: () => api.get<Subject[]>('/subjects'), staleTime: REFERENCE_STALE_MS });

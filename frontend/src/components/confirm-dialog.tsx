@@ -23,8 +23,10 @@ interface ConfirmDialogProps {
   // shown while the action runs, as a present participle: "withdrawing"
   pendingLabel: string;
   destructive?: boolean;
-  // throw to keep the dialog open with the error shown
-  onConfirm: () => Promise<void>;
+  // throw to keep the dialog open with the error shown. return false to keep it open with
+  // no error, for flows that continue in the same dialog: the caller then changes the title,
+  // description and labels to show the next stage
+  onConfirm: () => Promise<void | false>;
 }
 
 type ConfirmBodyProps = Pick<ConfirmDialogProps, 'confirmLabel' | 'pendingLabel' | 'destructive' | 'onConfirm'> & {
@@ -42,16 +44,15 @@ const ConfirmBody = ({ confirmLabel, pendingLabel, destructive = false, onConfir
     setError(null);
     setPending(true);
     onBusyChange(true);
-    try {
-      await onConfirm();
-    } catch (err) {
+    // a failure becomes a value here, so every outcome arrives as one result: undefined
+    // closes, false stays open to continue, 'failed' stays open showing the error
+    const result = await onConfirm().catch((err: unknown) => {
       setError(err);
-      return;
-    } finally {
-      onBusyChange(false);
-      setPending(false);
-    }
-    close();
+      return 'failed' as const;
+    });
+    onBusyChange(false);
+    setPending(false);
+    if (result !== 'failed' && result !== false) close();
   };
 
   return (

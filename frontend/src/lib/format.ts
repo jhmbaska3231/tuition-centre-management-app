@@ -5,6 +5,8 @@
 // timezone is the centre's, not the browser's. a tutor checking tomorrow's schedule from
 // overseas must see the times their students will see
 
+import type { BillingCycle } from '@tuition/shared';
+
 let timezone = 'Asia/Singapore';
 let currency = 'SGD';
 let locale = 'en-SG';
@@ -74,6 +76,20 @@ export const formatDuration = (minutes: number): string => {
   if (m === 0) return h === 1 ? '1 hour' : `${h} hours`;
   return `${h}h ${m}m`;
 };
+
+// a weekly slot as a parent reads it: "saturdays, 10:00 am, 1h 30m"
+export const formatSlot = (slot: { weekday: number; start_time: string; duration_minutes: number }): string =>
+  `${formatWeekday(slot.weekday)}s, ${formatClockTime(slot.start_time)}, ${formatDuration(slot.duration_minutes)}`;
+
+const CYCLE_SUFFIX: Record<BillingCycle, string> = {
+  monthly: 'per month',
+  per_term: 'per term',
+  per_session: 'per session',
+};
+
+// "$180.00 per month". a course without a fee plan has no price to show yet
+export const formatFee = (cents: number | null, cycle: BillingCycle | null): string =>
+  cents === null || cycle === null ? 'Fee to be confirmed' : `${money(cents)} ${CYCLE_SUFFIX[cycle]}`;
 
 // today's date in the centre's timezone, as a dateonly string. used for query defaults
 // so 'this week' means the centre's week
