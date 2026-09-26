@@ -77,6 +77,19 @@ export const formatDuration = (minutes: number): string => {
   return `${h}h ${m}m`;
 };
 
+// time left before a deadline, for countdowns: "1 day 4 hours", "3 hours 20 min", "12 min".
+// never "0 min" while any time remains
+export const formatTimeLeft = (ms: number): string => {
+  const totalMinutes = Math.max(1, Math.floor(ms / 60_000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  if (days > 0) return hours > 0 ? `${plural(days, 'day')} ${plural(hours, 'hour')}` : plural(days, 'day');
+  if (hours > 0) return minutes > 0 ? `${plural(hours, 'hour')} ${minutes} min` : plural(hours, 'hour');
+  return `${minutes} min`;
+};
+
 // a weekly slot as a parent reads it: "saturdays, 10:00 am, 1h 30m"
 export const formatSlot = (slot: { weekday: number; start_time: string; duration_minutes: number }): string =>
   `${formatWeekday(slot.weekday)}s, ${formatClockTime(slot.start_time)}, ${formatDuration(slot.duration_minutes)}`;

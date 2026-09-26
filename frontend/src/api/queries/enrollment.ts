@@ -88,3 +88,24 @@ export const useJoinWaitlist = () =>
       if (isApiError(error) && error.code === 'rule_violation') void invalidate([keys.courses.all]);
     },
   });
+
+// accepting creates an enrollment, so it changes everything enrolling does, and the queue. a
+// refusal means the offer expired or the seat went, so the list is refreshed to match
+export const useAcceptOffer = () =>
+  useMutation({
+    mutationFn: (entryId: string) => api.post<Enrollment>(`/waitlist/${entryId}/accept`),
+    onSuccess: () => invalidate([
+      keys.enrollments.all, keys.courses.all, keys.students.all, keys.sessions.all, keys.waitlist.all, keys.reports.all,
+    ]),
+    onError: error => {
+      if (isApiError(error) && error.code === 'rule_violation') void invalidate([keys.waitlist.all, keys.courses.all]);
+    },
+  });
+
+// leaving shortens the queue, which changes the course's seats left. leaving with an offer
+// open passes the seat to the next family
+export const useLeaveWaitlist = () =>
+  useMutation({
+    mutationFn: (entryId: string) => api.post<WaitlistEntry>(`/waitlist/${entryId}/withdraw`),
+    onSuccess: () => invalidate([keys.waitlist.all, keys.courses.all]),
+  });
