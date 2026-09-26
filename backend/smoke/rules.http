@@ -380,7 +380,7 @@ Content-Type: application/json
 
 { "email": "ben.ng@gmail.com", "password": "{{password}}" }
 
-?? status == 201
+?? status == 200
 
 ###
 # @name benWaitlist
@@ -394,5 +394,5 @@ Authorization: Bearer {{benLogin.accessToken}}
 POST {{base}}/api/waitlist/{{benWaitlist.find(w => w.status === 'offered').id}}/accept
 Authorization: Bearer {{benLogin.accessToken}}
 
-?? status == 200
+?? status == 201
 ?? js response.parsedBody.status == active
