@@ -17,7 +17,7 @@ import { TextField } from '@/components/form/text-field';
 import { TextareaField } from '@/components/form/textarea-field';
 import { FormDialog } from '@/components/form-dialog';
 import { FieldGroup } from '@/components/ui/field';
-import { todayInCentre } from '@/lib/format';
+import { todayInCentre, formatDate } from '@/lib/format';
 import { fromText, requiredChoice } from '@/lib/form';
 
 const editChildSchema = z.object({
@@ -39,11 +39,14 @@ const levelConflicts = (error: unknown): LevelChangeConflictDetails['courses'] |
   return parsed.success ? parsed.data.courses : null;
 };
 
+// the refusal as a list of the classes in the way. a class with a withdrawal already scheduled
+// shows its end date, so the parent knows when to come back, the others link to their page,
+// where they can be withdrawn from
 const LevelConflict = ({ name, courses }: { name: string; courses: LevelChangeConflictDetails['courses'] }) => (
   <>
     <p>
-      {name} is enrolled in classes for their current level. The level can change once these
-      have ended or {name} has been withdrawn from them:
+      {name} is enrolled in classes for their current level. The level can change once all of
+      these have ended:
     </p>
     <ul className="mt-2 list-disc space-y-1 pl-5">
       {courses.map(course => (
@@ -51,6 +54,7 @@ const LevelConflict = ({ name, courses }: { name: string; courses: LevelChangeCo
           <Link to={`/parent/enrollments/${course.enrollmentId}`} className="font-medium underline underline-offset-2">
             {course.courseName}
           </Link>
+          {course.endsOn ? `, ending ${formatDate(course.endsOn)}` : ', withdraw to end it'}
         </li>
       ))}
     </ul>

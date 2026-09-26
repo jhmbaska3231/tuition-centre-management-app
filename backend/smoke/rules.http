@@ -13,6 +13,9 @@
   exports.twoWeeks = centreDate(13);
   exports.rangeLimit = centreDate(92);
   exports.pastRangeLimit = centreDate(120);
+  // the last day of this month in the centre's calendar, when a monthly withdrawal takes effect
+  const [year, month] = exports.today.split('-').map(Number);
+  exports.monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
 }}
 
 ### 1. sign in as each role this file uses
@@ -396,3 +399,48 @@ Authorization: Bearer {{benLogin.accessToken}}
 
 ?? status == 201
 ?? js response.parsedBody.status == active
+
+### 13. the withdrawal date is previewed before confirming, by the same rule the withdrawal
+# applies: john's class is billed monthly, so it takes effect at the end of this month
+# @name jayActive
+GET {{base}}/api/enrollments?status=active
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+
+###
+# @name johnMaths
+GET {{base}}/api/enrollments/{{jayActive.find(e => e.course_name === 'Sec 1 Mathematics' && e.student_name.startsWith('John')).id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.withdraw_effective_on === monthEnd == true
+
+### the withdrawal lands on the previewed date, and john stays enrolled until then
+POST {{base}}/api/enrollments/{{johnMaths.id}}/withdraw
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "reason": "Moving to another centre" }
+
+?? status == 200
+?? js response.parsedBody.ends_on === johnMaths.withdraw_effective_on == true
+?? js response.parsedBody.status == active
+
+### with a withdrawal already scheduled, there is nothing left to preview
+GET {{base}}/api/enrollments/{{johnMaths.id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.withdraw_effective_on == null
+
+### 14. a scheduled withdrawal still blocks a level change until it takes effect, and the
+# refusal says when that is
+PATCH {{base}}/api/students/{{jayStudents.find(s => s.first_name === 'John').id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "levelId": "{{levels.find(l => l.code === 'S2').id}}" }
+
+?? status == 422
+?? js response.parsedBody.error.details.courses[0].endsOn === monthEnd == true

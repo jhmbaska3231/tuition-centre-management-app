@@ -39,7 +39,7 @@ const assertLevelChangeAllowed = async (q: Queryable, studentId: string, newLeve
   const conflicts = await repo.listLevelConflictingEnrollments(q, studentId, newLevelId);
   if (conflicts.length > 0) {
     const details: LevelChangeConflictDetails = {
-      courses: conflicts.map(c => ({ enrollmentId: c.enrollment_id, courseId: c.course_id, courseName: c.course_name })),
+      courses: conflicts.map(c => ({ enrollmentId: c.enrollment_id, courseId: c.course_id, courseName: c.course_name, endsOn: c.ends_on, })),
     };
     throw new RuleViolationError(
       'Withdraw from these level-specific courses before changing level: ' + conflicts.map(c => c.course_name).join(', '),

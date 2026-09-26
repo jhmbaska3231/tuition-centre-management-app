@@ -104,6 +104,22 @@ const defaultEffectiveDate = (cycle: string | null, today: string, termEndsOn: s
   return d;
 };
 
+// when a withdrawal requested today would take effect, by exactly the rule withdraw applies.
+// null when there is nothing to withdraw from
+const withdrawPreview = (e: { status: string; ends_on: string | null; starts_on: string; fee_billing_cycle: string | null; term_ends_on: string | null; course_ends_on: string | null }, today: string): string | null => {
+  if (e.status !== 'active' || e.ends_on !== null) return null;
+  const d = defaultEffectiveDate(e.fee_billing_cycle, today, e.term_ends_on, e.course_ends_on);
+  return d < e.starts_on ? e.starts_on : d;
+};
+
+// the single enrollment read, with the withdrawal preview. getenrollment stays as the plain
+// access check that attendancehistory reuses
+export const getEnrollmentDetail = async (user: AuthUser, id: string) => {
+  const e = await getEnrollment(user, id);
+  const { timezone } = await repo.orgContext(pool, user.orgId);
+  return { ...e, withdraw_effective_on: withdrawPreview(e, todayIn(timezone)) };
+};
+
 export const withdraw = (user: AuthUser, id: string, input: { effectiveOn?: string; reason?: string }) =>
   withTransaction(async tx => {
     const before = await repo.findEnrollmentForUpdate(tx, user.orgId, id);

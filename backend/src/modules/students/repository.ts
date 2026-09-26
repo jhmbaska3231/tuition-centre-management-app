@@ -117,8 +117,8 @@ export const findBranch = (q: Queryable, orgId: string, id: string) =>
 // active enrollments in level specific courses whose level differs from the proposed one.
 // the ids let a refusal link the parent straight to each enrollment
 export const listLevelConflictingEnrollments = (q: Queryable, studentId: string, newLevelId: string | null) =>
-  many<{ enrollment_id: string; course_id: string; course_name: string }>(q,
-    `SELECT e.id AS enrollment_id, c.id AS course_id, c.name AS course_name
+  many<{ enrollment_id: string; course_id: string; course_name: string; ends_on: string | null }>(q,
+    `SELECT e.id AS enrollment_id, c.id AS course_id, c.name AS course_name, e.ends_on
      FROM enrollments e JOIN courses c ON c.id = e.course_id
      WHERE e.student_id = $1 AND e.status = 'active' AND c.level_id IS NOT NULL
        AND ($2::uuid IS NULL OR c.level_id <> $2)

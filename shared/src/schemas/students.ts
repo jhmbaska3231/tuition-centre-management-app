@@ -74,10 +74,9 @@ export const listStudentsQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-// the details on a refused level change: each level specific enrollment that must be
-// withdrawn first. a schema rather than only a type, so the frontend can check the shape of
-// a payload that arrives as unknown instead of trusting it
+// the details on a refused level change: each level specific enrollment in the way. endson is
+// set when a withdrawal is already scheduled, so the refusal can say when the level can change
 export const levelChangeConflictDetailsSchema = z.object({
-  courses: z.array(z.object({ enrollmentId: uuid, courseId: uuid, courseName: z.string() })),
+  courses: z.array(z.object({ enrollmentId: uuid, courseId: uuid, courseName: z.string(), endsOn: isoDate.nullable() })),
 });
 export type LevelChangeConflictDetails = z.infer<typeof levelChangeConflictDetailsSchema>;

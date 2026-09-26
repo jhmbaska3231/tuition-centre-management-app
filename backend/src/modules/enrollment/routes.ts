@@ -13,7 +13,7 @@ export const enrollmentsRouter = Router();
 enrollmentsRouter.use(authenticate);
 enrollmentsRouter.get('/', validate({ query: listEnrollmentsQuery }), async (req, res) => { res.json(await service.listEnrollments(currentUser(req), req.validated.query)); });
 enrollmentsRouter.post('/', authorise('parent', 'admin', 'branch_manager'), validate({ body: enrollSchema }), async (req, res) => { res.status(201).json(await service.enroll(currentUser(req), req.validated.body)); });
-enrollmentsRouter.get('/:id', validate({ params: idParam }), async (req, res) => { res.json(await service.getEnrollment(currentUser(req), req.validated.params.id)); });
+enrollmentsRouter.get('/:id', validate({ params: idParam }), async (req, res) => { res.json(await service.getEnrollmentDetail(currentUser(req), req.validated.params.id)); });
 enrollmentsRouter.get('/:id/attendance', validate({ params: idParam }), async (req, res) => { res.json(await service.attendanceHistory(currentUser(req), req.validated.params.id)); });
 enrollmentsRouter.post('/:id/withdraw', authorise('parent', 'admin', 'branch_manager'), validate({ params: idParam, body: withdrawSchema }), async (req, res) => { res.json(await service.withdraw(currentUser(req), req.validated.params.id, req.validated.body)); });
 

@@ -1,12 +1,47 @@
 // frontend/src/api/queries/enrollment.ts
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { MakeupCredit, MakeupStatus, Enrollment, EnrollmentStatus, enrollSchema, joinWaitlistSchema, WaitlistEntry } from '@tuition/shared';
-import { api } from '../client';
-import { keys } from '../keys';
 import type { z } from 'zod';
+import type {
+  AttendanceHistoryEntry, Enrollment, EnrollmentDetail, EnrollmentStatus, enrollSchema,
+  joinWaitlistSchema, MakeupCredit, MakeupStatus, WaitlistEntry, withdrawSchema,
+} from '@tuition/shared';
+import { api } from '../client';
 import { isApiError } from '../errors';
+import { keys } from '../keys';
 import { invalidate } from '../query-client';
+
+export type EnrollmentFilters = {
+  studentId?: string;
+  status?: EnrollmentStatus;
+};
+
+export type MakeupFilters = {
+  status?: MakeupStatus;
+};
+
+// the schemas' inputs: startson is optional, and staff only
+export type EnrollBody = z.input<typeof enrollSchema>;
+export type JoinWaitlistBody = z.input<typeof joinWaitlistSchema>;
+export type WithdrawBody = z.input<typeof withdrawSchema>;
+
+export const useEnrollments = (filters: EnrollmentFilters = {}) =>
+  useQuery({
+    queryKey: keys.enrollments.list(filters),
+    queryFn: () => api.get<Enrollment[]>('/enrollments', filters),
+  });
+
+export const useEnrollment = (id: string) =>
+  useQuery({
+    queryKey: keys.enrollments.detail(id),
+    queryFn: () => api.get<EnrollmentDetail>(`/enrollments/${id}`),
+  });
+
+export const useAttendanceHistory = (enrollmentId: string) =>
+  useQuery({
+    queryKey: keys.enrollments.attendance(enrollmentId),
+    queryFn: () => api.get<AttendanceHistoryEntry[]>(`/enrollments/${enrollmentId}/attendance`),
+  });
 
 // open entries only, waiting and offered. for a parent, only their own children's
 export const useWaitlist = () =>
@@ -15,30 +50,11 @@ export const useWaitlist = () =>
     queryFn: () => api.get<WaitlistEntry[]>('/waitlist'),
   });
 
-export type MakeupFilters = {
-  status?: MakeupStatus;
-};
-
 export const useMakeups = (filters: MakeupFilters = {}) =>
   useQuery({
     queryKey: keys.makeups.list(filters),
     queryFn: () => api.get<MakeupCredit[]>('/makeups', filters),
   });
-
-export type EnrollmentFilters = {
-  studentId?: string;
-  status?: EnrollmentStatus;
-};
-
-export const useEnrollments = (filters: EnrollmentFilters = {}) =>
-  useQuery({
-    queryKey: keys.enrollments.list(filters),
-    queryFn: () => api.get<Enrollment[]>('/enrollments', filters),
-  });
-
-// the schemas' inputs: startsOn is optional, and staff only
-export type EnrollBody = z.input<typeof enrollSchema>;
-export type JoinWaitlistBody = z.input<typeof joinWaitlistSchema>;
 
 // a new enrollment changes the child's classes, their sessions, the course's seats, and the
 // dashboard counts. a refusal usually means the page's seat count was out of date, so the
@@ -50,6 +66,16 @@ export const useEnroll = () =>
     onError: error => {
       if (isApiError(error) && error.code === 'rule_violation') void invalidate([keys.courses.all]);
     },
+  });
+
+// a withdrawal changes the child's classes, their future sessions, the course's seats, and can
+// free a seat that is then offered to the waitlist
+export const useWithdraw = (enrollmentId: string) =>
+  useMutation({
+    mutationFn: (input: { reason?: string }) => api.post<Enrollment>(`/enrollments/${enrollmentId}/withdraw`, input),
+    onSuccess: () => invalidate([
+      keys.enrollments.all, keys.courses.all, keys.students.all, keys.sessions.all, keys.waitlist.all, keys.reports.all,
+    ]),
   });
 
 // joining changes the queue and the course's seats left. a refusal means the page's seat

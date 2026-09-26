@@ -31,6 +31,14 @@ export interface Enrollment {
   sessions_absent: number;
 }
 
+// the single enrollment read. withdraw_effective_on previews the date a withdrawal requested
+// now would take effect, computed by the same rule the withdrawal itself applies, so a parent
+// sees what they will pay for before confirming. null when there is nothing to withdraw from:
+// already withdrawn, or a withdrawal already scheduled
+export interface EnrollmentDetail extends Enrollment {
+  withdraw_effective_on: DateOnly | null;
+}
+
 export interface WaitlistEntry {
   id: string;
   org_id: string;
