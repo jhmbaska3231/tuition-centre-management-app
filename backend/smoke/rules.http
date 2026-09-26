@@ -380,7 +380,7 @@ Content-Type: application/json
 
 { "email": "ben.ng@gmail.com", "password": "{{password}}" }
 
-?? status == 200
+?? status == 201
 
 ###
 # @name benWaitlist

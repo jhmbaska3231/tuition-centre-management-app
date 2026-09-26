@@ -20,5 +20,8 @@
         "build": "npm run build -w shared && npm run build -w backend && npm run build -w frontend",
         "lint": "npm run lint -w @tuition/frontend",
         "smoke": "npm run db:reset && npm run smoke -w backend"
+    },
+    "allowScripts": {
+        "bcrypt@6.0.0": true
     }
 }
