@@ -17,6 +17,7 @@ import { TutorHomePage } from '@/features/tutor/tutor-home-page';
 import { ChildrenPage } from '@/features/parent/children/children-page';
 import { ChildDetailPage } from '@/features/parent/children/child-detail-page';
 import { ClassesPage } from '@/features/parent/classes/classes-page';
+import { CourseDetailPage } from '@/features/parent/classes/course-detail-page';
 
 const placeholder = (path: string, title: string) => ({ path, element: <PlaceholderPage title={title} /> });
 
@@ -53,8 +54,8 @@ export const router = createBrowserRouter([
               { path: '/parent/children', Component: ChildrenPage },
               { path: '/parent/children/:studentId', Component: ChildDetailPage },
               { path: '/parent/classes', Component: ClassesPage },
+              { path: '/parent/classes/:courseId', Component: CourseDetailPage },
               placeholder('/parent/enrollments/:enrollmentId', 'Class'),
-              placeholder('/parent/classes/:courseId', 'Class details'),
               placeholder('/parent/invoices', 'Invoices'),
               placeholder('/parent/invoices/:invoiceId', 'Invoice'),
               placeholder('/parent/makeups', 'Make-up classes'),

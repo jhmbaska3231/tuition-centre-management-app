@@ -42,7 +42,7 @@ export const ChildrenPage = () => {
           <EmptyState
             icon={Users}
             title="No children added yet"
-            description="Add your child to browse and enrol in classes."
+            description="Add your child to browse and enroll in classes."
             action={<Button onClick={() => setAdd('1')}>Add your first child</Button>}
           />
         }

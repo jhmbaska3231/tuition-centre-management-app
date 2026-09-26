@@ -182,7 +182,7 @@ export const ParentHomePage = () => {
               <EmptyState
                 icon={Users}
                 title="No children added yet"
-                description="Add your child to browse and enrol in classes."
+                description="Add your child to browse and enroll in classes."
                 action={<Link to="/parent/children?add=1" className={buttonVariants()}>Add your first child</Link>}
               />
             }

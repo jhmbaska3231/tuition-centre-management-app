@@ -52,9 +52,13 @@ export const useEnroll = () =>
     },
   });
 
-// joining changes the queue and the course's seats left
+// joining changes the queue and the course's seats left. a refusal means the page's seat
+// count was out of date, so the course list is refreshed then too
 export const useJoinWaitlist = () =>
   useMutation({
     mutationFn: (input: JoinWaitlistBody) => api.post<WaitlistEntry>('/waitlist', input),
     onSuccess: () => invalidate([keys.waitlist.all, keys.courses.all]),
+    onError: error => {
+      if (isApiError(error) && error.code === 'rule_violation') void invalidate([keys.courses.all]);
+    },
   });
