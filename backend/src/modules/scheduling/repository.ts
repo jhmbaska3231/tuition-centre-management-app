@@ -32,6 +32,15 @@ const COURSE_VIEW = `
          COALESCE((SELECT json_agg(json_build_object('id', s.id, 'course_id', s.course_id, 'weekday', s.weekday, 'start_time', s.start_time, 'duration_minutes', s.duration_minutes) ORDER BY s.weekday, s.start_time)
                    FROM course_slots s WHERE s.course_id = c.id), '[]'::json) AS slots,
          (SELECT count(*)::int FROM enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS active_enrollment_count,
+         -- seats a new family can take, by the same rule the enrollment check applies:
+         -- capacity, less enrollments not ended before the seat date, less the whole queue
+         GREATEST(0, c.capacity
+           - (SELECT count(*)::int FROM enrollments e
+               WHERE e.course_id = c.id AND e.status = 'active'
+                 AND (e.ends_on IS NULL OR e.ends_on >= GREATEST(c.starts_on,
+                       (now() AT TIME ZONE (SELECT o.timezone FROM organisations o WHERE o.id = c.org_id))::date)))
+           - (SELECT count(*)::int FROM waitlist_entries w
+               WHERE w.course_id = c.id AND w.status IN ('waiting', 'offered'))) AS seats_left,
          (SELECT count(*)::int FROM waitlist_entries w WHERE w.course_id = c.id AND w.status IN ('waiting', 'offered')) AS waitlist_count
   FROM courses c
   JOIN branches b ON b.id = c.branch_id

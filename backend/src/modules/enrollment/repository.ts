@@ -48,11 +48,20 @@ export const withdrawEnrollment = (q: Queryable, id: string, endsOn: string, imm
        status = CASE WHEN $3 THEN 'withdrawn' ELSE status END
      WHERE id = $1 RETURNING *`, [id, endsOn, immediate, reason]);
 
-// seats in use today: active enrollments whose range covers today
-export const seatsTaken = async (q: Queryable, courseId: string, today: string) =>
+// seats held from a given date: every active enrolment that has not ended before it. this
+// counts enrolments starting later, so a course open for registration before its start
+// date cannot be overfilled, and a withdrawal holds its seat until it takes effect
+export const seatsTaken = async (q: Queryable, courseId: string, from: string) =>
   (await one<{ n: number }>(q,
-    `SELECT count(*)::int AS n FROM enrollments WHERE course_id = $1 AND status = 'active' AND starts_on <= $2 AND (ends_on IS NULL OR ends_on >= $2)`,
-    [courseId, today])).n;
+    `SELECT count(*)::int AS n FROM enrollments
+      WHERE course_id = $1 AND status = 'active' AND (ends_on IS NULL OR ends_on >= $2)`,
+    [courseId, from])).n;
+
+// families waiting or holding an offer. the queue has first claim on any free seat
+export const openWaitlistCount = async (q: Queryable, courseId: string) =>
+  (await one<{ n: number }>(q,
+    `SELECT count(*)::int AS n FROM waitlist_entries WHERE course_id = $1 AND status IN ('waiting', 'offered')`,
+    [courseId])).n;
 
 // lock the course row so concurrent enrollments serialise on the capacity check
 export const lockCourse = (q: Queryable, orgId: string, courseId: string) =>

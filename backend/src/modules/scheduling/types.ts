@@ -16,6 +16,7 @@ export interface CourseView extends CourseRow {
   term_name: string | null; tutor_name: string | null; classroom_name: string | null;
   fee_plan_name: string | null; fee_amount_cents: number | null; fee_billing_cycle: string | null;
   slots: SlotRow[]; active_enrollment_count: number; waitlist_count: number;
+  seats_left: number;
 }
 
 export interface SessionRow {

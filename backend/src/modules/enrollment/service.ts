@@ -34,6 +34,16 @@ const notifyGuardians = async (tx: Queryable, orgId: string, studentId: string, 
 
 // enrollments --------------------------------------------------------------------
 
+// the date seats are measured from: nobody can start before the course does
+const seatDate = (course: { starts_on: string }, today: string) => (course.starts_on > today ? course.starts_on : today);
+
+// seats a new family can take: free seats not already claimed by the waitlist, which has
+// priority. the course view's seats_left uses the same rule, so the page and this check agree
+const seatsOpenToNewcomers = async (tx: PoolClient, course: { id: string; capacity: number; starts_on: string }, today: string) =>
+  course.capacity
+    - (await repo.seatsTaken(tx, course.id, seatDate(course, today)))
+    - (await repo.openWaitlistCount(tx, course.id));
+
 export const listEnrollments = (user: AuthUser, f: { studentId?: string; courseId?: string; status?: string }) => {
   if (user.role === 'parent') return repo.listEnrollments(pool, user.orgId, { ...f, guardianId: user.id });
   if (user.role === 'tutor') return repo.listEnrollments(pool, user.orgId, { ...f, tutorId: user.id });
@@ -77,7 +87,7 @@ export const enroll = (user: AuthUser, input: { studentId: string; courseId: str
     if (startsOn < today) throw new RuleViolationError('Start date cannot be in the past');
     if (course.ends_on && startsOn > course.ends_on) throw new RuleViolationError('Course has ended by that date');
 
-    if ((await repo.seatsTaken(tx, course.id, today)) >= course.capacity) {
+    if ((await seatsOpenToNewcomers(tx, course, today)) <= 0) {
       throw new RuleViolationError('Course is full', { waitlistAvailable: true });
     }
     const row = await createEnrollmentLocked(tx, user, course, student, startsOn);
@@ -125,7 +135,7 @@ export const offerNextIfSeat = async (tx: PoolClient, orgId: string, courseId: s
   const course = await repo.lockCourse(tx, orgId, courseId);
   if (!course || course.status !== 'open') return;
   if (await repo.hasOpenOffer(tx, courseId)) return;
-  if ((await repo.seatsTaken(tx, courseId, today)) >= course.capacity) return;
+  if ((await repo.seatsTaken(tx, courseId, seatDate(course, today))) >= course.capacity) return;
   const head = await repo.headOfQueue(tx, courseId);
   if (!head) return;
   const { waitlist_offer_hours } = await repo.orgContext(tx, orgId);
@@ -148,7 +158,8 @@ export const joinWaitlist = (user: AuthUser, input: { studentId: string; courseI
     if (!course || course.status !== 'open') throw new NotFoundError('Open course');
     if (course.level_id && course.level_id !== student.level_id) throw new RuleViolationError('This course is for a different level');
     const { timezone } = await repo.orgContext(tx, user.orgId);
-    if ((await repo.seatsTaken(tx, course.id, todayIn(timezone))) < course.capacity) throw new RuleViolationError('Seats are available; enroll directly');
+    const today = todayIn(timezone);
+    if ((await seatsOpenToNewcomers(tx, course, today)) > 0) throw new RuleViolationError('Seats are available; enroll directly');
     try {
       const row = await repo.insertWaitlist(tx, user.orgId, student.id, course.id);
       await writeAudit(tx, { orgId: user.orgId, actorUserId: user.id, action: 'waitlist.joined', entityType: 'waitlist_entry', entityId: row.id, after: row });
@@ -169,7 +180,7 @@ export const acceptOffer = (user: AuthUser, id: string) =>
     const course = (await repo.lockCourse(tx, user.orgId, entry.course_id))!;
     const { timezone } = await repo.orgContext(tx, user.orgId);
     const today = todayIn(timezone);
-    if ((await repo.seatsTaken(tx, course.id, today)) >= course.capacity) throw new RuleViolationError('The seat is no longer available');
+    if ((await repo.seatsTaken(tx, course.id, seatDate(course, today))) >= course.capacity) throw new RuleViolationError('The seat is no longer available');
     const enrollment = await createEnrollmentLocked(tx, user, course, student, today);
     await repo.setWaitlistStatus(tx, id, 'accepted');
     await writeAudit(tx, { orgId: user.orgId, actorUserId: user.id, action: 'waitlist.accepted', entityType: 'waitlist_entry', entityId: id, after: { enrollmentId: enrollment.id } });

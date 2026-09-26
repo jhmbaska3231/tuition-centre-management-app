@@ -52,6 +52,9 @@ export interface Course {
   fee_billing_cycle: BillingCycle | null;
   slots: CourseSlot[];
   active_enrollment_count: number;
+  // seats a new family can take: free seats after the waitlist's claim. use this, not
+  // capacity minus active_enrollment_count, which ignores the queue and future starts
+  seats_left: number;
   waitlist_count: number;
 }
 

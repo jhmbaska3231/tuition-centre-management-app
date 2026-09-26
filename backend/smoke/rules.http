@@ -317,3 +317,82 @@ Authorization: Bearer {{evaLogin.accessToken}}
 
 ?? status == 200
 ?? js response.parsedBody.guardians.length == 1
+
+### 12. the waitlist has first claim on a freed seat. sec 4 chemistry is full with ryan and
+# daniel, and nathan is waiting. withdrawing daniel offers his seat to nathan, so another
+# family finds the class still full and joins the queue behind him
+# @name sec4Enrolments
+GET {{base}}/api/enrollments?courseId={{courses.find(c => c.name === 'Sec 4 Chemistry').id}}&status=active
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+
+###
+POST {{base}}/api/enrollments/{{sec4Enrolments.find(e => e.student_name.startsWith('Daniel')).id}}/withdraw
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "effectiveOn": "{{today}}" }
+
+?? status == 200
+?? js response.parsedBody.status == withdrawn
+
+### jay adds an s4 child
+# @name kai
+POST {{base}}/api/students/mine
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "firstName": "Kai", "lastName": "Toh", "levelId": "{{levels.find(l => l.code === 'S4').id}}", "relationship": "father" }
+
+?? status == 201
+
+### one seat is physically free, but nathan's offer claims it: none are left for newcomers
+GET {{base}}/api/courses?studentId={{kai.id}}
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.find(c => c.name === 'Sec 4 Chemistry').seats_left == 0
+
+### so enrolling is refused, with the waitlist offered instead
+POST {{base}}/api/enrollments
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "studentId": "{{kai.id}}", "courseId": "{{courses.find(c => c.name === 'Sec 4 Chemistry').id}}" }
+
+?? status == 422
+?? js response.parsedBody.error.details.waitlistAvailable == true
+
+### and joining the queue behind nathan is allowed
+POST {{base}}/api/waitlist
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "studentId": "{{kai.id}}", "courseId": "{{courses.find(c => c.name === 'Sec 4 Chemistry').id}}" }
+
+?? status == 201
+
+### nathan's offer was kept for him: ben accepts it
+# @name benLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ben.ng@gmail.com", "password": "{{password}}" }
+
+?? status == 200
+
+###
+# @name benWaitlist
+GET {{base}}/api/waitlist
+Authorization: Bearer {{benLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(w => w.status === 'offered') == true
+
+###
+POST {{base}}/api/waitlist/{{benWaitlist.find(w => w.status === 'offered').id}}/accept
+Authorization: Bearer {{benLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.status == active
