@@ -3,8 +3,9 @@
 a multi branch tuition centre platform built for singapore centres. one deployment serves
 one centre, with its own branding, settings, fee structure and data
 
-> status: backend complete and verified end to end. frontend foundations, auth and role
-> dashboards in place. feature screens in progress
+> status: backend complete and verified end to end by a scripted smoke test. frontend
+> foundations, a shared component library and the first parent screens (home, children
+> and guardians) in place. remaining feature screens in progress
 
 ---
 
@@ -120,11 +121,14 @@ backend/src/
                 billing  notifications  audit  reports
   jobs/         nightly job, runnable standalone
   worker.ts     pg-boss scheduler
+  smoke/  scripted end to end checks, run with httpyac
 frontend/src/
-  api/          typed client, single flight token refresh, query keys
-  auth/         session bootstrap, route guards
+  api/          typed client, single flight token refresh, query keys, query and mutation hooks
+  auth/         session bootstrap, route guards, sign out reasons
   features/     screens grouped by role: parent, tutor, admin
-  components/   layout, forms, and owned shadcn components
+  components/   layout, form fields, dialogs, loading and error states, owned shadcn components
+  hooks/        url search param state, a ticking clock
+  lib/          formatting, money parsing, status labels, form helpers
 ```
 
 the full schema including every constraint is in `backend/db/schema/0001_baseline.sql`
@@ -202,7 +206,6 @@ and a pending leave request. dates are relative to today, so a reset always prod
 current data. every seeded account uses the password "password123", and the reset prints
 the list
 
-`backend/smoke.http` is a request collection covering registration, enrollment, attendance,
-make up credits, payment allocation, leave approval and cover assignment. open it with the
-[rest client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
-extension and send the requests in order
+`backend/smoke/` is a scripted request collection covering registration, enrollment, attendance,
+make up credits and booking, payment allocation, leave approval and cover assignment, and the
+authorisation rules between roles

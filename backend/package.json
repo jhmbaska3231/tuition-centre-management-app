@@ -12,7 +12,7 @@
     "db:reset": "ts-node db/reset.ts",
     "db:seed": "ts-node db/seed/dev.ts",
     "typecheck": "tsc --noEmit",
-    "smoke": "httpyac send smoke/core.http smoke/b-items.http --all --env dev -o short --output-failed exchange"
+    "smoke": "httpyac send smoke/core.http smoke/rules.http --all --env dev -o short --output-failed exchange"
   },
   "keywords": [],
   "author": "",

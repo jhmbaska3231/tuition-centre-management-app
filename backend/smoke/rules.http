@@ -1,4 +1,4 @@
-# backend/smoke/b-items.http
+# backend/smoke/rules.http
 #
 # end to end checks of the api against a freshly seeded database. run with npm run smoke,
 # which resets the database first. requests run top to bottom, and a "# @name" makes that
@@ -63,7 +63,7 @@ Authorization: Bearer {{jayLogin.accessToken}}
 
 ?? status == 200
 
-### 3. B1: sessions of jc1 economics, a course none of jay's children attend
+### 3. a parent reading a session none of their children attend gets not found
 # @name foreignSessions
 GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}&courseId={{courses.find(c => c.name === 'JC1 Economics').id}}
 Authorization: Bearer {{adminLogin.accessToken}}
@@ -78,7 +78,7 @@ Authorization: Bearer {{jayLogin.accessToken}}
 
 ?? status == 404
 
-### 4. B14 and B8: every session in jay's list is labelled with at least one of his children
+### 4. a parent's sessions are each labelled with their child; staff lists carry no labels
 # @name jaySessions
 GET {{base}}/api/sessions?from={{today}}&to={{twoWeeks}}
 Authorization: Bearer {{jayLogin.accessToken}}
@@ -101,14 +101,14 @@ Authorization: Bearer {{adminLogin.accessToken}}
 ?? status == 200
 ?? js response.parsedBody.every(s => s.viewer_student_ids.length === 0) == true
 
-### 5. B2: a tutor lists parents: expect 403. role gates return forbidden, unlike the
+### 5. a tutor cannot list parents: expect 403. role gates return forbidden, unlike the
 # resource guard in 3 which returns not found
 GET {{base}}/api/parents
 Authorization: Bearer {{tutorLogin.accessToken}}
 
 ?? status == 403
 
-### 6. B5: a range wider than 92 days is refused by the shared schema
+### 6. a session range is limited to 92 days
 GET {{base}}/api/sessions?from={{today}}&to={{pastRangeLimit}}
 Authorization: Bearer {{adminLogin.accessToken}}
 
@@ -120,8 +120,7 @@ Authorization: Bearer {{adminLogin.accessToken}}
 
 ?? status == 200
 
-### 7. B10: jay's preferences: the eight parent events, all enabled, none switched off
-# by the centre
+### 7. notification preferences, including events the centre has switched off
 GET {{base}}/api/notifications/preferences
 Authorization: Bearer {{jayLogin.accessToken}}
 
@@ -177,7 +176,7 @@ Content-Type: application/json
 
 ?? status == 200
 
-### 8. B3 and B4: admin saves payment instructions and branding
+### 8. payment instructions and public branding
 PATCH {{base}}/api/org/settings
 Authorization: Bearer {{adminLogin.accessToken}}
 Content-Type: application/json
@@ -206,14 +205,14 @@ Content-Type: application/json
 ?? status == 200
 ?? js response.parsedBody.logo_url == null
 
-### B4: unauthenticated, the public endpoint shows the branding and no private setting
+### unauthenticated, the public endpoint shows the branding and no private setting
 GET {{base}}/api/org/public
 
 ?? status == 200
 ?? js response.parsedBody.landing_headline == Small classes, real progress
 ?? js 'payment_instructions' in response.parsedBody == false
 
-### B3: jay's invoice detail carries the centre's payment instructions
+### jay's invoice detail carries the centre's payment instructions
 # @name jayInvoices
 GET {{base}}/api/invoices
 Authorization: Bearer {{jayLogin.accessToken}}
@@ -227,9 +226,9 @@ Authorization: Bearer {{jayLogin.accessToken}}
 ?? status == 200
 ?? js response.parsedBody.payment_instructions.includes('PayNow') == true
 
-### 9. B18: john is enrolled in sec 1 mathematics, which is level specific, so moving him
-# to sec 2 is refused, and the refusal names each enrollment by id so the screen can
-# link to it
+### 9. a level change is refused while enrolled in a level specific class: john is
+# enrolled in sec 1 mathematics, which is level specific, so moving him to sec 2 is
+# refused, and the refusal names each enrollment by id so the screen can link to it
 PATCH {{base}}/api/students/{{jayStudents.find(s => s.first_name === 'John').id}}
 Authorization: Bearer {{jayLogin.accessToken}}
 Content-Type: application/json
@@ -240,7 +239,7 @@ Content-Type: application/json
 ?? js response.parsedBody.error.details.courses.length > 0
 ?? js response.parsedBody.error.details.courses[0].enrollmentId.length == 36
 
-### 10. B9: admin invites a tutor with no password
+### 10. admin invites a tutor with no password
 # @name branches
 GET {{base}}/api/branches
 
@@ -270,7 +269,7 @@ Content-Type: application/json
 
 ?? status == 401
 
-### 11. B19: eva adds david as a second guardian of daniel, but cannot switch off his emails
+### 11. a guardian can only change their own email preference
 # @name evaLogin
 POST {{base}}/api/auth/login
 Content-Type: application/json
