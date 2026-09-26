@@ -367,8 +367,6 @@ export const unbookMakeup = (user: AuthUser, id: string) =>
       throw new RuleViolationError(`A make-up can be cancelled up to ${describeNotice(ctx.makeup_cancel_lead_minutes)} before the class`);
     }
     await repo.setMakeupStatus(tx, id, m.expires_on >= todayIn(ctx.timezone) ? 'available' : 'expired', null);
-    const { timezone } = await repo.orgContext(tx, user.orgId);
-    await repo.setMakeupStatus(tx, id, m.expires_on >= todayIn(timezone) ? 'available' : 'expired', null);
     await writeAudit(tx, { orgId: user.orgId, actorUserId: user.id, action: 'makeup.unbooked', entityType: 'makeup_booking', entityId: id, before: { sessionId: m.booked_session_id } });
     return (await repo.findMakeupView(tx, user.orgId, id))!;
   });
