@@ -32,6 +32,10 @@ const notifyGuardians = async (tx: Queryable, orgId: string, studentId: string, 
   }
 };
 
+// a notice period as a parent reads it: "6 hours", "1 hour", "90 minutes"
+const describeNotice = (minutes: number) =>
+  minutes % 60 === 0 ? `${minutes / 60} hour${minutes === 60 ? '' : 's'}` : `${minutes} minutes`;
+
 // enrollments --------------------------------------------------------------------
 
 // the date seats are measured from: nobody can start before the course does
@@ -294,6 +298,18 @@ export const listMakeups = (user: AuthUser, f: { studentId?: string; status?: st
   return repo.listMakeups(pool, user.orgId, f);
 };
 
+// the make up rules a parent needs to plan around. readable by parents, unlike the rest of the
+// organisation settings, so the screen states each rule rather than hardcoding one centre's
+export const makeupPolicy = async (user: AuthUser) => {
+  const ctx = await repo.orgContext(pool, user.orgId);
+  return {
+    eligible_statuses: ctx.makeup_eligible_statuses,
+    book_lead_minutes: ctx.makeup_min_lead_minutes,
+    cancel_lead_minutes: ctx.makeup_cancel_lead_minutes,
+    cap_per_term: ctx.makeup_cap_per_term,
+  };
+};
+
 // shared by the options read and the booking write so both report the cap identically.
 // counts credits already committed, not credits granted: a student may accumulate many
 // excused absences, the cap limits how many they can actually claim back
@@ -342,6 +358,15 @@ export const unbookMakeup = (user: AuthUser, id: string) =>
     await assertStudentAccess(tx, user, m.student_id);
     const s = (await repo.findSession(tx, user.orgId, m.booked_session_id))!;
     if (s.starts_at.getTime() <= Date.now()) throw new RuleViolationError('Session has already started');
+    const ctx = await repo.orgContext(tx, user.orgId);
+    // a parent must cancel with notice, as they must book with notice: inside the window the
+    // tutor is expecting the child and the held seat is freed too late for anyone else. a child
+    // who cannot come is marked at the class instead. staff can still cancel, until it starts
+    const cutoff = s.starts_at.getTime() - ctx.makeup_cancel_lead_minutes * 60_000;
+    if (user.role === 'parent' && Date.now() >= cutoff) {
+      throw new RuleViolationError(`A make-up can be cancelled up to ${describeNotice(ctx.makeup_cancel_lead_minutes)} before the class`);
+    }
+    await repo.setMakeupStatus(tx, id, m.expires_on >= todayIn(ctx.timezone) ? 'available' : 'expired', null);
     const { timezone } = await repo.orgContext(tx, user.orgId);
     await repo.setMakeupStatus(tx, id, m.expires_on >= todayIn(timezone) ? 'available' : 'expired', null);
     await writeAudit(tx, { orgId: user.orgId, actorUserId: user.id, action: 'makeup.unbooked', entityType: 'makeup_booking', entityId: id, before: { sessionId: m.booked_session_id } });

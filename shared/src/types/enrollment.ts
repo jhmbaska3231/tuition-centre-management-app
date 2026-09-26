@@ -106,3 +106,14 @@ export interface MakeupOption {
   ends_at: Timestamp;
   seats_left: number;
 }
+
+// the make up rules a parent plans around. eligible_statuses are the attendance marks that earn
+// a credit. book_lead_minutes is how far ahead a make up must be booked, and
+// cancel_lead_minutes how far ahead it can still be cancelled. cap_per_term is null when there
+// is no cap
+export interface MakeupPolicy {
+  eligible_statuses: AttendanceStatus[];
+  book_lead_minutes: number;
+  cancel_lead_minutes: number;
+  cap_per_term: number | null;
+}

@@ -32,6 +32,7 @@ attendanceRouter.put('/sessions/:sessionId', validate({ params: sessionParam, bo
 export const makeupsRouter = Router();
 makeupsRouter.use(authenticate, authorise('parent', 'admin', 'branch_manager'));
 makeupsRouter.get('/', validate({ query: listMakeupsQuery }), async (req, res) => { res.json(await service.listMakeups(currentUser(req), req.validated.query)); });
+makeupsRouter.get('/policy', async (req, res) => { res.json(await service.makeupPolicy(currentUser(req))); });
 makeupsRouter.get('/:id/options', validate({ params: idParam }), async (req, res) => { res.json(await service.makeupOptions(currentUser(req), req.validated.params.id)); });
 makeupsRouter.post('/:id/book', validate({ params: idParam, body: bookMakeupSchema }), async (req, res) => { res.json(await service.bookMakeup(currentUser(req), req.validated.params.id, req.validated.body.sessionId)); });
 makeupsRouter.post('/:id/unbook', validate({ params: idParam }), async (req, res) => { res.json(await service.unbookMakeup(currentUser(req), req.validated.params.id)); });

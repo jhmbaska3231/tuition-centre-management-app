@@ -86,10 +86,11 @@ export const orgContext = (q: Queryable, orgId: string) =>
   one<{
     timezone: string; waitlist_offer_hours: number; attendance_edit_window_days: number;
     makeup_eligible_statuses: string[]; makeup_expiry_policy: string; makeup_expiry_days: number;
-    makeup_min_lead_minutes: number; makeup_cap_per_term: number | null;
+    makeup_min_lead_minutes: number; makeup_cancel_lead_minutes: number; makeup_cap_per_term: number | null;
   }>(q,
     `SELECT o.timezone, s.waitlist_offer_hours, s.attendance_edit_window_days, s.makeup_eligible_statuses,
-            s.makeup_expiry_policy, s.makeup_expiry_days, s.makeup_min_lead_minutes, s.makeup_cap_per_term
+            s.makeup_expiry_policy, s.makeup_expiry_days, s.makeup_min_lead_minutes, s.makeup_cancel_lead_minutes,
+            s.makeup_cap_per_term
      FROM organisations o JOIN organisation_settings s ON s.org_id = o.id WHERE o.id = $1`, [orgId]);
 
 // lifecycle job queries

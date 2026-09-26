@@ -444,3 +444,68 @@ Content-Type: application/json
 
 ?? status == 422
 ?? js response.parsedBody.error.details.courses[0].endsOn === monthEnd == true
+
+### 15. the make up policy is readable by parents, and cancelling a booked make up needs notice
+GET {{base}}/api/makeups/policy
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.cancel_lead_minutes == 360
+?? js response.parsedBody.book_lead_minutes == 1440
+?? js response.parsedBody.cap_per_term == 2
+
+### john's credit from the core file, booked into its first option
+# @name jayCredits
+GET {{base}}/api/makeups?status=available
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length > 0
+
+###
+# @name creditOptions
+GET {{base}}/api/makeups/{{jayCredits[0].id}}/options
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.length > 0
+
+###
+POST {{base}}/api/makeups/{{jayCredits[0].id}}/book
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "sessionId": "{{creditOptions[0].id}}" }
+
+?? status == 200
+
+### with the notice set longer than the time left before the class, jay cannot cancel
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "makeup_cancel_lead_minutes": 100000 }
+
+?? status == 200
+
+###
+POST {{base}}/api/makeups/{{jayCredits[0].id}}/unbook
+Authorization: Bearer {{jayLogin.accessToken}}
+
+?? status == 422
+
+### staff can still cancel inside the window
+POST {{base}}/api/makeups/{{jayCredits[0].id}}/unbook
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.status == available
+
+### put the notice back
+PATCH {{base}}/api/org/settings
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "makeup_cancel_lead_minutes": 360 }
+
+?? status == 200

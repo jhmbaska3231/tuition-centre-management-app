@@ -44,6 +44,9 @@ CREATE TABLE organisation_settings (
                                 CHECK (makeup_expiry_policy IN ('end_of_term', 'fixed_days')),
   makeup_expiry_days            INTEGER NOT NULL DEFAULT 30 CHECK (makeup_expiry_days > 0),
   makeup_min_lead_minutes       INTEGER NOT NULL DEFAULT 1440 CHECK (makeup_min_lead_minutes >= 0),
+  -- how close to a make up class a parent can still cancel the booking. inside this window the
+  -- tutor is expecting the child and the held seat is freed too late for anyone else to use
+  makeup_cancel_lead_minutes    INTEGER NOT NULL DEFAULT 360 CHECK (makeup_cancel_lead_minutes >= 0),
   makeup_cap_per_term           INTEGER DEFAULT 2 CHECK (makeup_cap_per_term > 0),
   billing_generation_day        SMALLINT NOT NULL DEFAULT 25 CHECK (billing_generation_day BETWEEN 1 AND 28),
   billing_due_day               SMALLINT NOT NULL DEFAULT 7 CHECK (billing_due_day BETWEEN 1 AND 28),
