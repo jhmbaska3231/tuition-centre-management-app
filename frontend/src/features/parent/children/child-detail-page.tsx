@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate, fullName } from '@/lib/format';
 import { EditChildDialog } from './edit-child-dialog';
+import { GuardiansSection } from './guardians-section';
 
 const BackLink = () => (
   <Link to="/parent/children" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -135,6 +136,8 @@ const ChildDetail = ({ studentId }: { studentId: string }) => {
                   {list => <ClassList student={data} enrollments={list} />}
                 </QueryState>
               </section>
+
+              <GuardiansSection student={data} />
 
               {!archived && (
                 <section aria-labelledby="archive-heading">

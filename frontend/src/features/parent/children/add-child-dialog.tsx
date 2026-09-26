@@ -15,12 +15,7 @@ import { FormDialog } from '@/components/form-dialog';
 import { FieldGroup } from '@/components/ui/field';
 import { todayInCentre } from '@/lib/format';
 import { fromText, requiredChoice, requiredEnum } from '@/lib/form';
-
-const RELATIONSHIP_LABELS: Record<(typeof RELATIONSHIPS)[number], string> = {
-  mother: 'Mother',
-  father: 'Father',
-  guardian: 'Guardian',
-};
+import { relationshipOptions } from './relationships';
 
 // the api's own rules, with the conversions a form needs: selects start empty as null, and
 // empty text becomes null rather than an empty string
@@ -44,7 +39,6 @@ export const AddChildDialog = ({ open, onOpenChange }: AddChildDialogProps) => {
   const createChild = useCreateOwnStudent();
 
   const levelOptions = (levels.data ?? []).map(level => ({ value: level.id, label: level.name }));
-  const relationshipOptions = RELATIONSHIPS.map(value => ({ value, label: RELATIONSHIP_LABELS[value] }));
 
   return (
     <FormDialog
