@@ -58,13 +58,13 @@ export const AppShell = () => {
   return (
     <div
       className={cn(
-        'min-h-svh bg-muted/30 md:grid md:grid-cols-[15rem_1fr]',
+        'min-h-svh bg-muted/30 md:grid md:grid-cols-[15rem_1fr] print:block! print:bg-transparent',
         // below md, reserve the bar's space for roles that have one. main's padding and any
         // sticky bottom element read this single variable
         tabBar && 'max-md:[--tab-bar-offset:calc(var(--tab-bar-height)_+_env(safe-area-inset-bottom))]',
       )}
     >
-      <aside className="sticky top-0 hidden h-svh flex-col border-r bg-background md:flex">
+      <aside className="sticky top-0 hidden h-svh flex-col border-r bg-background md:flex print:hidden!">
         <div className="flex h-14 items-center border-b px-5">
           <span className="truncate text-sm font-semibold">{name}</span>
         </div>
@@ -78,14 +78,14 @@ export const AppShell = () => {
 
       <div className="flex min-w-0 flex-col">
         <header className={cn(
-          'sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b bg-background md:hidden',
+          'sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b bg-background md:hidden print:hidden',
           tabBar ? 'px-4' : 'px-2',
         )}>
           {!tabBar && <MobileNav items={items} />}
           <span className="truncate text-sm font-semibold">{name}</span>
           <UserMenu compact />
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-[calc(1.5rem_+_var(--tab-bar-offset))] md:px-8 md:py-8">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-[calc(1.5rem_+_var(--tab-bar-offset))] md:px-8 md:py-8 print:max-w-none print:p-0!">
           <Outlet />
         </main>
       </div>

@@ -21,6 +21,7 @@ import { CourseDetailPage } from '@/features/parent/classes/course-detail-page';
 import { EnrollmentPage } from '@/features/parent/enrollments/enrollment-page';
 import { MakeupsPage } from '@/features/parent/makeups/makeups-page';
 import { InvoicesPage } from '@/features/parent/invoices/invoices-page';
+import { InvoicePage } from '@/features/parent/invoices/invoice-page';
 
 const placeholder = (path: string, title: string) => ({ path, element: <PlaceholderPage title={title} /> });
 
@@ -61,7 +62,7 @@ export const router = createBrowserRouter([
               { path: '/parent/enrollments/:enrollmentId', Component: EnrollmentPage },
               { path: '/parent/makeups', Component: MakeupsPage },
               { path: '/parent/invoices', Component: InvoicesPage },
-              placeholder('/parent/invoices/:invoiceId', 'Invoice'),
+              { path: '/parent/invoices/:invoiceId', Component: InvoicePage },
             ],
           },
           {

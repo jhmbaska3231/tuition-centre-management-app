@@ -159,3 +159,15 @@
   /* tabular figures everywhere money or counts appear, so columns line up */
   .tabular { font-variant-numeric: tabular-nums; }
 }
+
+@media print {
+  /* a sensible margin on paper, rather than the browser's default */
+  @page {
+    margin: 16mm;
+  }
+
+  /* toasts are fixed overlays, meaningless on paper */
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+}
