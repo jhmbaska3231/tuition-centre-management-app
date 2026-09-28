@@ -51,20 +51,32 @@ const OfferCards = ({ entries, now }: { entries: WaitlistEntry[]; now: number })
 };
 
 const MakeupCard = ({ credits }: { credits: MakeupCredit[] }) => {
-  if (credits.length === 0) return null;
-  // the earliest expiry is the one to act on first. iso dates compare correctly as text
-  const soonest = credits.map(credit => credit.expires_on).reduce((a, b) => (a < b ? a : b));
-  const students = formatList([...new Set(credits.map(credit => credit.student_name))]);
-  const count = credits.length === 1 ? '1 make-up class' : `${credits.length} make-up classes`;
+  const available = credits.filter(credit => credit.status === 'available');
+  const booked = credits.filter(credit => credit.status === 'booked');
+  if (available.length === 0 && booked.length === 0) return null;
+
+  // the earliest expiry among credits to book, and the next booked class, are what matter most
+  const soonest = available.map(credit => credit.expires_on).reduce<string | null>((a, b) => (a === null || b < a ? b : a), null);
+  const next = booked.map(credit => credit.booked_at_time).filter((t): t is string => t !== null)
+    .reduce<string | null>((a, b) => (a === null || b < a ? b : a), null);
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
   return (
     <Card>
       <CardContent className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium">{count} to book for {students}</p>
-          <p className="mt-1 text-sm text-muted-foreground">Use by {formatDate(soonest)}</p>
+          <p className="font-medium">
+            {[
+              available.length > 0 && `${plural(available.length, 'make-up class')} to book`,
+              booked.length > 0 && `${plural(booked.length, 'make-up class')} booked`,
+            ].filter(Boolean).join(', ')}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {[soonest && `Use by ${formatDate(soonest)}`, next && `Next on ${formatDateTime(next)}`].filter(Boolean).join('. ')}
+          </p>
         </div>
         <Link to="/parent/makeups" className={buttonVariants({ variant: 'outline', className: 'shrink-0' })}>
-          Book
+          {available.length > 0 ? 'Book' : 'View'}
         </Link>
       </CardContent>
     </Card>
@@ -132,7 +144,7 @@ export const ParentHomePage = () => {
   const balance = useMyBalance();
   const sessions = useSessions({ from: today, to: addDays(today, 13) });
   const waitlist = useWaitlist();
-  const makeups = useMakeups({ status: 'available' });
+  const makeups = useMakeups();
 
   const childNames = new Map((children.data ?? []).map(child => [child.id, child.first_name]));
   // a family with one child does not need every session labelled with that child's name

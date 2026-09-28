@@ -10,10 +10,9 @@ import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
 import { LoginPage } from '@/features/auth/login-page';
 import { RegisterPage } from '@/features/auth/register-page';
 import { ResetPasswordPage } from '@/features/auth/reset-password-page';
-import { ParentHomePage } from '@/features/parent/parent-home-page';
 import { LandingPage } from '@/features/public/landing-page';
 import { NotFoundPage } from '@/features/public/not-found-page';
-import { TutorHomePage } from '@/features/tutor/tutor-home-page';
+import { ParentHomePage } from '@/features/parent/parent-home-page';
 import { ChildrenPage } from '@/features/parent/children/children-page';
 import { ChildDetailPage } from '@/features/parent/children/child-detail-page';
 import { ClassesPage } from '@/features/parent/classes/classes-page';
@@ -22,6 +21,7 @@ import { EnrollmentPage } from '@/features/parent/enrollments/enrollment-page';
 import { MakeupsPage } from '@/features/parent/makeups/makeups-page';
 import { InvoicesPage } from '@/features/parent/invoices/invoices-page';
 import { InvoicePage } from '@/features/parent/invoices/invoice-page';
+import { TutorHomePage } from '@/features/tutor/tutor-home-page';
 
 const placeholder = (path: string, title: string) => ({ path, element: <PlaceholderPage title={title} /> });
 
