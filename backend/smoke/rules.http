@@ -509,3 +509,33 @@ Content-Type: application/json
 { "makeup_cancel_lead_minutes": 360 }
 
 ?? status == 200
+
+### 16. a wrong password on the account page is a field error, not an expired session
+POST {{base}}/api/account/password
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "currentPassword": "not-the-password", "newPassword": "a-new-password-123" }
+
+?? status == 400
+?? js response.parsedBody.error.details[0].path == body.currentPassword
+
+### the same for deleting the account
+DELETE {{base}}/api/account
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "password": "not-the-password", "confirm": "DELETE" }
+
+?? status == 400
+?? js response.parsedBody.error.details[0].path == body.password
+
+### with the right password, deletion is refused while jay's children still have classes
+DELETE {{base}}/api/account
+Authorization: Bearer {{jayLogin.accessToken}}
+Content-Type: application/json
+
+{ "password": "{{password}}", "confirm": "DELETE" }
+
+?? status == 422
+?? js response.parsedBody.error.details.active_enrollments > 0

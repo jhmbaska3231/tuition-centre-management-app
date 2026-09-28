@@ -60,20 +60,20 @@ export const MakeupOptionsSheet = ({ credit, policy, open, onOpenChange }: Makeu
               <p className="text-sm font-medium">{formatDateTime(option.starts_at)}</p>
               <p className="truncate text-sm text-muted-foreground">{option.course_name}, {option.branch_name}</p>
               <p className="text-sm text-muted-foreground">
-                {option.seats_left === 1 ? '1 seat left' : `${option.seats_left} seats left`}
+                {option.seats_left <= 0 ? 'No seats left' : option.seats_left === 1 ? '1 seat left' : `${option.seats_left} seats left`}
               </p>
             </div>
             <Button
               size="sm"
               className="shrink-0"
-              disabled={book.isPending}
+              disabled={book.isPending || option.seats_left <= 0}
               onClick={async () => {
                 await book.mutateAsync({ sessionId: option.id });
                 toast.success(`${credit.student_name} is booked into ${option.course_name}, ${formatDateTime(option.starts_at)}`);
                 onOpenChange(false);
               }}
             >
-              {bookingId === option.id ? 'Booking' : 'Book'}
+              {option.seats_left <= 0 ? 'Full' : bookingId === option.id ? 'Booking' : 'Book'}
             </Button>
           </li>
         ))}

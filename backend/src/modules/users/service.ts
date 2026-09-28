@@ -2,7 +2,7 @@
 
 import bcrypt from 'bcrypt';
 import { isUniqueViolation, pool, withTransaction } from '../../db';
-import { ConflictError, ForbiddenError, NotFoundError, RuleViolationError, UnauthorizedError } from '../../http/errors';
+import { ConflictError, ForbiddenError, NotFoundError, RuleViolationError, ValidationError } from '../../http/errors';
 import { writeAudit } from '../audit/writer';
 import { insertUser, revokeAllForUser } from '../auth/repository';
 import { requestPasswordReset } from '../auth/service';
@@ -28,13 +28,17 @@ export const updateMyProfile = (user: AuthUser, input: { firstName?: string; las
     return { id: user.id, email: before.email, role: before.role, first_name: input.firstName ?? before.first_name, last_name: input.lastName ?? before.last_name, phone: input.phone === undefined ? before.phone : input.phone };
   });
 
-// changing the password ends every other session, the caller's own family survives
-// because the route re issues a session afterwards
+// changing the password ends every session, the caller's own included: anyone holding the old
+// password may have signed in elsewhere. the route returns no session, so the client signs in again
 export const changeMyPassword = (user: AuthUser, currentPassword: string, newPassword: string, ip: string | null) =>
   withTransaction(async tx => {
     const row = await repo.findUserForUpdate(tx, user.orgId, user.id);
     if (!row) throw new NotFoundError('User');
-    if (!(await bcrypt.compare(currentPassword, row.password_hash))) throw new UnauthorizedError('Current password is incorrect');
+    // a wrong current password is invalid input, not an invalid session: a 401 would make the
+    // client refresh the session and retry, rotating the refresh token for a typo
+    if (!(await bcrypt.compare(currentPassword, row.password_hash))) {
+      throw new ValidationError('Invalid request', [{ path: 'body.currentPassword', message: 'Current password is incorrect' }]);
+    }
     await repo.updateUserFields(tx, user.orgId, user.id, { password_hash: await bcrypt.hash(newPassword, BCRYPT_COST) });
     await revokeAllForUser(tx, user.id);
     await writeAudit(tx, { orgId: user.orgId, actorUserId: user.id, action: 'user.password_changed', entityType: 'user', entityId: user.id, ip });
@@ -47,7 +51,9 @@ export const deleteMyAccount = (user: AuthUser, password: string, ip: string | n
     if (user.role !== 'parent') throw new ForbiddenError('Only parent accounts can be self-deleted');
     const row = await repo.findUserForUpdate(tx, user.orgId, user.id);
     if (!row) throw new NotFoundError('User');
-    if (!(await bcrypt.compare(password, row.password_hash))) throw new UnauthorizedError('Password is incorrect');
+    if (!(await bcrypt.compare(password, row.password_hash))) {
+      throw new ValidationError('Invalid request', [{ path: 'body.password', message: 'Password is incorrect' }]);
+    }
     const b = await repo.deletionBlockers(tx, user.id);
     if (b.active_enrollments > 0) throw new RuleViolationError(`Withdraw from ${b.active_enrollments} active enrollment(s) first`, b);
     if (b.open_invoices > 0) throw new RuleViolationError(`Settle ${b.open_invoices} open invoice(s) first`, b);

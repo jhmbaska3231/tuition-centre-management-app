@@ -1,6 +1,7 @@
 // backend/src/modules/users/routes.ts
 
 import { Request, Router } from 'express';
+import { authLimiter } from '../../http/middleware/rate-limit';
 import { validate } from '../../http/middleware/validate';
 import { authenticate, authorise, currentUser } from '../auth/middleware';
 import {
@@ -14,13 +15,13 @@ const ip = (req: Request) => req.ip ?? null;
 export const accountRouter = Router();
 accountRouter.use(authenticate);
 accountRouter.patch('/profile', validate({ body: updateProfileSchema }), async (req, res) => { res.json({ user: await service.updateMyProfile(currentUser(req), req.validated.body, ip(req)) }); });
-accountRouter.post('/password', validate({ body: changePasswordSchema }), async (req, res) => {
+accountRouter.post('/password', authLimiter, validate({ body: changePasswordSchema }), async (req, res) => {
   const { currentPassword, newPassword } = req.validated.body;
   await service.changeMyPassword(currentUser(req), currentPassword, newPassword, ip(req));
   // all sessions are gone, the client must log in again
   res.status(204).end();
 });
-accountRouter.delete('/', authorise('parent'), validate({ body: deleteAccountSchema }), async (req, res) => {
+accountRouter.delete('/', authorise('parent'), authLimiter, validate({ body: deleteAccountSchema }), async (req, res) => {
   res.json(await service.deleteMyAccount(currentUser(req), req.validated.body.password, ip(req)));
 });
 
