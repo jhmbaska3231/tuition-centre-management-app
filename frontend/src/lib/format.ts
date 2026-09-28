@@ -46,6 +46,18 @@ export const formatDateLong = (d: string): string =>
   new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
     .format(dateOnlyToDate(d));
 
+// a billing period as a parent reads it: a whole calendar month as "september 2026", anything
+// else as its two dates
+export const formatPeriod = (start: string, end: string): string =>
+  start.endsWith('-01') && end === endOfMonth(start)
+    ? new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(dateOnlyToDate(start))
+    : `${formatDate(start)} to ${formatDate(end)}`;
+
+// the calendar date of an instant, in the centre's timezone: when something happened, without
+// the time of day
+export const formatInstantDate = (ts: string): string =>
+  new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: timezone }).format(new Date(ts));
+
 // timestamps are instants and convert into the centre's timezone
 export const formatTime = (ts: string): string =>
   new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: timezone }).format(new Date(ts));

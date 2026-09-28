@@ -20,6 +20,7 @@ import { ClassesPage } from '@/features/parent/classes/classes-page';
 import { CourseDetailPage } from '@/features/parent/classes/course-detail-page';
 import { EnrollmentPage } from '@/features/parent/enrollments/enrollment-page';
 import { MakeupsPage } from '@/features/parent/makeups/makeups-page';
+import { InvoicesPage } from '@/features/parent/invoices/invoices-page';
 
 const placeholder = (path: string, title: string) => ({ path, element: <PlaceholderPage title={title} /> });
 
@@ -59,7 +60,7 @@ export const router = createBrowserRouter([
               { path: '/parent/classes/:courseId', Component: CourseDetailPage },
               { path: '/parent/enrollments/:enrollmentId', Component: EnrollmentPage },
               { path: '/parent/makeups', Component: MakeupsPage },
-              placeholder('/parent/invoices', 'Invoices'),
+              { path: '/parent/invoices', Component: InvoicesPage },
               placeholder('/parent/invoices/:invoiceId', 'Invoice'),
             ],
           },
