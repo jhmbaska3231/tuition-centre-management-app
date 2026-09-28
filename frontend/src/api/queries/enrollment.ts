@@ -3,8 +3,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { z } from 'zod';
 import type {
-  AttendanceHistoryEntry, Enrollment, EnrollmentDetail, EnrollmentStatus, enrollSchema,
-  joinWaitlistSchema, MakeupCredit, MakeupStatus, WaitlistEntry, withdrawSchema,
+  AttendanceHistoryEntry, bookMakeupSchema, Enrollment, EnrollmentDetail, EnrollmentStatus, enrollSchema,
+  joinWaitlistSchema, MakeupCredit, MakeupStatus, MakeupOption, MakeupPolicy, WaitlistEntry, withdrawSchema,
 } from '@tuition/shared';
 import { api } from '../client';
 import { isApiError } from '../errors';
@@ -24,6 +24,7 @@ export type MakeupFilters = {
 export type EnrollBody = z.input<typeof enrollSchema>;
 export type JoinWaitlistBody = z.input<typeof joinWaitlistSchema>;
 export type WithdrawBody = z.input<typeof withdrawSchema>;
+export type BookMakeupBody = z.input<typeof bookMakeupSchema>;
 
 export const useEnrollments = (filters: EnrollmentFilters = {}) =>
   useQuery({
@@ -54,6 +55,24 @@ export const useMakeups = (filters: MakeupFilters = {}) =>
   useQuery({
     queryKey: keys.makeups.list(filters),
     queryFn: () => api.get<MakeupCredit[]>('/makeups', filters),
+  });
+
+// the centre's make up rules. they change only when an admin edits the settings, so they are
+// kept fresh longer than screen data
+export const useMakeupPolicy = () =>
+  useQuery({
+    queryKey: keys.makeups.policy(),
+    queryFn: () => api.get<MakeupPolicy>('/makeups/policy'),
+    staleTime: 5 * 60_000,
+  });
+
+// the classes one credit could be booked into, fetched only while they are on screen. a refusal
+// here is usually the term cap, which the screen shows as an explanation rather than an error
+export const useMakeupOptions = (creditId: string, { enabled = true }: { enabled?: boolean } = {}) =>
+  useQuery({
+    queryKey: keys.makeups.options(creditId),
+    queryFn: () => api.get<MakeupOption[]>(`/makeups/${creditId}/options`),
+    enabled,
   });
 
 // a new enrollment changes the child's classes, their sessions, the course's seats, and the
@@ -87,6 +106,23 @@ export const useJoinWaitlist = () =>
     onError: error => {
       if (isApiError(error) && error.code === 'rule_violation') void invalidate([keys.courses.all]);
     },
+  });
+
+// booking puts the child on another class's roster, which shows in their session list. a
+// refusal means the options were out of date, so they are refreshed
+export const useBookMakeup = (creditId: string) =>
+  useMutation({
+    mutationFn: (input: BookMakeupBody) => api.post<MakeupCredit>(`/makeups/${creditId}/book`, input),
+    onSuccess: () => invalidate([keys.makeups.all, keys.sessions.all]),
+    onError: error => {
+      if (isApiError(error) && error.code === 'rule_violation') void invalidate([keys.makeups.options(creditId)]);
+    },
+  });
+
+export const useUnbookMakeup = () =>
+  useMutation({
+    mutationFn: (creditId: string) => api.post<MakeupCredit>(`/makeups/${creditId}/unbook`),
+    onSuccess: () => invalidate([keys.makeups.all, keys.sessions.all]),
   });
 
 // accepting creates an enrollment, so it changes everything enrolling does, and the queue. a

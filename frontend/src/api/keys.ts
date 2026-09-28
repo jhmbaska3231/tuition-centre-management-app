@@ -67,6 +67,7 @@ export const keys = {
     all: ['makeups'] as const,
     list: (filters?: unknown) => [...keys.makeups.all, 'list', filters ?? {}] as const,
     options: (id: string) => [...keys.makeups.all, 'options', id] as const,
+    policy: () => [...keys.makeups.all, 'policy'] as const,
   },
   leave: {
     all: ['leave'] as const,

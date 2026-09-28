@@ -22,6 +22,9 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   // shown while the action runs, as a present participle: "withdrawing"
   pendingLabel: string;
+  // the dismiss button. override it when "cancel" would be ambiguous, as when the action
+  // itself is cancelling something
+  cancelLabel?: string;
   destructive?: boolean;
   // throw to keep the dialog open with the error shown. return false to keep it open with
   // no error, for flows that continue in the same dialog: the caller then changes the title,
@@ -29,14 +32,14 @@ interface ConfirmDialogProps {
   onConfirm: () => Promise<void | false>;
 }
 
-type ConfirmBodyProps = Pick<ConfirmDialogProps, 'confirmLabel' | 'pendingLabel' | 'destructive' | 'onConfirm'> & {
+type ConfirmBodyProps = Pick<ConfirmDialogProps, 'confirmLabel' | 'pendingLabel' | 'cancelLabel' | 'destructive' | 'onConfirm'> & {
   onBusyChange: (busy: boolean) => void;
   close: () => void;
 };
 
 // the dialog unmounts its content on close, so this state starts fresh on every open: a
 // refusal from last time never greets the next attempt
-const ConfirmBody = ({ confirmLabel, pendingLabel, destructive = false, onConfirm, onBusyChange, close }: ConfirmBodyProps) => {
+const ConfirmBody = ({ confirmLabel, pendingLabel, cancelLabel = 'Cancel', destructive = false, onConfirm, onBusyChange, close }: ConfirmBodyProps) => {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -63,7 +66,7 @@ const ConfirmBody = ({ confirmLabel, pendingLabel, destructive = false, onConfir
         </Alert>
       )}
       <AlertDialogFooter>
-        <Button type="button" variant="outline" onClick={close} disabled={pending}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={close} disabled={pending}>{cancelLabel}</Button>
         <Button type="button" variant={destructive ? 'destructive' : 'default'} onClick={() => void confirm()} disabled={pending}>
           {pending ? pendingLabel : confirmLabel}
         </Button>
