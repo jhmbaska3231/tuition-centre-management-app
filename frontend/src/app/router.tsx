@@ -12,6 +12,7 @@ import { RegisterPage } from '@/features/auth/register-page';
 import { ResetPasswordPage } from '@/features/auth/reset-password-page';
 import { LandingPage } from '@/features/public/landing-page';
 import { NotFoundPage } from '@/features/public/not-found-page';
+import { AccountPage } from '@/features/account/account-page';
 import { ParentHomePage } from '@/features/parent/parent-home-page';
 import { ChildrenPage } from '@/features/parent/children/children-page';
 import { ChildDetailPage } from '@/features/parent/children/child-detail-page';
@@ -50,7 +51,7 @@ export const router = createBrowserRouter([
       {
         Component: AppShell,
         children: [
-          placeholder('/account', 'Account'),
+          { path: '/account', Component: AccountPage },
           {
             element: <RequireRole roles={['parent']} />,
             children: [
