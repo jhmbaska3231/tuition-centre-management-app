@@ -29,6 +29,8 @@ interface FormDialogProps<TIn extends FieldValues, TOut extends FieldValues> {
   submitLabel: string;
   // shown while submitting, as a present participle: "saving"
   pendingLabel: string;
+  // a red submit button, for forms whose action cannot be undone
+  destructive?: boolean;
   // throw to keep the dialog open. validation errors land on their fields, anything else
   // appears above them
   onSubmit: (values: TOut) => Promise<void>;
@@ -52,7 +54,7 @@ type FormBodyProps<TIn extends FieldValues, TOut extends FieldValues> =
 // the form starts from defaultvalues each time, with no reset effect and no render of
 // stale values first
 const FormBody = <TIn extends FieldValues, TOut extends FieldValues>({
-  schema, defaultValues, submitLabel, pendingLabel, onSubmit, mapError, children, onBusyChange, close,
+  schema, defaultValues, submitLabel, pendingLabel, destructive = false, onSubmit, mapError, children, onBusyChange, close,
 }: FormBodyProps<TIn, TOut>) => {
   const form = useForm<TIn, unknown, TOut>({ resolver: zodResolver(schema), defaultValues });
   const [formError, setFormError] = useState<ReactNode>(null);
@@ -86,7 +88,9 @@ const FormBody = <TIn extends FieldValues, TOut extends FieldValues>({
       {children(form)}
       <DialogFooter>
         <Button type="button" variant="outline" onClick={close} disabled={submitting}>Cancel</Button>
-        <Button type="submit" disabled={submitting}>{submitting ? pendingLabel : submitLabel}</Button>
+        <Button type="submit" variant={destructive ? 'destructive' : 'default'} disabled={submitting}>
+          {submitting ? pendingLabel : submitLabel}
+        </Button>
       </DialogFooter>
     </form>
   );
