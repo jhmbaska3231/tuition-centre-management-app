@@ -50,7 +50,7 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
     await c.query(`INSERT INTO organisation_settings (org_id) VALUES ($1)`, [orgId]);
     await c.query(`INSERT INTO invoice_counters (org_id) VALUES ($1)`, [orgId]);
     for (const key of ['session_reminder', 'session_cancelled', 'tutor_changed', 'student_absent',
-      'invoice_issued', 'invoice_overdue', 'waitlist_offer', 'leave_request_submitted', 'leave_request_decided']) {
+      'invoice_issued', 'invoice_overdue', 'waitlist_offer', 'leave_request_submitted', 'leave_request_decided', 'billing_flag_raised']) {
       await c.query(`INSERT INTO notification_event_settings (org_id, event_key) VALUES ($1, $2)`, [orgId, key]);
     }
 

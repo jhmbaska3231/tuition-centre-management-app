@@ -12,11 +12,11 @@
 --   node -e "require('bcrypt').hash(process.argv[1], 12).then(console.log)" 'temporarypassword123'
 --
 -- usage:
---   psql "postgresql://tuition_app@host/tuition?sslmode=verify-full" -v on_error_stop=1 \
+--   psql "postgresql://tuition_app@host/tuition?sslmode=verify-full" -v ON_ERROR_STOP=1 \
 --     -v org_name="'<organisation_name>'" \
 --     -v org_slug="'<organisation_slug>'" \
---     -v org_timezone="'asia/singapore'" \
---     -v org_currency="'sgd'" \
+--     -v org_timezone="'Asia/Singapore'" \
+--     -v org_currency="'SGD'" \
 --     -v admin_email="'<admin_email>'" \
 --     -v admin_first="'<first_name>'" \
 --     -v admin_last="'<last_name>'" \
@@ -65,7 +65,8 @@ FROM organisations o,
        'invoice_overdue',
        'waitlist_offer',
        'leave_request_submitted',
-       'leave_request_decided'
+       'leave_request_decided',
+       'billing_flag_raised'
      ]) AS k
 WHERE o.slug = :org_slug;
 
