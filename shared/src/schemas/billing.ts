@@ -1,7 +1,7 @@
 // shared/src/schemas/billing.ts
 
 import { z } from 'zod';
-import { BILLING_CYCLES, INVOICE_STATUSES, PAYMENT_METHODS } from '../enums';
+import { BILLING_CYCLES, INVOICE_STATUSES, PAYMENT_METHODS, BILLING_FLAG_KINDS, BILLING_FLAG_STATUSES } from '../enums';
 import { cents, isoDate, isoDateTime, signedCents, uuid } from '../primitives';
 
 const feePlanFields = z.object({
@@ -48,20 +48,24 @@ export const creditNoteSchema = z.object({
 });
 export type CreditNoteInput = z.infer<typeof creditNoteSchema>;
 
-// omit allocations to auto allocate against the payer's oldest open invoices
+// one payment settles one invoice. anything above its balance is flagged as an overpayment
 export const recordPaymentSchema = z.object({
-  payerUserId: uuid,
-  amountCents: z.number().int().min(1),
+  invoiceId: uuid,
+  amountCents: cents,
   method: z.enum(PAYMENT_METHODS),
   receivedAt: isoDateTime.optional(),
   reference: z.string().trim().max(100).optional(),
   notes: z.string().trim().max(500).optional(),
-  allocations: z.array(z.object({
-    invoiceId: uuid,
-    amountCents: z.number().int().min(1),
-  })).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
+
+// method and reference are required to resolve an overpayment, which the service checks
+// against the flag's kind. a note alone can resolve an unpaid balance
+export const resolveBillingFlagSchema = z.object({
+  method: z.enum(PAYMENT_METHODS).optional(),
+  reference: z.string().trim().min(1).max(100).optional(),
+  note: z.string().trim().max(1000).optional(),
+});
 
 export const listPaymentsQuery = z.object({
   payerUserId: uuid.optional(),
@@ -71,5 +75,17 @@ export const listPaymentsQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-export const refundSchema = z.object({ reason: z.string().trim().min(1).max(500) });
+// a refund returns money, so how and with what reference are recorded, as they are for a payment
+export const refundSchema = z.object({
+  reason: z.string().trim().min(1).max(500),
+  method: z.enum(PAYMENT_METHODS),
+  reference: z.string().trim().min(1).max(100),
+});
 export const providerParam = z.object({ provider: z.string().regex(/^[a-z_]{2,30}$/) });
+
+export const listBillingFlagsQuery = z.object({
+  status: z.enum(BILLING_FLAG_STATUSES).optional(),
+  kind: z.enum(BILLING_FLAG_KINDS).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});

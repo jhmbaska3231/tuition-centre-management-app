@@ -1,7 +1,7 @@
 // backend/src/jobs/nightly.ts
 
 import { closePool, pool } from '../db';
-import { runInvoiceGeneration, runOverdueReminders } from '../modules/billing';
+import { runInvoiceGeneration, runOverdueReminders, raiseUnpaidBalanceFlags } from '../modules/billing';
 import { runLifecycleJob } from '../modules/enrollment';
 import { getCurrentOrgId } from '../modules/org';
 import { generateForAllOpenCourses, schedulingRepository } from '../modules/scheduling';
@@ -13,11 +13,12 @@ export const runNightly = async () => {
   const lifecycle = await runLifecycleJob(orgId);
   const invoices = await runInvoiceGeneration(orgId);
   const overdue = await runOverdueReminders(orgId);
+  const unpaidFlags = await raiseUnpaidBalanceFlags(orgId);
   const summary = {
     sessionsCompleted: completed,
     sessionsCreated: generation.reduce((n, r) => n + r.created, 0),
     generationConflicts: generation.flatMap(r => r.skippedConflict.map(c => ({ courseId: r.courseId, ...c }))),
-    lifecycle, invoices, overdueReminders: overdue,
+    lifecycle, invoices, overdueReminders: overdue, unpaidFlags,
   };
   console.log(JSON.stringify({ level: 'info', msg: 'nightly_job', ...summary }));
   return summary;

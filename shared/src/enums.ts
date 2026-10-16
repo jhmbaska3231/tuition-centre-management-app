@@ -37,6 +37,12 @@ export type LeaveStatus = (typeof LEAVE_STATUSES)[number];
 export const BILLING_CYCLES = ['monthly', 'per_term', 'per_session'] as const;
 export type BillingCycle = (typeof BILLING_CYCLES)[number];
 
+export const BILLING_FLAG_KINDS = ['overpayment', 'unpaid_balance'] as const;
+export type BillingFlagKind = (typeof BILLING_FLAG_KINDS)[number];
+
+export const BILLING_FLAG_STATUSES = ['open', 'resolved'] as const;
+export type BillingFlagStatus = (typeof BILLING_FLAG_STATUSES)[number];
+
 export const INVOICE_STATUSES = ['draft', 'issued', 'partially_paid', 'paid', 'void'] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
@@ -57,7 +63,7 @@ export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 export const NOTIFICATION_EVENTS = [
   'session_reminder', 'session_cancelled', 'session_rescheduled', 'tutor_changed',
   'student_absent', 'invoice_issued', 'invoice_overdue', 'waitlist_offer',
-  'leave_request_submitted', 'leave_request_decided',
+  'leave_request_submitted', 'leave_request_decided', 'billing_flag_raised',
 ] as const;
 export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
 

@@ -26,6 +26,7 @@ const EVENT_TEXT: Record<NotificationEvent, { label: string; description: string
   waitlist_offer: { label: 'Seat offers', description: 'When a seat opens on a waitlist. Offers expire, so this is worth keeping on.' },
   leave_request_submitted: { label: 'Leave requests', description: 'When someone asks for leave.' },
   leave_request_decided: { label: 'Leave decisions', description: 'When your leave request is decided.' },
+  billing_flag_raised: { label: 'Payment alerts', description: 'When a payment is more than its invoice, or an invoice is still unpaid after its due date.' },
 };
 
 export const NotificationsSection = () => {

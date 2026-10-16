@@ -32,11 +32,13 @@ export const DeleteAccountSection = () => {
 
   const activeClasses = (children.data ?? []).reduce((sum, child) => sum + child.active_enrollment_count, 0);
   const owed = balance.data?.outstanding_cents ?? 0;
+  const refundDue = balance.data?.refund_due_cents ?? 0;
   // the button waits for both, so it is never enabled on a guess
   const ready = children.data !== undefined && balance.data !== undefined;
   const blockers = [
     activeClasses > 0 && `Withdraw your children from ${activeClasses === 1 ? 'their class' : `their ${activeClasses} classes`}.`,
     owed > 0 && `Settle the ${money(owed)} still owed.`,
+    refundDue > 0 && `The centre is refunding ${money(refundDue)} to you. You can delete your account once that is done.`,
   ].filter((blocker): blocker is string => typeof blocker === 'string');
 
   return (

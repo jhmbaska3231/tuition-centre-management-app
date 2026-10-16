@@ -40,14 +40,17 @@ export const findUserForUpdate = (q: Queryable, orgId: string, id: string) =>
 
 // rules for parent self deletion
 export const deletionBlockers = (q: Queryable, userId: string) =>
-  one<{ active_enrollments: number; open_invoices: number; sole_guardian_students: number }>(q,
+  one<{ active_enrollments: number; open_invoices: number; sole_guardian_students: number; refund_due_cents: number }>(q,
     `SELECT
        (SELECT count(*)::int FROM enrollments e JOIN student_guardians sg ON sg.student_id = e.student_id
          WHERE sg.user_id = $1 AND e.status = 'active') AS active_enrollments,
        (SELECT count(*)::int FROM invoices WHERE bill_to_user_id = $1 AND status IN ('issued', 'partially_paid')) AS open_invoices,
        (SELECT count(*)::int FROM student_guardians sg JOIN students s ON s.id = sg.student_id
          WHERE sg.user_id = $1 AND s.archived_at IS NULL
-           AND NOT EXISTS (SELECT 1 FROM student_guardians o WHERE o.student_id = sg.student_id AND o.user_id <> $1)) AS sole_guardian_students`, [userId]);
+           AND NOT EXISTS (SELECT 1 FROM student_guardians o WHERE o.student_id = sg.student_id AND o.user_id <> $1)) AS sole_guardian_students,
+       -- money the centre owes this parent: overpayments not yet refunded
+       COALESCE((SELECT sum(f.amount_cents) FROM billing_flags f JOIN invoices i ON i.id = f.invoice_id
+                  WHERE i.bill_to_user_id = $1 AND f.kind = 'overpayment' AND f.status = 'open'), 0)::bigint AS refund_due_cents`, [userId]);
 
 // archive students where this user is the only guardian, leave shared students alone
 export const archiveSoleGuardianStudents = (q: Queryable, userId: string) =>

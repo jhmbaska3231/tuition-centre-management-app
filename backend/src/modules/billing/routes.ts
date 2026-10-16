@@ -6,8 +6,8 @@ import { authenticate, authorise, currentUser } from '../auth/middleware';
 import { getCurrentOrgId } from '../org/current-org';
 import { readIntegrationConfig } from '../org/integrations';
 import {
-  createFeePlanSchema, createManualInvoiceSchema, creditNoteSchema, listInvoicesQuery,
-  listPaymentsQuery, providerParam, recordPaymentSchema, refundSchema,
+  createFeePlanSchema, createManualInvoiceSchema, creditNoteSchema, listBillingFlagsQuery, listInvoicesQuery,
+  listPaymentsQuery, providerParam, recordPaymentSchema, refundSchema, resolveBillingFlagSchema,
   updateFeePlanSchema, voidInvoiceSchema,
 } from '@tuition/shared';
 import * as service from './service';
@@ -36,7 +36,7 @@ paymentsRouter.use(authenticate);
 paymentsRouter.get('/', validate({ query: listPaymentsQuery }), async (req, res) => { res.json(await service.listPayments(currentUser(req), req.validated.query)); });
 paymentsRouter.post('/', staff, validate({ body: recordPaymentSchema }), async (req, res) => { res.status(201).json(await service.recordPayment(currentUser(req), req.validated.body)); });
 paymentsRouter.get('/:id', validate({ params: idParam }), async (req, res) => { res.json(await service.getPayment(currentUser(req), req.validated.params.id)); });
-paymentsRouter.post('/:id/refund', staff, validate({ params: idParam, body: refundSchema }), async (req, res) => { res.json(await service.refundPayment(currentUser(req), req.validated.params.id, req.validated.body.reason)); });
+paymentsRouter.post('/:id/refund', staff, validate({ params: idParam, body: refundSchema }), async (req, res) => { res.json(await service.refundPayment(currentUser(req), req.validated.params.id, req.validated.body)); });
 
 // unauthenticated by design: the provider signature is the credential, body arrives raw
 // (see app.ts) so the signature can be checked against the exact bytes
@@ -47,3 +47,9 @@ webhooksRouter.post('/:provider', validate({ params: providerParam }), async (re
   const config = integration && integration.provider === req.validated.params.provider ? integration.config : null;
   res.json(await handleWebhook(orgId, req.validated.params.provider, req.body as Buffer, req.headers, config));
 });
+
+// payment alerts: staff only, since they concern money owed to and by families
+export const billingFlagsRouter = Router();
+billingFlagsRouter.use(authenticate, staff);
+billingFlagsRouter.get('/', validate({ query: listBillingFlagsQuery }), async (req, res) => { res.json(await service.listBillingFlags(currentUser(req), req.validated.query)); });
+billingFlagsRouter.post('/:id/resolve', validate({ params: idParam, body: resolveBillingFlagSchema }), async (req, res) => { res.json(await service.resolveBillingFlag(currentUser(req), req.validated.params.id, req.validated.body)); });

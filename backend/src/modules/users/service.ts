@@ -57,6 +57,9 @@ export const deleteMyAccount = (user: AuthUser, password: string, ip: string | n
     const b = await repo.deletionBlockers(tx, user.id);
     if (b.active_enrollments > 0) throw new RuleViolationError(`Withdraw from ${b.active_enrollments} active enrollment(s) first`, b);
     if (b.open_invoices > 0) throw new RuleViolationError(`Settle ${b.open_invoices} open invoice(s) first`, b);
+    // the centre still owes this parent money, and closing the account would leave no one to
+    // return it to. only the centre can clear this, by refunding and resolving the alert
+    if (b.refund_due_cents > 0) throw new RuleViolationError('The centre is still refunding money to you. Your account can be deleted once that is done', b);
     const studentsArchived = await repo.archiveSoleGuardianStudents(tx, user.id);
     await repo.withdrawFromWaitlists(tx, user.id);
     await repo.archiveUser(tx, user.id);

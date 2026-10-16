@@ -22,10 +22,14 @@ export interface InvoiceView extends InvoiceRow {
   lines: Array<InvoiceLineRow & { student_name: string | null }>;
   allocations: Array<{ payment_id: string; amount_cents: number; method: string; received_at: Date; reference: string | null }>;
   credit_notes: Array<{ id: string; amount_cents: number; reason: string; created_at: Date }>;
+  overpayments: Array<{
+    id: string; amount_cents: number; status: 'open' | 'resolved';
+    resolved_at: Date | null; resolution_method: string | null; resolution_reference: string | null;
+  }>;
 }
 
 export interface PaymentRow {
-  id: string; org_id: string; payer_user_id: string | null; amount_cents: number; method: string;
+  id: string; org_id: string; invoice_id: string; payer_user_id: string | null; amount_cents: number; method: string;
   status: 'pending' | 'succeeded' | 'failed' | 'refunded'; received_at: Date; reference: string | null;
   provider: string | null; recorded_by: string | null; notes: string | null; created_at: Date;
 }
@@ -38,3 +42,23 @@ export interface LineDraft {
 }
 
 export interface RunReport { invoicesCreated: number; linesCreated: number; skippedNoSessions: number; errors: Array<{ billTo: string; error: string }> }
+
+// a flag as staff see it, with the invoice and family it concerns. timestamps are dates here and
+// become strings when sent, matching the shared billingflag
+export interface BillingFlagView {
+  id: string;
+  invoice_id: string;
+  invoice_number: string;
+  payment_id: string | null;
+  kind: 'overpayment' | 'unpaid_balance';
+  amount_cents: number;
+  status: 'open' | 'resolved';
+  raised_at: Date;
+  resolved_by_name: string | null;
+  resolved_at: Date | null;
+  resolution_method: string | null;
+  resolution_reference: string | null;
+  resolution_note: string | null;
+  bill_to_user_id: string;
+  bill_to_name: string;
+}

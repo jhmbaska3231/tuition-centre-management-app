@@ -16,6 +16,7 @@ export interface OrganisationSettingsRow {
   invoice_prefix: string; payment_instructions: string | null; updated_at: Date;
   landing_headline: string | null; landing_description: string | null;
   accent_colour: string | null; logo_url: string | null;
+  unpaid_flag_days: number;
 }
 
 export interface NotificationEventSettingRow { event_key: string; enabled: boolean; updated_at: Date }

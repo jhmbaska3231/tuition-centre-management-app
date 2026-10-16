@@ -10,6 +10,7 @@
   const centreDate = days => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' })
     .format(new Date(Date.now() + days * 86_400_000));
   exports.today = centreDate(0);
+  exports.inAWeek = centreDate(7);
   exports.twoWeeks = centreDate(13);
   exports.rangeLimit = centreDate(92);
   exports.pastRangeLimit = centreDate(120);
@@ -539,3 +540,213 @@ Content-Type: application/json
 
 ?? status == 422
 ?? js response.parsedBody.error.details.active_enrollments > 0
+
+### 18. payment alerts. the nightly job flagged ben's invoice from last month, unpaid weeks past its
+# due date. this month's invoices are flagged only from the 15th, so they are not asserted here
+# @name openUnpaid
+GET {{base}}/api/billing-flags?kind=unpaid_balance&status=open
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(f => f.bill_to_name === 'Ben Ng') == true
+
+### alice owes 8000 on this month's invoice and pays 10000: 8000 settles it, 2000 is overpaid
+# @name aliceLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "alice.lim@gmail.com", "password": "{{password}}" }
+
+?? status == 200
+
+###
+# @name aliceInvoices
+GET {{base}}/api/invoices
+Authorization: Bearer {{aliceLogin.accessToken}}
+
+?? status == 200
+
+###
+POST {{base}}/api/payments
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "invoiceId": "{{aliceInvoices.find(i => i.status === 'partially_paid').id}}", "amountCents": 10000, "method": "bank_transfer", "reference": "SMOKE-OVER" }
+
+?? status == 201
+?? js response.parsedBody.overpaymentCents == 2000
+
+### the invoice is now paid, so no unpaid alert is left open for alice, whether or not one was raised
+GET {{base}}/api/billing-flags?kind=unpaid_balance&status=open
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(f => f.bill_to_name === 'Alice Lim') == false
+
+### staff are told by email
+GET {{base}}/api/notifications/outbox
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(n => n.event_key === 'billing_flag_raised' && n.recipient_email === 'admin@tuition.com') == true
+
+### alice sees the money owed back to her, on her balance and on the invoice
+GET {{base}}/api/invoices/my-balance
+Authorization: Bearer {{aliceLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.refund_due_cents == 2000
+
+###
+GET {{base}}/api/invoices/{{aliceInvoices.find(i => i.status === 'partially_paid').id}}
+Authorization: Bearer {{aliceLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.overpayments[0].status == open
+
+### resolving without evidence is refused, on each missing field
+# @name openOver
+GET {{base}}/api/billing-flags?kind=overpayment&status=open
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+
+###
+POST {{base}}/api/billing-flags/{{openOver.find(f => f.bill_to_name === 'Alice Lim').id}}/resolve
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{}
+
+?? status == 400
+?? js response.parsedBody.error.details.map(d => d.path).join(',') == body.method,body.reference
+
+### with the method and transfer reference, it resolves
+POST {{base}}/api/billing-flags/{{openOver.find(f => f.bill_to_name === 'Alice Lim').id}}/resolve
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "method": "bank_transfer", "reference": "FAST-REFUND-001" }
+
+?? status == 200
+?? js response.parsedBody.status == resolved
+?? js response.parsedBody.resolution_reference == FAST-REFUND-001
+
+### and alice is owed nothing
+GET {{base}}/api/invoices/my-balance
+Authorization: Bearer {{aliceLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.refund_due_cents == 0
+
+### resolving twice is refused, so the first resolution's evidence is never overwritten
+POST {{base}}/api/billing-flags/{{openOver.find(f => f.bill_to_name === 'Alice Lim').id}}/resolve
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "method": "bank_transfer", "reference": "FAST-REFUND-002" }
+
+?? status == 422
+
+### an unpaid alert resolved by hand needs a reason, since the money may still be owed
+POST {{base}}/api/billing-flags/{{openUnpaid.find(f => f.bill_to_name === 'Ben Ng').id}}/resolve
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{}
+
+?? status == 400
+?? js response.parsedBody.error.details[0].path == body.note
+
+###
+POST {{base}}/api/billing-flags/{{openUnpaid.find(f => f.bill_to_name === 'Ben Ng').id}}/resolve
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "note": "Payment plan agreed with Ben" }
+
+?? status == 200
+?? js response.parsedBody.status == resolved
+
+### 19. ben pays 35000 against his 30000 invoice, then the whole payment turns out to be a mistake
+# @name benOverpay
+POST {{base}}/api/payments
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "invoiceId": "{{openUnpaid.find(f => f.bill_to_name === 'Ben Ng').invoice_id}}", "amountCents": 35000, "method": "paynow", "reference": "SMOKE-BEN" }
+
+?? status == 201
+?? js response.parsedBody.overpaymentCents == 5000
+
+### a refund records how the money went back, like a payment records how it came in
+POST {{base}}/api/payments/{{benOverpay.payment.id}}/refund
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "reason": "Paid in error" }
+
+?? status == 400
+
+###
+POST {{base}}/api/payments/{{benOverpay.payment.id}}/refund
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "reason": "Paid in error", "method": "paynow", "reference": "PAYNOW-REFUND-001" }
+
+?? status == 200
+?? js response.parsedBody.status == refunded
+
+### the overpayment went back with the payment, resolved with the refund's own evidence
+GET {{base}}/api/billing-flags?kind=overpayment&status=resolved
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.some(f => f.payment_id === benOverpay.payment.id && f.resolution_reference === 'PAYNOW-REFUND-001') == true
+
+### and the invoice is owed again
+GET {{base}}/api/invoices/{{openUnpaid.find(f => f.bill_to_name === 'Ben Ng').invoice_id}}
+Authorization: Bearer {{adminLogin.accessToken}}
+
+?? status == 200
+?? js response.parsedBody.status == issued
+
+### 20. money the centre owes a parent blocks deleting their account, like money they owe does
+# @name refundParent
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{ "firstName": "Refund", "lastName": "Tester", "email": "refund.tester@example.com", "password": "{{password}}" }
+
+?? status == 201
+
+### a 50.00 registration fee, paid with 80.00 in cash
+# @name refundInvoice
+POST {{base}}/api/invoices
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "billToUserId": "{{refundParent.user.id}}", "dueOn": "{{inAWeek}}", "lines": [{ "lineType": "registration", "description": "Registration fee", "unitCents": 5000 }] }
+
+?? status == 201
+
+###
+POST {{base}}/api/payments
+Authorization: Bearer {{adminLogin.accessToken}}
+Content-Type: application/json
+
+{ "invoiceId": "{{refundInvoice.id}}", "amountCents": 8000, "method": "cash" }
+
+?? status == 201
+?? js response.parsedBody.overpaymentCents == 3000
+
+###
+DELETE {{base}}/api/account
+Authorization: Bearer {{refundParent.accessToken}}
+Content-Type: application/json
+
+{ "password": "{{password}}", "confirm": "DELETE" }
+
+?? status == 422
+?? js response.parsedBody.error.details.refund_due_cents == 3000

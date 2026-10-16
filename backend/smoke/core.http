@@ -5,16 +5,15 @@
 # which resets the database first. requests run top to bottom, a "# @name" makes that
 # response's body available to later requests by name, and every ?? line is an assertion
 #
-# one step depends on the clock: 16 needs a completed saturday session in the last six
-# days, which does not exist yet on a saturday before 11:30 singapore time. the window
-# cannot be wider, because attendance older than seven days can no longer be marked
+# no step depends on the time of day: 16 looks back a full week for a completed class, so one is
+# always found, and uses the most recent, which is always inside the attendance edit window
 
 {{
   // dates in the centre's timezone, matching how the api decides what today is
   const centreDate = days => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' })
     .format(new Date(Date.now() + days * 86_400_000));
   exports.today = centreDate(0);
-  exports.sixDaysAgo = centreDate(-6);
+  exports.aWeekAgo = centreDate(-7);
   exports.twoWeeks = centreDate(13);
   exports.leaveStart = centreDate(20);
   exports.leaveEnd = centreDate(26);
@@ -145,26 +144,27 @@ Content-Type: application/json
 
 ?? status == 200
 
-### 16. her completed sec 1 mathematics session in the last six days. a six day window
-# ending today spans seven calendar days, so it holds exactly one saturday
+### 16. her most recent completed sec 1 mathematics session. a week's window always holds at least
+# one saturday class, and two on a saturday afternoon. the latest is used, since it is the one
+# most clearly inside the attendance edit window
 # @name pastSessions
-GET {{base}}/api/sessions?from={{sixDaysAgo}}&to={{today}}&status=completed&courseId={{courses.find(c => c.name === 'Sec 1 Mathematics').id}}
+GET {{base}}/api/sessions?from={{aWeekAgo}}&to={{today}}&status=completed&courseId={{courses.find(c => c.name === 'Sec 1 Mathematics').id}}
 Authorization: Bearer {{tutorLogin.accessToken}}
 
 ?? status == 200
-?? js response.parsedBody.length == 1
+?? js response.parsedBody.length >= 1
 
 ### 17. its roster includes john toh. sam is absent, since his enrolment starts today and
 # the roster is derived from enrolment dates
 # @name roster
-GET {{base}}/api/attendance/sessions/{{pastSessions[0].id}}
+GET {{base}}/api/attendance/sessions/{{pastSessions.at(-1).id}}
 Authorization: Bearer {{tutorLogin.accessToken}}
 
 ?? status == 200
 ?? js response.parsedBody.some(r => r.student_name === 'John Toh') == true
 
 ### 18. john is marked excused, the eligible status, which creates a make-up credit
-PUT {{base}}/api/attendance/sessions/{{pastSessions[0].id}}
+PUT {{base}}/api/attendance/sessions/{{pastSessions.at(-1).id}}
 Authorization: Bearer {{tutorLogin.accessToken}}
 Content-Type: application/json
 
@@ -174,7 +174,7 @@ Content-Type: application/json
 ?? js response.parsedBody.marked == 1
 
 ### 19. a student who is not on the roster is refused
-PUT {{base}}/api/attendance/sessions/{{pastSessions[0].id}}
+PUT {{base}}/api/attendance/sessions/{{pastSessions.at(-1).id}}
 Authorization: Bearer {{tutorLogin.accessToken}}
 Content-Type: application/json
 
@@ -218,7 +218,7 @@ POST {{base}}/api/makeups/{{makeups[0].id}}/book
 Authorization: Bearer {{jayLogin.accessToken}}
 Content-Type: application/json
 
-{ "sessionId": "{{pastSessions[0].id}}" }
+{ "sessionId": "{{pastSessions.at(-1).id}}" }
 
 ?? status == 422
 
@@ -283,10 +283,10 @@ POST {{base}}/api/payments
 Authorization: Bearer {{adminLogin.accessToken}}
 Content-Type: application/json
 
-{ "payerUserId": "{{jayLogin.user.id}}", "amountCents": 33000, "method": "paynow", "reference": "SMOKE-001" }
+{ "invoiceId": "{{jayOpenInvoices[0].id}}", "amountCents": 33000, "method": "paynow", "reference": "SMOKE-001" }
 
 ?? status == 201
-?? js response.parsedBody.unallocatedCents == 0
+?? js response.parsedBody.overpaymentCents == 0
 
 ### and the payment reaches his balance
 GET {{base}}/api/invoices/my-balance

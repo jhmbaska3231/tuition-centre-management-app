@@ -15,8 +15,7 @@ export interface NormalisedPaymentEvent {
   eventId: string;
   kind: 'payment_succeeded' | 'ignored';
   reference: string;
-  payerUserId: string;  // from checkout metadata
-  invoiceId: string | null;  // from checkout metadata
+  invoiceId: string;  // from checkout metadata
   amountCents: number;
   method: string;
 }
@@ -40,7 +39,7 @@ export const handleWebhook = async (orgId: string, provider: string, rawBody: Bu
   try {
     if (event.kind === 'payment_succeeded') {
       try {
-        await applyGatewayPayment(orgId, { provider, reference: event.reference, payerUserId: event.payerUserId, amountCents: event.amountCents, method: event.method, invoiceId: event.invoiceId, payload: event });
+        await applyGatewayPayment(orgId, { provider, reference: event.reference, amountCents: event.amountCents, method: event.method, invoiceId: event.invoiceId, payload: event });
       } catch (err) {
         if (!isUniqueViolation(err, 'payments_provider_reference_uq')) throw err;  // same charge reported twice under different event ids
       }

@@ -32,6 +32,7 @@ export const updateSettingsSchema = z.object({
   accent_colour: clearable(z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a six digit hex colour, for example #2563EB')),
   logo_url: clearable(z.url({ protocol: /^https$/ }).max(500)),
   payment_instructions: clearable(z.string().trim().max(2000)),
+  unpaid_flag_days: z.number().int().min(0).max(90),
 }).partial().refine(o => Object.keys(o).length > 0, 'No fields to update');
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 

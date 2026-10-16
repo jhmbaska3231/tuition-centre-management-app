@@ -297,16 +297,17 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
       }
       return id;
     };
-    const pay = async (payer: string, cents: number, method: string, receivedOn: string, allocations: Array<[string, number]>): Promise<void> => {
-      const pid = (await one(c, `INSERT INTO payments (org_id, payer_user_id, amount_cents, method, received_at, recorded_by)
-                                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [orgId, payer, cents, method, at(receivedOn, '10:00:00'), admin])).id;
-      for (const [invoiceId, alloc] of allocations) {
-        await c.query(`INSERT INTO payment_allocations (payment_id, invoice_id, amount_cents) VALUES ($1, $2, $3)`, [pid, invoiceId, alloc]);
-        await c.query(`UPDATE invoices SET paid_cents = paid_cents + $2,
-                         status = CASE WHEN paid_cents + $2 >= total_cents THEN 'paid' ELSE 'partially_paid' END
-                       WHERE id = $1`, [invoiceId, alloc]);
-      }
+    // one payment settles one invoice. seeded payments never exceed their invoice's balance,
+    // so the whole amount is allocated and no overpayment flag is due
+    const pay = async (payer: string, invoiceId: string, cents: number, method: string, receivedOn: string): Promise<void> => {
+      const pid = (await one(c,
+        `INSERT INTO payments (org_id, payer_user_id, invoice_id, amount_cents, method, status, received_at, recorded_by)
+         VALUES ($1, $2, $3, $4, $5, 'succeeded', $6, $7) RETURNING id`,
+        [orgId, payer, invoiceId, cents, method, at(receivedOn, '10:00:00'), admin])).id;
+      await c.query(`INSERT INTO payment_allocations (payment_id, invoice_id, amount_cents) VALUES ($1, $2, $3)`, [pid, invoiceId, cents]);
+      await c.query(`UPDATE invoices SET paid_cents = paid_cents + $2,
+                       status = CASE WHEN paid_cents + $2 >= total_cents THEN 'paid' ELSE 'partially_paid' END
+                     WHERE id = $1`, [invoiceId, cents]);
     };
 
     const prevMonth = prevMonthDate(today);
@@ -320,7 +321,7 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
       [john, enrollments.john, 'Sec 1 Mathematics tuition', 18000],
       [sarah, enrollments.sarah, 'Pri 5 English tuition', 15000],
     ]);
-    await pay(parentJay, 33000, 'paynow', addDays(pmStart, 2), [[jayPrev, 33000]]);
+    await pay(parentJay, jayPrev, 33000, 'paynow', addDays(pmStart, 2));
     await invoice(parentJay, cmStart, cmEnd, addDays(cmStart, -6), addDays(cmStart, 6), [
       [john, enrollments.john, 'Sec 1 Mathematics tuition', 18000],
       [sarah, enrollments.sarah, 'Pri 5 English tuition', 15000],
@@ -330,11 +331,11 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
     const alicePrev = await invoice(parentAlice, pmStart, pmEnd, addDays(pmStart, -6), addDays(pmStart, 6), [
       [emma, enrollments.emma, 'Sec 3 Mathematics tuition', 18000],
     ]);
-    await pay(parentAlice, 18000, 'bank_transfer', addDays(pmStart, 4), [[alicePrev, 18000]]);
+    await pay(parentAlice, alicePrev, 18000, 'bank_transfer', addDays(pmStart, 4));
     const aliceCur = await invoice(parentAlice, cmStart, cmEnd, addDays(cmStart, -6), addDays(cmStart, 6), [
       [emma, enrollments.emma, 'Sec 3 Mathematics tuition', 18000],
     ]);
-    await pay(parentAlice, 10000, 'cash', today, [[aliceCur, 10000]]);
+    await pay(parentAlice, aliceCur, 10000, 'cash', today);
 
     // ben: last month still unpaid, so overdue
     await invoice(parentBen, pmStart, pmEnd, addDays(pmStart, -6), addDays(pmStart, 6), [
@@ -347,7 +348,7 @@ export const seedDev = async (config: ClientConfig): Promise<void> => {
       [ryan, enrollments.ryan, 'Sec 4 Chemistry tuition', 18000],
       [grace, enrollments.grace, 'JC1 Economics tuition', 22000],
     ]);
-    await pay(parentDavid, 40000, 'card', addDays(pmStart, 1), [[davidPrev, 40000]]);
+    await pay(parentDavid, davidPrev, 40000, 'card', addDays(pmStart, 1));
 
     // notifications outbox: one already sent, one pending, both with real payloads
     const benOverdue = await one(c, `SELECT id, invoice_number, due_on, total_cents - paid_cents AS balance FROM invoices WHERE bill_to_user_id = $1 ORDER BY issued_at LIMIT 1`, [parentBen]);

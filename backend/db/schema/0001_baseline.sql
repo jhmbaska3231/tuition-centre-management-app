@@ -50,6 +50,8 @@ CREATE TABLE organisation_settings (
   makeup_cap_per_term           INTEGER DEFAULT 2 CHECK (makeup_cap_per_term > 0),
   billing_generation_day        SMALLINT NOT NULL DEFAULT 25 CHECK (billing_generation_day BETWEEN 1 AND 28),
   billing_due_day               SMALLINT NOT NULL DEFAULT 7 CHECK (billing_due_day BETWEEN 1 AND 28),
+  -- how many days past its due date an invoice can still be owed before staff are alerted
+  unpaid_flag_days              INTEGER NOT NULL DEFAULT 7 CHECK (unpaid_flag_days >= 0),
   tax_rate_bp                   INTEGER NOT NULL DEFAULT 0 CHECK (tax_rate_bp BETWEEN 0 AND 10000),
   sibling_discount_bp           INTEGER NOT NULL DEFAULT 0 CHECK (sibling_discount_bp BETWEEN 0 AND 10000),
   invoice_prefix                TEXT NOT NULL DEFAULT 'INV',
@@ -85,14 +87,14 @@ CREATE TABLE org_integrations (
 -- event keys used by notification_event_settings and notifications.event_key:
 --   session_reminder, session_cancelled, tutor_changed, student_absent,
 --   invoice_issued, invoice_overdue, waitlist_offer,
---   leave_request_submitted, leave_request_decided
+--   leave_request_submitted, leave_request_decided, billing_flag_raised
 CREATE TABLE notification_event_settings (
   id          UUID PRIMARY KEY DEFAULT uuidv7(),
   org_id      UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   event_key   TEXT NOT NULL CHECK (event_key IN (
                 'session_reminder', 'session_cancelled', 'session_rescheduled', 'tutor_changed', 'student_absent',
                 'invoice_issued', 'invoice_overdue', 'waitlist_offer',
-                'leave_request_submitted', 'leave_request_decided')),
+                'leave_request_submitted', 'leave_request_decided', 'billing_flag_raised')),
   enabled     BOOLEAN NOT NULL DEFAULT TRUE,
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (org_id, event_key)
@@ -539,6 +541,8 @@ CREATE TABLE payments (
   id                UUID PRIMARY KEY DEFAULT uuidv7(),
   org_id            UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   payer_user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  -- every payment settles one invoice. an amount above its balance becomes an overpayment flag
+  invoice_id       UUID NOT NULL REFERENCES invoices(id) ON DELETE RESTRICT,
   amount_cents      BIGINT NOT NULL CHECK (amount_cents > 0),
   method            TEXT NOT NULL CHECK (method IN ('cash', 'paynow', 'bank_transfer', 'card', 'cheque')),
   status            TEXT NOT NULL DEFAULT 'succeeded'
@@ -555,6 +559,7 @@ CREATE TABLE payments (
 CREATE UNIQUE INDEX payments_provider_reference_uq
   ON payments (provider, reference) WHERE provider IS NOT NULL;
 CREATE INDEX payments_payer_idx ON payments (payer_user_id, received_at);
+CREATE INDEX payments_invoice_idx ON payments (invoice_id);
 
 -- sum of allocations for a payment must not exceed payment.amount_cents and
 -- sum for an invoice must not exceed invoice.total_cents. enforced by the service
@@ -578,6 +583,40 @@ CREATE TABLE credit_notes (
   issued_by     UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- payments that need a person: an overpayment is money the centre owes back, and an unpaid
+-- balance is an invoice still owed some days after it was due. the amount is set when a flag is
+-- raised and never changed. resolving only records when, by whom and how
+CREATE TABLE billing_flags (
+  id                    UUID PRIMARY KEY DEFAULT uuidv7(),
+  org_id                UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+  invoice_id            UUID NOT NULL REFERENCES invoices(id) ON DELETE RESTRICT,
+  payment_id            UUID REFERENCES payments(id) ON DELETE RESTRICT,
+  kind                  TEXT NOT NULL CHECK (kind IN ('overpayment', 'unpaid_balance')),
+  amount_cents          BIGINT NOT NULL CHECK (amount_cents > 0),
+  status                TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  raised_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resolved_by           UUID REFERENCES users(id) ON DELETE SET NULL,
+  resolved_at           TIMESTAMPTZ,
+  resolution_method     TEXT,
+  resolution_reference  TEXT,
+  resolution_note       TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- an overpayment always comes from a payment, an unpaid balance never does
+  CONSTRAINT billing_flags_payment_matches_kind_chk CHECK ((kind = 'overpayment') = (payment_id IS NOT NULL)),
+  -- a resolved flag says when
+  CONSTRAINT billing_flags_resolved_at_chk CHECK (status = 'open' OR resolved_at IS NOT NULL),
+  -- a resolved overpayment says how the money went back, so it matches the bank statement
+  CONSTRAINT billing_flags_refund_evidence_chk CHECK (
+    kind <> 'overpayment' OR status = 'open'
+    OR (resolution_method IS NOT NULL AND resolution_reference IS NOT NULL))
+);
+-- one overpayment flag per payment, and one open unpaid flag per invoice at a time. a refund that
+-- reopens an invoice can raise a new unpaid flag later, since the old one is no longer open
+CREATE UNIQUE INDEX billing_flags_one_per_payment_uq ON billing_flags (payment_id) WHERE kind = 'overpayment';
+CREATE UNIQUE INDEX billing_flags_one_open_unpaid_uq ON billing_flags (invoice_id) WHERE kind = 'unpaid_balance' AND status = 'open';
+CREATE INDEX billing_flags_open_idx ON billing_flags (org_id, raised_at) WHERE status = 'open';
 
 -- insert first, process second, makes provider retries harmless
 CREATE TABLE webhook_events (
@@ -612,7 +651,7 @@ CREATE TABLE notifications (
   event_key          TEXT NOT NULL CHECK (event_key IN (
                        'session_reminder', 'session_cancelled', 'session_rescheduled', 'tutor_changed', 'student_absent',
                        'invoice_issued', 'invoice_overdue', 'waitlist_offer',
-                       'leave_request_submitted', 'leave_request_decided',
+                       'leave_request_submitted', 'leave_request_decided', 'billing_flag_raised',
                        'password_reset', 'account_created')),
   template           TEXT NOT NULL,
   payload            JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -645,6 +684,37 @@ CREATE TABLE audit_log (
 CREATE INDEX audit_log_entity_idx ON audit_log (entity_type, entity_id);
 CREATE INDEX audit_log_org_created_idx ON audit_log (org_id, created_at);
 CREATE INDEX audit_log_actor_idx ON audit_log (actor_user_id, created_at);
+
+-- money is corrected only by adding records, never by changing one: a credit note, a refund or a
+-- flag resolution. these triggers refuse any update that changes an amount, whatever sends it
+CREATE FUNCTION forbid_amount_change() RETURNS trigger AS $$
+BEGIN
+  IF NEW.amount_cents IS DISTINCT FROM OLD.amount_cents THEN
+    RAISE EXCEPTION 'amount_cents on % cannot be changed', TG_TABLE_NAME;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER payments_amount_fixed BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION forbid_amount_change();
+CREATE TRIGGER payment_allocations_amount_fixed BEFORE UPDATE ON payment_allocations FOR EACH ROW EXECUTE FUNCTION forbid_amount_change();
+CREATE TRIGGER credit_notes_amount_fixed BEFORE UPDATE ON credit_notes FOR EACH ROW EXECUTE FUNCTION forbid_amount_change();
+CREATE TRIGGER billing_flags_amount_fixed BEFORE UPDATE ON billing_flags FOR EACH ROW EXECUTE FUNCTION forbid_amount_change();
+
+-- an issued invoice's figures are fixed too. paid_cents and status still move, since they are a
+-- cache of the payments and credit notes against it
+CREATE FUNCTION forbid_invoice_total_change() RETURNS trigger AS $$
+BEGIN
+  IF OLD.status <> 'draft' AND (
+    NEW.subtotal_cents IS DISTINCT FROM OLD.subtotal_cents OR NEW.discount_cents IS DISTINCT FROM OLD.discount_cents
+    OR NEW.tax_cents IS DISTINCT FROM OLD.tax_cents OR NEW.total_cents IS DISTINCT FROM OLD.total_cents) THEN
+    RAISE EXCEPTION 'the figures of issued invoice % cannot be changed', OLD.invoice_number;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER invoices_totals_fixed BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION forbid_invoice_total_change();
 
 -- ---------------------------------------------------------------------------
 -- updated_at triggers

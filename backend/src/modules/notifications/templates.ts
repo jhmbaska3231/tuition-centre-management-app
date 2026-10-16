@@ -67,6 +67,17 @@ const templates: Record<string, Template> = {
 
   leave_request_decided_v1: (p, ctx) => wrap(ctx, `Your leave request was ${p.decision}`, [
     `Your leave request has been ${p.decision}.`, ...(p.note ? [`Note: ${p.note}`] : [])]),
+
+  // one template for both kinds of flag, since both go to the same staff and point to the same
+  // screen. an overpayment is money to send back, an unpaid balance is money to follow up
+  billing_flag_raised_v1: (p, ctx) => p.kind === 'overpayment'
+    ? wrap(ctx, `Overpayment on invoice ${p.invoiceNumber}`, [
+        `${p.parentName} paid ${money(p.amountCents, ctx.currency)} more than invoice ${p.invoiceNumber}.`,
+        `Refund that exact amount to them, then mark the payment alert resolved with the transfer reference.`,
+        `Review it here: ${appUrl()}/admin/billing`])
+    : wrap(ctx, `Unpaid: invoice ${p.invoiceNumber}`, [
+        `Invoice ${p.invoiceNumber} for ${p.parentName} still has ${money(p.amountCents, ctx.currency)} unpaid. It was due on ${day(p.dueOn)}.`,
+        `Review it here: ${appUrl()}/admin/billing`]),
 };
 
 export const render = (template: string, payload: Record<string, any>, ctx: TemplateContext): RenderedEmail => {

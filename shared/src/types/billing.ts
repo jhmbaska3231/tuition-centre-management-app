@@ -1,6 +1,6 @@
 // shared/src/types/billing.ts
 
-import type { BillingCycle, InvoiceLineType, InvoiceStatus, PaymentMethod, PaymentStatus } from '../enums';
+import type { BillingCycle, BillingFlagKind, BillingFlagStatus, InvoiceLineType, InvoiceStatus, PaymentMethod, PaymentStatus,  } from '../enums';
 import type { Cents, DateOnly, Timestamp } from './api';
 
 export interface FeePlan {
@@ -76,6 +76,7 @@ export interface Invoice {
   lines: InvoiceLine[];
   allocations: InvoiceAllocation[];
   credit_notes: CreditNote[];
+  overpayments: InvoiceOverpayment[];
 }
 
 export interface PaymentAllocationSummary {
@@ -88,6 +89,7 @@ export interface Payment {
   id: string;
   org_id: string;
   payer_user_id: string | null;
+  invoice_id: string;
   amount_cents: Cents;
   method: PaymentMethod;
   status: PaymentStatus;
@@ -103,14 +105,48 @@ export interface Payment {
   allocations: PaymentAllocationSummary[];
 }
 
-// any remainder not allocated to an invoice stays on the payment as credit
+// a payment settles at most its invoice's balance. anything above is flagged as an overpayment for
+// staff to refund, and is reported here so the screen can say so at once
 export interface RecordPaymentResponse {
   payment: Payment;
-  unallocatedCents: Cents;
+  overpaymentCents: Cents;
 }
 
 export interface BalanceSummary {
   outstanding_cents: Cents;
   overdue_cents: Cents;
-  unallocated_cents: Cents;
+  // overpayments the centre has not yet refunded: money owed to the parent
+  refund_due_cents: Cents;
+}
+
+// a payment that needs a person. overpayment: money the centre owes back, raised when a payment
+// exceeds its invoice. unpaid_balance: an invoice still owed some days past its due date. the
+// amount never changes once raised
+export interface BillingFlag {
+  id: string;
+  invoice_id: string;
+  invoice_number: string;
+  payment_id: string | null;
+  kind: BillingFlagKind;
+  amount_cents: Cents;
+  status: BillingFlagStatus;
+  raised_at: Timestamp;
+  resolved_by_name: string | null;
+  resolved_at: Timestamp | null;
+  resolution_method: PaymentMethod | null;
+  resolution_reference: string | null;
+  resolution_note: string | null;
+  // who the invoice is billed to, so staff can contact them
+  bill_to_user_id: string;
+  bill_to_name: string;
+}
+
+// an overpayment on one invoice, as its parent sees it: how much, and whether it has been refunded
+export interface InvoiceOverpayment {
+  id: string;
+  amount_cents: Cents;
+  status: BillingFlagStatus;
+  resolved_at: Timestamp | null;
+  resolution_method: PaymentMethod | null;
+  resolution_reference: string | null;
 }

@@ -1,7 +1,7 @@
 // backend/src/modules/billing/repository.ts
 
 import { Queryable, execute, many, maybeOne, one } from '../../db';
-import { FeePlanRow, InvoiceLineRow, InvoiceRow, InvoiceView, PaymentRow, PaymentView } from './types';
+import { FeePlanRow, InvoiceLineRow, InvoiceRow, InvoiceView, PaymentRow, PaymentView, BillingFlagView } from './types';
 
 const set = (fields: Record<string, unknown>, startAt: number) => ({
   sql: Object.keys(fields).map((k, i) => `${k} = $${startAt + i}`).join(', '), params: Object.values(fields),
@@ -25,8 +25,8 @@ export const countCoursesOnPlan = async (q: Queryable, planId: string) =>
 
 // org context -------------------------------------------------------------------------
 export const billingContext = (q: Queryable, orgId: string) =>
-  one<{ timezone: string; currency: string; billing_generation_day: number; billing_due_day: number; tax_rate_bp: number; sibling_discount_bp: number; invoice_prefix: string }>(q,
-    `SELECT o.timezone, o.currency, s.billing_generation_day, s.billing_due_day, s.tax_rate_bp, s.sibling_discount_bp, s.invoice_prefix
+  one<{ timezone: string; currency: string; billing_generation_day: number; billing_due_day: number; tax_rate_bp: number; sibling_discount_bp: number; invoice_prefix: string; unpaid_flag_days: number }>(q,
+    `SELECT o.timezone, o.currency, s.billing_generation_day, s.billing_due_day, s.tax_rate_bp, s.sibling_discount_bp, s.invoice_prefix, s.unpaid_flag_days
      FROM organisations o JOIN organisation_settings s ON s.org_id = o.id WHERE o.id = $1`, [orgId]);
 
 export const nextInvoiceNumber = async (q: Queryable, orgId: string, prefix: string, year: string): Promise<string> => {
@@ -85,7 +85,13 @@ const INVOICE_VIEW = `
          COALESCE((SELECT json_agg(json_build_object('payment_id', p.id, 'amount_cents', pa.amount_cents, 'method', p.method, 'received_at', p.received_at, 'reference', p.reference) ORDER BY p.received_at)
                    FROM payment_allocations pa JOIN payments p ON p.id = pa.payment_id WHERE pa.invoice_id = i.id), '[]'::json) AS allocations,
          COALESCE((SELECT json_agg(json_build_object('id', cn.id, 'amount_cents', cn.amount_cents, 'reason', cn.reason, 'created_at', cn.created_at) ORDER BY cn.created_at)
-                   FROM credit_notes cn WHERE cn.invoice_id = i.id), '[]'::json) AS credit_notes
+                   FROM credit_notes cn WHERE cn.invoice_id = i.id), '[]'::json) AS credit_notes,
+         -- what parents see of overpayments on this invoice, and whether each has been refunded.
+         -- unpaid balance flags are internal follow up, so they are not included
+         COALESCE((SELECT json_agg(json_build_object('id', f.id, 'amount_cents', f.amount_cents, 'status', f.status,
+                    'resolved_at', f.resolved_at, 'resolution_method', f.resolution_method,
+                    'resolution_reference', f.resolution_reference) ORDER BY f.raised_at)
+                   FROM billing_flags f WHERE f.invoice_id = i.id AND f.kind = 'overpayment'), '[]'::json) AS overpayments
   FROM invoices i JOIN users u ON u.id = i.bill_to_user_id`;
 
 export const findInvoiceView = (q: Queryable, orgId: string, id: string) =>
@@ -137,11 +143,6 @@ export const voidInvoice = async (q: Queryable, id: string, reason: string) => {
 export const insertCreditNote = (q: Queryable, orgId: string, c: { invoice_id: string; amount_cents: number; reason: string; issued_by: string }) =>
   one<{ id: string }>(q, 'INSERT INTO credit_notes (org_id, invoice_id, amount_cents, reason, issued_by) VALUES ($1, $2, $3, $4, $5) RETURNING id', [orgId, c.invoice_id, c.amount_cents, c.reason, c.issued_by]);
 
-export const openInvoicesForPayer = (q: Queryable, orgId: string, payerId: string) =>
-  many<InvoiceRow & { balance_cents: number }>(q,
-    `SELECT i.*, (i.total_cents - i.paid_cents - COALESCE((SELECT sum(amount_cents) FROM credit_notes WHERE invoice_id = i.id), 0))::bigint AS balance_cents
-     FROM invoices i WHERE i.org_id = $1 AND i.bill_to_user_id = $2 AND i.status IN ('issued', 'partially_paid') ORDER BY i.due_on, i.issued_at FOR UPDATE`, [orgId, payerId]);
-
 export const overdueToRemind = (q: Queryable, orgId: string) =>
   many<InvoiceRow>(q, `SELECT * FROM invoices WHERE org_id = $1 AND status IN ('issued', 'partially_paid') AND due_on < current_date`, [orgId]);
 
@@ -165,11 +166,11 @@ export const listPayments = (q: Queryable, orgId: string, f: { payerUserId?: str
     `${PAYMENT_VIEW} WHERE p.org_id = $1 AND ($2::uuid IS NULL OR p.payer_user_id = $2)
        AND ($3::date IS NULL OR p.received_at >= $3) AND ($4::date IS NULL OR p.received_at < $4::date + 1)
      ORDER BY p.received_at DESC LIMIT $5 OFFSET $6`, [orgId, f.payerUserId ?? null, f.from ?? null, f.to ?? null, f.limit, f.offset]);
-export const insertPayment = (q: Queryable, orgId: string, p: { payer_user_id: string | null; amount_cents: number; method: string; status: string; received_at: Date; reference: string | null; provider: string | null; provider_payload: unknown; recorded_by: string | null; notes: string | null }) =>
+export const insertPayment = (q: Queryable, orgId: string, p: { invoice_id: string; payer_user_id: string | null; amount_cents: number; method: string; status: string; received_at: Date; reference: string | null; provider: string | null; provider_payload: unknown; recorded_by: string | null; notes: string | null }) =>
   one<PaymentRow>(q,
-    `INSERT INTO payments (org_id, payer_user_id, amount_cents, method, status, received_at, reference, provider, provider_payload, recorded_by, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-    [orgId, p.payer_user_id, p.amount_cents, p.method, p.status, p.received_at, p.reference, p.provider, p.provider_payload === undefined ? null : JSON.stringify(p.provider_payload), p.recorded_by, p.notes]);
+    `INSERT INTO payments (org_id, invoice_id, payer_user_id, amount_cents, method, status, received_at, reference, provider, provider_payload, recorded_by, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+    [orgId, p.invoice_id, p.payer_user_id, p.amount_cents, p.method, p.status, p.received_at, p.reference, p.provider, p.provider_payload === undefined ? null : JSON.stringify(p.provider_payload), p.recorded_by, p.notes]);
 export const insertAllocation = (q: Queryable, paymentId: string, invoiceId: string, amount: number) =>
   execute(q, 'INSERT INTO payment_allocations (payment_id, invoice_id, amount_cents) VALUES ($1, $2, $3)', [paymentId, invoiceId, amount]);
 export const deleteAllocations = (q: Queryable, paymentId: string) =>
@@ -177,14 +178,89 @@ export const deleteAllocations = (q: Queryable, paymentId: string) =>
 export const setPaymentStatus = (q: Queryable, id: string, status: string, note: string | null) =>
   one<PaymentRow>(q, `UPDATE payments SET status = $2, notes = COALESCE($3, notes) WHERE id = $1 RETURNING *`, [id, status, note]);
 
+export const insertBillingFlag = (q: Queryable, f: { org_id: string; invoice_id: string; payment_id: string | null; kind: 'overpayment' | 'unpaid_balance'; amount_cents: number }) =>
+  one<{ id: string; kind: string; amount_cents: number; invoice_id: string }>(q,
+    `INSERT INTO billing_flags (org_id, invoice_id, payment_id, kind, amount_cents)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id, kind, amount_cents, invoice_id`,
+    [f.org_id, f.invoice_id, f.payment_id, f.kind, f.amount_cents]);
+
+// the overpayment flag on one payment, if it has one, locked so a refund and a resolution cannot
+// race each other
+export const findOverpaymentFlagForUpdate = (q: Queryable, paymentId: string) =>
+  maybeOne<{ id: string; status: 'open' | 'resolved' }>(q,
+    `SELECT id, status FROM billing_flags WHERE payment_id = $1 AND kind = 'overpayment' FOR UPDATE`, [paymentId]);
+
+// fills in the resolution, never the amount
+export const resolveBillingFlag = (q: Queryable, id: string, r: { by: string | null; method: string | null; reference: string | null; note: string | null }) =>
+  execute(q,
+    `UPDATE billing_flags SET status = 'resolved', resolved_at = now(), resolved_by = $2,
+            resolution_method = $3, resolution_reference = $4, resolution_note = $5
+      WHERE id = $1 AND status = 'open'`,
+    [id, r.by, r.method, r.reference, r.note]);
+
+// an unpaid balance flag closes itself once its invoice no longer asks for money. no person is
+// recorded, which is how the nightly job tells a settled invoice from one staff have taken on
+export const resolveOpenUnpaidFlag = (q: Queryable, invoiceId: string, note: string) =>
+  execute(q,
+    `UPDATE billing_flags SET status = 'resolved', resolved_at = now(), resolution_note = $2
+      WHERE invoice_id = $1 AND kind = 'unpaid_balance' AND status = 'open'`,
+    [invoiceId, note]);
+
+// invoices still owed more than the grace period past their due date. an invoice is flagged once:
+// not while a flag is open, and not after staff resolved one by hand, since they have taken it on.
+// a flag the system resolved does not count, so an invoice reopened by a refund can be flagged again
+export const raiseUnpaidBalanceFlags = (q: Queryable, orgId: string, graceDays: number, today: string) =>
+  many<{ id: string; amount_cents: number; invoice_number: string; due_on: string; bill_to_name: string }>(q,
+    `WITH raised AS (
+       INSERT INTO billing_flags (org_id, invoice_id, kind, amount_cents)
+       SELECT i.org_id, i.id, 'unpaid_balance', b.balance
+       FROM invoices i
+       CROSS JOIN LATERAL (
+         SELECT i.total_cents - i.paid_cents
+                - COALESCE((SELECT sum(cn.amount_cents) FROM credit_notes cn WHERE cn.invoice_id = i.id), 0) AS balance) b
+       WHERE i.org_id = $1 AND i.status IN ('issued', 'partially_paid') AND b.balance > 0
+         AND i.due_on + $2::int < $3::date
+         AND NOT EXISTS (SELECT 1 FROM billing_flags f
+                          WHERE f.invoice_id = i.id AND f.kind = 'unpaid_balance'
+                            AND (f.status = 'open' OR f.resolved_by IS NOT NULL))
+       ON CONFLICT DO NOTHING
+       RETURNING id, invoice_id, amount_cents)
+     SELECT r.id, r.amount_cents, i.invoice_number, i.due_on, u.first_name || ' ' || u.last_name AS bill_to_name
+     FROM raised r JOIN invoices i ON i.id = r.invoice_id JOIN users u ON u.id = i.bill_to_user_id`,
+    [orgId, graceDays, today]);
+
+const FLAG_VIEW = `
+  SELECT f.id, f.invoice_id, i.invoice_number, f.payment_id, f.kind, f.amount_cents, f.status, f.raised_at,
+         CASE WHEN r.id IS NULL THEN NULL ELSE r.first_name || ' ' || r.last_name END AS resolved_by_name,
+         f.resolved_at, f.resolution_method, f.resolution_reference, f.resolution_note,
+         i.bill_to_user_id, u.first_name || ' ' || u.last_name AS bill_to_name
+  FROM billing_flags f
+  JOIN invoices i ON i.id = f.invoice_id
+  JOIN users u ON u.id = i.bill_to_user_id
+  LEFT JOIN users r ON r.id = f.resolved_by`;
+
+export const listBillingFlags = (q: Queryable, orgId: string, f: { status?: string; kind?: string; limit: number; offset: number }) =>
+  many<BillingFlagView>(q,
+    `${FLAG_VIEW} WHERE f.org_id = $1 AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.kind = $3)
+     ORDER BY f.raised_at DESC LIMIT $4 OFFSET $5`,
+    [orgId, f.status ?? null, f.kind ?? null, f.limit, f.offset]);
+
+export const findBillingFlagView = (q: Queryable, orgId: string, id: string) =>
+  maybeOne<BillingFlagView>(q, `${FLAG_VIEW} WHERE f.org_id = $1 AND f.id = $2`, [orgId, id]);
+
+export const findBillingFlagForUpdate = (q: Queryable, orgId: string, id: string) =>
+  maybeOne<{ id: string; kind: 'overpayment' | 'unpaid_balance'; status: 'open' | 'resolved'; amount_cents: number }>(q,
+    `SELECT id, kind, status, amount_cents FROM billing_flags WHERE org_id = $1 AND id = $2 FOR UPDATE`, [orgId, id]);
+
 export const balanceSummary = (q: Queryable, orgId: string, userId: string) =>
-  one<{ outstanding_cents: number; overdue_cents: number; unallocated_cents: number }>(q,
+  one<{ outstanding_cents: number; overdue_cents: number; refund_due_cents: number }>(q,
     `SELECT COALESCE((SELECT sum(i.total_cents - i.paid_cents - COALESCE((SELECT sum(amount_cents) FROM credit_notes WHERE invoice_id = i.id), 0))
                        FROM invoices i WHERE i.org_id = $1 AND i.bill_to_user_id = $2 AND i.status IN ('issued', 'partially_paid')), 0)::bigint AS outstanding_cents,
             COALESCE((SELECT sum(i.total_cents - i.paid_cents - COALESCE((SELECT sum(amount_cents) FROM credit_notes WHERE invoice_id = i.id), 0))
                        FROM invoices i WHERE i.org_id = $1 AND i.bill_to_user_id = $2 AND i.status IN ('issued', 'partially_paid') AND i.due_on < current_date), 0)::bigint AS overdue_cents,
-            COALESCE((SELECT sum(p.amount_cents - COALESCE((SELECT sum(amount_cents) FROM payment_allocations WHERE payment_id = p.id), 0))
-                       FROM payments p WHERE p.org_id = $1 AND p.payer_user_id = $2 AND p.status = 'succeeded'), 0)::bigint AS unallocated_cents`, [orgId, userId]);
+            -- money the centre owes this parent: overpayments not yet refunded
+            COALESCE((SELECT sum(f.amount_cents) FROM billing_flags f JOIN invoices i ON i.id = f.invoice_id
+                       WHERE i.org_id = $1 AND i.bill_to_user_id = $2 AND f.kind = 'overpayment' AND f.status = 'open'), 0)::bigint AS refund_due_cents`, [orgId, userId]);
 
 // webhooks -------------------------------------------------------------------------
 export const insertWebhookEvent = (q: Queryable, orgId: string, provider: string, eventId: string, payload: unknown) =>

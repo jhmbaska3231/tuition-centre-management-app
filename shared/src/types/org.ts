@@ -53,6 +53,7 @@ export interface OrganisationSettings {
   accent_colour: string | null;
   logo_url: string | null;
   payment_instructions: string | null;
+  unpaid_flag_days: number;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

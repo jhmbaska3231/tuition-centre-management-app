@@ -230,7 +230,7 @@ export const forfeitUnmarkedBookings = (q: Queryable, editWindowDays: number) =>
                        AND s.ends_at < now() - make_interval(days => $1::int))
         AND NOT EXISTS (SELECT 1 FROM attendance a
                          WHERE a.session_id = mb.booked_session_id AND a.student_id = mb.student_id)
-      RETURNING mb.id, mb.student_id, mb.booked_session_id`);
+      RETURNING mb.id, mb.student_id, mb.booked_session_id`, [editWindowDays]);
 
 // sessions a credit can be booked into: same subject and level (or mixed), scheduled, with
 // a seat, starting at least the centre's notice period from now, and not one the student is
